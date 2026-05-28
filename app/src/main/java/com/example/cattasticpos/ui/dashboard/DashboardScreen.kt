@@ -196,17 +196,17 @@ fun DashboardScreen(
                     // Totals
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column {
-                            Text("Subtotal: ₱${String.format("%.2f", uiState.subtotal)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("Subtotal: ₱${String.format("%.0f", uiState.subtotal)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if (uiState.discountDeduction > 0) {
                                 Text(
-                                    "Disc (${uiState.discountLabel}): -₱${String.format("%.2f", uiState.discountDeduction)}",
+                                    "Disc (${uiState.discountLabel}): -₱${String.format("%.0f", uiState.discountDeduction)}",
                                     fontSize = 11.sp, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold
                                 )
                             }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Total: ", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("₱${String.format("%.2f", uiState.total)}", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
+                            Text("₱${String.format("%.0f", uiState.total)}", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = MaterialTheme.colorScheme.primary)
                         }
                     }
 
@@ -310,7 +310,7 @@ fun ItemCard(item: Item, isLowStock: Boolean, onClick: () -> Unit, modifier: Mod
                 Column {
                     Text(item.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text("₱${String.format("%.2f", item.startingPrice)}", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
+                    Text("₱${String.format("%.0f", item.startingPrice)}", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
                 }
             }
             if (isLowStock) {
@@ -334,7 +334,7 @@ fun CartItemRow(cartItem: CartItem, onQuantityChange: (String, Int) -> Unit) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 val variantFlavorText = if (cartItem.flavor.isNullOrBlank()) cartItem.variant.name else "${cartItem.variant.name}/${cartItem.flavor.substringAfter(": ").trim()}"
-                Text("${cartItem.quantity}x ${cartItem.item.name} ($variantFlavorText) → ₱${String.format("%.2f", cartItem.totalPrice)}", fontWeight = FontWeight.Medium, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text("${cartItem.quantity}x ${cartItem.item.name} ($variantFlavorText) → ₱${String.format("%.0f", cartItem.totalPrice)}", fontWeight = FontWeight.Medium, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { onQuantityChange(cartItem.id, -1) }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(14.dp)) }
@@ -379,7 +379,7 @@ fun PaymentCheckoutDialog(finalTotal: Double, onConfirmPayment: (String, String?
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Total Due:", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("₱${String.format("%.2f", finalTotal)}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
+                    Text("₱${String.format("%.0f", finalTotal)}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
                 }
                 TabRow(selectedTabIndex = selectedTabIndex) {
                     Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }, text = { Text("Cash") })
@@ -389,7 +389,7 @@ fun PaymentCheckoutDialog(finalTotal: Double, onConfirmPayment: (String, String?
                     OutlinedTextField(value = amountTenderedStr, onValueChange = { amountTenderedStr = it }, label = { Text("Amount Tendered (₱)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Change Due:", fontWeight = FontWeight.Medium)
-                        Text(if (changeDue >= 0) "₱${String.format("%.2f", changeDue)}" else "---", fontWeight = FontWeight.Medium, color = if (changeDue >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                        Text(if (changeDue >= 0) "₱${String.format("%.0f", changeDue)}" else "---", fontWeight = FontWeight.Medium, color = if (changeDue >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                     }
                 } else {
                     ExposedDropdownMenuBox(expanded = simDropdownExpanded, onExpandedChange = { simDropdownExpanded = it }) {
@@ -449,7 +449,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                 Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     item.variants.forEach { variant ->
-                        FilterChip(selected = selectedVariant.id == variant.id, onClick = { selectedVariant = variant }, label = { Text("${variant.name} (+₱${String.format("%.2f", variant.getPrice(selectedFlavor))})") }, shape = RoundedCornerShape(8.dp))
+                        FilterChip(selected = selectedVariant.id == variant.id, onClick = { selectedVariant = variant }, label = { Text("${variant.name} (+₱${String.format("%.0f", variant.getPrice(selectedFlavor))})") }, shape = RoundedCornerShape(8.dp))
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
@@ -457,7 +457,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text("Price Summary", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
-                    Text("₱${String.format("%.2f", selectedVariant.getPrice(selectedFlavor))}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+                    Text("₱${String.format("%.0f", selectedVariant.getPrice(selectedFlavor))}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                 }
                 Button(onClick = { onAddToCart(selectedVariant, selectedFlavor) }, shape = RoundedCornerShape(8.dp)) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = null)
@@ -488,7 +488,7 @@ fun QueuesDialog(heldQueues: Map<String, List<CartItem>>, onResume: (String) -> 
                                 Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(queueId, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        Text("${items.sumOf { it.quantity }} items • ₱${String.format("%.2f", items.sumOf { it.totalPrice })}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("${items.sumOf { it.quantity }} items • ₱${String.format("%.0f", items.sumOf { it.totalPrice })}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     Button(onClick = { onResume(queueId) }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp), shape = RoundedCornerShape(8.dp)) { Text("Resume", fontSize = 12.sp) }
                                 }

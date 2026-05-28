@@ -155,7 +155,7 @@ fun HistoryScreen(
                             )
                             if (!isZReadingExpanded) {
                                 Text(
-                                    text = "Net: ₱${String.format("%.2f", profits)}",
+                                    text = "Net: ₱${String.format("%.0f", profits)}",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
                                     color = MaterialTheme.colorScheme.primary
@@ -197,11 +197,11 @@ fun HistoryScreen(
                             ) {
                                 Column {
                                     Text("Total Sales (Gross)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                                    Text("₱${String.format("%.2f", totalSales)}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    Text("₱${String.format("%.0f", totalSales)}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text("Total Expenses", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                                    Text("-₱${String.format("%.2f", expenses)}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.error)
+                                    Text("-₱${String.format("%.0f", expenses)}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.error)
                                 }
                             }
                             
@@ -231,12 +231,12 @@ fun HistoryScreen(
                             ) {
                                 Column {
                                     Text("Profits (Net Cash Flow)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                                    Text("₱${String.format("%.2f", profits)}", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
+                                    Text("₱${String.format("%.0f", profits)}", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text("Cash Drawer Status", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                                    Text("₱${String.format("%.2f", cashDrawer)}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                                    Text("(Float: ₱${String.format("%.2f", startingFloat)})", fontSize = 10.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
+                                    Text("₱${String.format("%.0f", cashDrawer)}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    Text("(Float: ₱${String.format("%.0f", startingFloat)})", fontSize = 10.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
                                 }
                             }
 
@@ -265,8 +265,8 @@ fun HistoryScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("CASH: ₱${String.format("%.2f", totalCash)} (${(cashWeight * 100).toInt()}%)", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                                Text("GCASH: ₱${String.format("%.2f", totalGcash)} (${(gcashWeight * 100).toInt()}%)", fontSize = 10.sp, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                                Text("CASH: ₱${String.format("%.0f", totalCash)} (${(cashWeight * 100).toInt()}%)", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                                Text("GCASH: ₱${String.format("%.0f", totalGcash)} (${(gcashWeight * 100).toInt()}%)", fontSize = 10.sp, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
                             }
 
                             if (topSellingItem != null) {
@@ -333,7 +333,7 @@ fun HistoryScreen(
                                     Text(expense.description, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onErrorContainer)
                                     Text("By: ${expense.recordedBy}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f))
                                 }
-                                Text("- ₱${String.format("%.2f", expense.amount)}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
+                                Text("- ₱${String.format("%.0f", expense.amount)}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
                             }
                         }
                         item {
@@ -470,7 +470,7 @@ fun OrderHistoryCard(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = "₱${String.format("%.2f", item.totalPrice)}",
+                            text = "₱${String.format("%.0f", item.totalPrice)}",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurface
@@ -508,7 +508,7 @@ fun OrderHistoryCard(
                         color = MaterialTheme.colorScheme.secondary
                     )
                     Text(
-                        text = "₱${String.format("%.2f", order.total)}",
+                        text = "₱${String.format("%.0f", order.total)}",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.primary
@@ -524,7 +524,7 @@ fun shareOrderReceipt(context: android.content.Context, order: com.example.catta
         Brew-Ni-Cat Coffee Shop Receipt
         Order ID: ${order.id}
         Date: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(order.timestamp))}
-        Total: Php ${String.format("%.2f", order.total)}
+        Total: Php ${String.format("%.0f", order.total)}
         Payment: ${order.paymentMethod}
     """.trimIndent()
 
