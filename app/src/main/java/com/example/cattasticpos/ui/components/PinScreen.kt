@@ -10,9 +10,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 
 import com.example.cattasticpos.domain.model.AppConfig
+
+class PawVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val paw = "🐾"
+        val pawLength = paw.length
+        val transformedText = paw.repeat(text.length)
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = offset * pawLength
+            override fun transformedToOriginal(offset: Int): Int = offset / pawLength
+        }
+        return TransformedText(AnnotatedString(transformedText), offsetMapping)
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,7 +61,7 @@ fun PinScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("Admin Access Required", style = MaterialTheme.typography.titleLarge)
+            Text("Admin Access Required", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
             Spacer(modifier = Modifier.height(24.dp))
             OutlinedTextField(
                 value = pin,
@@ -57,7 +74,7 @@ fun PinScreen(
                 label = { Text("PIN") },
                 isError = isError,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = PawVisualTransformation(),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )

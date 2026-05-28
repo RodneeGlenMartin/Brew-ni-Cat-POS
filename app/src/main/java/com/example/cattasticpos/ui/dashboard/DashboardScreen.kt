@@ -46,6 +46,7 @@ import com.example.cattasticpos.domain.strategy.FreeOrderDiscountStrategy
 import com.example.cattasticpos.domain.strategy.NoDiscountStrategy
 import com.example.cattasticpos.domain.strategy.PercentageDiscountStrategy
 import com.example.cattasticpos.domain.strategy.FivePercentDiscountStrategy
+import com.example.cattasticpos.ui.components.SleepingCatGraphic
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -204,12 +205,21 @@ fun DashboardScreen(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         if (uiState.activeCart.isEmpty()) {
-                            Text(
-                                "No items yet 🐾",
-                                color = MaterialTheme.colorScheme.outline,
+                            Column(
                                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                                textAlign = TextAlign.Center
-                            )
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                SleepingCatGraphic(
+                                    modifier = Modifier.size(64.dp),
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "No items yet 🐾",
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         } else {
                             uiState.activeCart.forEach { cartItem ->
                                 CartItemRow(
