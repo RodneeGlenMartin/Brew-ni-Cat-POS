@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import com.example.cattasticpos.domain.model.AppConfig
 import androidx.compose.material.icons.filled.ExpandLess
@@ -114,7 +115,6 @@ fun HistoryScreen(
             val context = LocalContext.current
             var isZReadingExpanded by remember { mutableStateOf(false) }
             var showConfigDialog by remember { mutableStateOf(false) }
-            var showDateRangeDialog by remember { mutableStateOf(false) }
             var startAnimation by remember { mutableStateOf(false) }
 
             LaunchedEffect(Unit) {
@@ -431,7 +431,13 @@ fun HistoryScreen(
                         }) { Text("Apply") }
                     },
                     dismissButton = {
-                        TextButton(onClick = { showDateRangeDialog = false }) { Text("Cancel") }
+                        Row {
+                            TextButton(onClick = {
+                                viewModel.setDateRange(null, null)
+                                showDateRangeDialog = false
+                            }) { Text("Clear Filter") }
+                            TextButton(onClick = { showDateRangeDialog = false }) { Text("Cancel") }
+                        }
                     }
                 ) {
                     DateRangePicker(
@@ -680,7 +686,8 @@ fun EditConfigDialog(
                     value = currentPin,
                     onValueChange = { currentPin = it },
                     label = { Text("Current PIN (Required to Save)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    visualTransformation = PasswordVisualTransformation(),
                     isError = isError,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -689,11 +696,15 @@ fun EditConfigDialog(
                 }
                 OutlinedTextField(
                     value = newPin,
-                    onValueChange = { newPin = it },
+                    onValueChange = { if (it.length <= 4) newPin = it },
                     label = { Text("New PIN (Optional)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                    visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth()
                 )
+                if (newPin.isNotEmpty() && newPin.length < 4) {
+                    Text("PIN must be 4 digits", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
             }
         },
         confirmButton = {

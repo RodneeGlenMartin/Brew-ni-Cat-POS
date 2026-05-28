@@ -15,7 +15,6 @@ import java.util.Date
 import java.util.Locale
 import com.example.cattasticpos.domain.usecase.CalculateCartUseCase
 import com.example.cattasticpos.domain.usecase.CheckoutUseCase
-import com.example.cattasticpos.domain.usecase.RestockItemUseCase
 import com.example.cattasticpos.domain.usecase.GetMenuUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +34,6 @@ class DashboardViewModel(
     private val checkoutUseCase: CheckoutUseCase,
     private val expenseRepository: ExpenseRepository,
     private val inventoryRepository: InventoryRepository,
-    private val restockItemUseCase: RestockItemUseCase,
     private val receiptPrinterService: ReceiptPrinterService
 ) : ViewModel() {
 
@@ -275,12 +273,6 @@ class DashboardViewModel(
         }
     }
 
-    fun restockItem(itemId: String, addedAmount: Double) {
-        viewModelScope.launch {
-            restockItemUseCase(itemId, addedAmount)
-        }
-    }
-
     fun saveExpense(description: String, amount: Double, recordedBy: String) {
         viewModelScope.launch {
             val expense = Expense(
@@ -308,7 +300,6 @@ class DashboardViewModel(
                     application.container.checkoutUseCase,
                     application.container.expenseRepository,
                     application.container.inventoryRepository,
-                    application.container.restockItemUseCase,
                     application.container.receiptPrinterService
                 ) as T
             }

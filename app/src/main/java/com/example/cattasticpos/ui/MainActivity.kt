@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.*
 import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.*
@@ -101,20 +103,28 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             "pin_history" -> {
-                                val expectedPinHash = historyViewModel.appConfigState.collectAsState().value?.pinHash ?: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
-                                PinScreen(
-                                    expectedPinHash = expectedPinHash,
-                                    onPinSuccess = { currentScreen = "history" },
-                                    onCancel = { currentScreen = "dashboard" }
-                                )
+                                val config = historyViewModel.appConfigState.collectAsState().value
+                                if (config == null) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                                } else {
+                                    PinScreen(
+                                        expectedPinHash = config.pinHash,
+                                        onPinSuccess = { currentScreen = "history" },
+                                        onCancel = { currentScreen = "dashboard" }
+                                    )
+                                }
                             }
                             "pin_inventory" -> {
-                                val expectedPinHash = historyViewModel.appConfigState.collectAsState().value?.pinHash ?: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
-                                PinScreen(
-                                    expectedPinHash = expectedPinHash,
-                                    onPinSuccess = { currentScreen = "inventory" },
-                                    onCancel = { currentScreen = "dashboard" }
-                                )
+                                val config = historyViewModel.appConfigState.collectAsState().value
+                                if (config == null) {
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+                                } else {
+                                    PinScreen(
+                                        expectedPinHash = config.pinHash,
+                                        onPinSuccess = { currentScreen = "inventory" },
+                                        onCancel = { currentScreen = "dashboard" }
+                                    )
+                                }
                             }
                             "history" -> {
                                 HistoryScreen(
