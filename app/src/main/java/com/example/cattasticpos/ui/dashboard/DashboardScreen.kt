@@ -70,12 +70,12 @@ fun DashboardScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Image(
-                            painter = painterResource(id = R.drawable.brewnicatlogo),
+                            painter = painterResource(id = R.drawable.logo),
                             contentDescription = "Brew ni Cat Logo",
                             modifier = Modifier.size(36.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Brew-ni-Cat", fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                        Text("Brew-ni-Cat", fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
                     }
                 },
                 actions = {
@@ -553,4 +553,6 @@ fun AddExpenseDialog(onSave: (String, Double, String) -> Unit, onDismiss: () -> 
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
+
+
 
