@@ -486,7 +486,13 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     item.variants.forEach { variant ->
                         val priceToAdd = variant.getPrice(selectedFlavor)
-                        val priceString = if (priceToAdd > 0) " (+₱${String.format("%.0f", priceToAdd)})" else ""
+                        val priceString = if (item.flavors.isNotEmpty() && selectedFlavor == null && variant.priceByFlavor.isNotEmpty()) {
+                            " (Select flavor)"
+                        } else if (priceToAdd > 0) {
+                            " (+₱${String.format("%.0f", priceToAdd)})"
+                        } else {
+                            ""
+                        }
                         FilterChip(selected = selectedVariant.id == variant.id, onClick = { selectedVariant = variant }, label = { Text("${variant.name}$priceString") }, colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.secondary, selectedLabelColor = MaterialTheme.colorScheme.onSecondary), shape = RoundedCornerShape(8.dp))
                     }
                 }
@@ -514,7 +520,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
 }
 
 @Composable
-fun QueuesDialog(heldQueues: Map<String, List<CartItem>>, onResume: (String) -> Unit, onDismiss: () -> Unit) {
+fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Held Orders Queue 🐾", fontWeight = FontWeight.Bold) },
@@ -526,15 +532,16 @@ fun QueuesDialog(heldQueues: Map<String, List<CartItem>>, onResume: (String) -> 
                     }
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        items(heldQueues.keys.toList()) { queueId ->
-                            val items = heldQueues[queueId] ?: emptyList()
+                        items(heldQueues) { queue ->
                             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)), modifier = Modifier.fillMaxWidth()) {
                                 Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(queueId, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        Text("${items.sumOf { it.quantity }} items • ₱${String.format("%.0f", items.sumOf { it.totalPrice })}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text("Queue #${queue.id}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        val timeStr = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(queue.timestamp))
+                                        Text("Held at: $timeStr", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                        Text("${queue.items.sumOf { it.quantity }} items • ₱${String.format("%.0f", queue.items.sumOf { it.totalPrice })}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    Button(onClick = { onResume(queueId) }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp), shape = RoundedCornerShape(8.dp)) { Text("Resume", fontSize = 12.sp) }
+                                    Button(onClick = { onResume(queue.id) }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp), shape = RoundedCornerShape(8.dp)) { Text("Resume", fontSize = 12.sp) }
                                 }
                             }
                         }

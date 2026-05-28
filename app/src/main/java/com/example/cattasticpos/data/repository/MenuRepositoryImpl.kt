@@ -52,7 +52,8 @@ class MenuRepositoryImpl(
                         priceMap[key] = priceByFlavorObj.getDouble(key)
                     }
                 }
-                list.add(Variant(id, name, basePrice, priceMap))
+                val description = if (obj.has("description")) obj.getString("description") else null
+                list.add(Variant(id, name, basePrice, priceMap, description))
             }
         } catch (e: Exception) {
             e.printStackTrace()

@@ -220,11 +220,9 @@ class DashboardViewModel(
         if (currentCart.isEmpty()) return
         
         _uiState.update { state ->
-            val queueId = state.currentQueueId ?: run {
-                val timeString = SimpleDateFormat("h:mm a", Locale.getDefault()).format(Date())
-                "Queue $timeString"
-            }
-            val updatedQueues = state.heldQueues + (queueId to currentCart)
+            val queueId = state.currentQueueId ?: UUID.randomUUID().toString().substring(0, 8).uppercase()
+            val newQueue = HeldQueue(id = queueId, timestamp = System.currentTimeMillis(), items = currentCart)
+            val updatedQueues = state.heldQueues.filter { it.id != queueId } + newQueue
             val freshCalculation = calculateCartUseCase(emptyList(), state.selectedDiscountStrategy)
             state.copy(
                 heldQueues = updatedQueues,
@@ -240,8 +238,9 @@ class DashboardViewModel(
 
     fun resumeOrder(queueId: String) {
         _uiState.update { state ->
-            val resumedCart = state.heldQueues[queueId] ?: emptyList()
-            val updatedQueues = state.heldQueues - queueId
+            val queueToResume = state.heldQueues.find { it.id == queueId } ?: return@update state
+            val resumedCart = queueToResume.items
+            val updatedQueues = state.heldQueues.filter { it.id != queueId }
             val calculation = calculateCartUseCase(resumedCart, state.selectedDiscountStrategy)
             state.copy(
                 heldQueues = updatedQueues,
