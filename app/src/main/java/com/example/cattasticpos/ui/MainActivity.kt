@@ -25,7 +25,7 @@ private val LightColorScheme = lightColorScheme(
     onSecondary = Color(0xFFFFFFFF),
     secondaryContainer = Color(0xFFD7CCC8),
     onSecondaryContainer = Color(0xFF3E2723),
-    tertiary = Color(0xFFFFB74D),      // Honey Gold
+    tertiary = Color(0xFF42A5F5),      // Soft Blue for GCash
     onTertiary = Color(0xFFFFFFFF),
     background = Color(0xFFFAF8F5),    // Milk Cream Soft White
     onBackground = Color(0xFF1C1B1A),
@@ -39,10 +39,37 @@ private val LightColorScheme = lightColorScheme(
     onError = Color(0xFFFFFFFF)
 )
 
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFFFF8A65),
+    onPrimary = Color(0xFF3E1204),
+    primaryContainer = Color(0xFF70280B),
+    onPrimaryContainer = Color(0xFFFFCCBC),
+    secondary = Color(0xFFBCAAA4),
+    onSecondary = Color(0xFF3E2723),
+    secondaryContainer = Color(0xFF5D4037),
+    onSecondaryContainer = Color(0xFFD7CCC8),
+    tertiary = Color(0xFF64B5F6),      // Soft Blue for GCash (Dark Mode)
+    onTertiary = Color(0xFF003258),
+    background = Color(0xFF121212),
+    onBackground = Color(0xFFE0E0E0),
+    surface = Color(0xFF1E1E1E),
+    onSurface = Color(0xFFE0E0E0),
+    surfaceVariant = Color(0xFF332D29),
+    onSurfaceVariant = Color(0xFFD2C4B9),
+    outline = Color(0xFF9E9E9E),
+    outlineVariant = Color(0xFF424242),
+    error = Color(0xFFCF6679),
+    onError = Color(0xFF000000)
+)
+
 @Composable
-fun CattasticTheme(content: @Composable () -> Unit) {
+fun CattasticTheme(
+    darkTheme: Boolean = androidx.compose.foundation.isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     MaterialTheme(
-        colorScheme = LightColorScheme,
+        colorScheme = colorScheme,
         content = content
     )
 }

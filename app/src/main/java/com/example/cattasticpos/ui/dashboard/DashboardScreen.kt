@@ -58,7 +58,7 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🐾 Brew-Ni-Cat Coffee Shop", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp) },
+                title = { Text("🐾 Brew-Ni-Cat Coffee Shop", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 actions = {
                     IconButton(onClick = onNavigateToInventory) {
                         Icon(imageVector = Icons.Default.Inventory, contentDescription = "Inventory Management")
