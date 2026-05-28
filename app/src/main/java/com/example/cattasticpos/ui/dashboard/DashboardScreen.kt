@@ -68,15 +68,11 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 title = { 
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(id = R.drawable.logo),
-                            contentDescription = "Brew ni Cat Logo",
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Brew ni Cat", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+                    Image(
+                        painter = painterResource(id = R.drawable.logo),
+                        contentDescription = "Brew ni Cat Logo",
+                        modifier = Modifier.size(40.dp)
+                    )
                 },
                 actions = {
                     IconButton(onClick = onNavigateToInventory) {
