@@ -359,7 +359,7 @@ fun CartItemRow(cartItem: CartItem, onQuantityChange: (String, Int) -> Unit) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 val variantFlavorText = if (cartItem.flavor.isNullOrBlank()) cartItem.variant.name else "${cartItem.variant.name}/${cartItem.flavor.substringAfter(": ").trim()}"
-                Text("${cartItem.quantity}x ${cartItem.item.name} ($variantFlavorText) → ₱${String.format("%.0f", cartItem.totalPrice)}", fontWeight = FontWeight.Medium, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text("${cartItem.quantity}x ${cartItem.item.name} ($variantFlavorText) - ₱${String.format("%.0f", cartItem.totalPrice)}", fontWeight = FontWeight.Medium, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { onQuantityChange(cartItem.id, -1) }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(14.dp)) }
