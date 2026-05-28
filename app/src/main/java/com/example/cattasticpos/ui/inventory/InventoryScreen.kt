@@ -114,9 +114,9 @@ fun InventoryScreen(
 }
 
 @Composable
-fun RawMaterialsTab(
+fun InventoryStockTab(
     inventoryItems: List<InventoryItem>,
-    onRestock: (String, Int) -> Unit
+    onRestock: (String, Double) -> Unit
 ) {
     if (inventoryItems.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -128,8 +128,7 @@ fun RawMaterialsTab(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(inventoryItems, key = { it.id }) { item ->
-                var restockAmountStr by remember { mutableStateOf("") }
-                val amount = restockAmountStr.toDoubleOrNull()
+                var amountStr by remember { mutableStateOf("") }
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
@@ -154,21 +153,22 @@ fun RawMaterialsTab(
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
-                                value = restockAmountStr,
-                                onValueChange = { restockAmountStr = it },
-                                placeholder = { Text("Qty") },
+                                value = amountStr,
+                                onValueChange = { amountStr = it },
+                                label = { Text("Amount") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                singleLine = true,
-                                modifier = Modifier.weight(1f).height(50.dp)
+                                modifier = Modifier.width(100.dp)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Button(
                                 onClick = {
-                                    if (amount != null && amount > 0) {
-                                        onRestock(item.id, amount)
-                                        restockAmountStr = ""
+                                    val amt = amountStr.toDoubleOrNull()
+                                    if (amt != null && amt > 0) {
+                                        onRestock(item.id, amt)
+                                        amountStr = ""
                                     }
                                 },
-                                enabled = amount != null && amount > 0,
+                                enabled = amountStr.toDoubleOrNull() != null && (amountStr.toDoubleOrNull() ?: 0.0) > 0,
                                 modifier = Modifier.height(50.dp)
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -190,7 +190,7 @@ fun ProductRecipesTab(
     onSelectMenu: (String) -> Unit,
     onSelectVariant: (String?) -> Unit,
     onOpenLinkDialog: () -> Unit,
-    onRemoveMapping: (RecipeMappingEntity) -> Unit
+    onRemoveMapping: (RecipeMapping) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         var menuDropdownExpanded by remember { mutableStateOf(false) }
@@ -306,7 +306,7 @@ fun ProductRecipesTab(
 
 @Composable
 fun AddRawMaterialDialog(
-    onSave: (String, String, Int, Int) -> Unit,
+    onSave: (String, String, Double, Double) -> Unit,
     onDismiss: () -> Unit
 ) {
     var name by remember { mutableStateOf("") }

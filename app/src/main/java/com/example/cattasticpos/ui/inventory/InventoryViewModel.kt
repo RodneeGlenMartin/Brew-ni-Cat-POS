@@ -9,6 +9,7 @@ import com.example.cattasticpos.domain.model.RecipeMapping
 import com.example.cattasticpos.domain.repository.RecipeRepository
 import com.example.cattasticpos.domain.repository.InventoryRepository
 import com.example.cattasticpos.domain.usecase.GetMenuUseCase
+import com.example.cattasticpos.domain.model.InventoryItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
