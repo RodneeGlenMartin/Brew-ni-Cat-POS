@@ -2,6 +2,11 @@ package com.example.cattasticpos.ui.dashboard
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -164,11 +169,11 @@ fun DashboardScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Cart Items (Fixed Max Height, Scrollable)
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(max = 150.dp)
+                            .animateContentSize()
                             .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
@@ -227,10 +232,15 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     // Checkout Button
+                    val btnInteractionSource = remember { MutableInteractionSource() }
+                    val btnIsPressed by btnInteractionSource.collectIsPressedAsState()
+                    val btnScale by animateFloatAsState(targetValue = if (btnIsPressed) 0.95f else 1f, label = "btnScale")
+                    
                     Button(
                         onClick = { viewModel.setShowPaymentDialog(true) },
+                        interactionSource = btnInteractionSource,
                         enabled = uiState.activeCart.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().scale(btnScale),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -292,12 +302,17 @@ fun CategorySelector(categories: List<com.example.cattasticpos.domain.model.Cate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemCard(item: Item, isLowStock: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(targetValue = if (isPressed) 0.95f else 1f, label = "cardScale")
+
     Card(
         onClick = onClick,
+        interactionSource = interactionSource,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp),
-        modifier = modifier.fillMaxWidth().height(120.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(16.dp),
+        modifier = modifier.fillMaxWidth().height(120.dp).scale(scale)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(modifier = Modifier.fillMaxSize().padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {

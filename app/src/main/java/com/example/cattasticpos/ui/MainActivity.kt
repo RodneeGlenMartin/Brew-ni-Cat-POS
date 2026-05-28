@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.*
+import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -89,25 +90,27 @@ class MainActivity : ComponentActivity() {
                     val historyViewModel: HistoryViewModel = viewModel(factory = HistoryViewModel.Factory)
                     val inventoryViewModel: InventoryViewModel = viewModel(factory = InventoryViewModel.Factory)
 
-                    when (currentScreen) {
-                        "dashboard" -> {
-                            DashboardScreen(
-                                viewModel = dashboardViewModel,
-                                onNavigateToHistory = { currentScreen = "history" },
-                                onNavigateToInventory = { currentScreen = "inventory" }
-                            )
-                        }
-                        "history" -> {
-                            HistoryScreen(
-                                viewModel = historyViewModel,
-                                onNavigateBack = { currentScreen = "dashboard" }
-                            )
-                        }
-                        "inventory" -> {
-                            InventoryScreen(
-                                viewModel = inventoryViewModel,
-                                onNavigateBack = { currentScreen = "dashboard" }
-                            )
+                    Crossfade(targetState = currentScreen, label = "ScreenTransition") { screen ->
+                        when (screen) {
+                            "dashboard" -> {
+                                DashboardScreen(
+                                    viewModel = dashboardViewModel,
+                                    onNavigateToHistory = { currentScreen = "history" },
+                                    onNavigateToInventory = { currentScreen = "inventory" }
+                                )
+                            }
+                            "history" -> {
+                                HistoryScreen(
+                                    viewModel = historyViewModel,
+                                    onNavigateBack = { currentScreen = "dashboard" }
+                                )
+                            }
+                            "inventory" -> {
+                                InventoryScreen(
+                                    viewModel = inventoryViewModel,
+                                    onNavigateBack = { currentScreen = "dashboard" }
+                                )
+                            }
                         }
                     }
                 }

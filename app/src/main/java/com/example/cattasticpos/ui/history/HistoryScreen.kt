@@ -1,6 +1,11 @@
 package com.example.cattasticpos.ui.history
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -99,6 +104,11 @@ fun HistoryScreen(
             val context = LocalContext.current
             var isZReadingExpanded by remember { mutableStateOf(false) }
             var showConfigDialog by remember { mutableStateOf(false) }
+            var startAnimation by remember { mutableStateOf(false) }
+
+            LaunchedEffect(Unit) {
+                startAnimation = true
+            }
 
             val todayStart = remember {
                 Calendar.getInstance().apply {
@@ -127,15 +137,24 @@ fun HistoryScreen(
             val profits = totalSales - expenses
             val cashDrawer = startingFloat + totalSales
 
+            val zReadingInteractionSource = remember { MutableInteractionSource() }
+            val zReadingPressed by zReadingInteractionSource.collectIsPressedAsState()
+            val zReadingScale by animateFloatAsState(if (zReadingPressed) 0.98f else 1f, label = "zReadingScale")
+
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 ),
-                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
-                    .clickable { isZReadingExpanded = !isZReadingExpanded }
+                    .scale(zReadingScale)
+                    .clickable(
+                        interactionSource = zReadingInteractionSource,
+                        indication = androidx.compose.material.ripple.rememberRipple()
+                    ) { isZReadingExpanded = !isZReadingExpanded }
             ) {
                 Column(
                     modifier = Modifier
@@ -191,17 +210,39 @@ fun HistoryScreen(
                                 .padding(top = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            val animatedTotalSales by animateFloatAsState(
+                                targetValue = if (startAnimation) totalSales.toFloat() else 0f,
+                                animationSpec = tween(durationMillis = 1000),
+                                label = "salesAnim"
+                            )
+                            val animatedExpenses by animateFloatAsState(
+                                targetValue = if (startAnimation) expenses.toFloat() else 0f,
+                                animationSpec = tween(durationMillis = 1000),
+                                label = "expensesAnim"
+                            )
+                            val animatedProfits by animateFloatAsState(
+                                targetValue = if (startAnimation) profits.toFloat() else 0f,
+                                animationSpec = tween(durationMillis = 1000),
+                                label = "profitsAnim"
+                            )
+                            val targetProgress = if (targetSales > 0) (totalSales / targetSales).toFloat().coerceIn(0f, 1f) else 0f
+                            val animatedProgress by animateFloatAsState(
+                                targetValue = if (startAnimation) targetProgress else 0f,
+                                animationSpec = tween(durationMillis = 1000),
+                                label = "progressAnim"
+                            )
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Column {
                                     Text("Total Sales (Gross)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                                    Text("₱${String.format("%.0f", totalSales)}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    Text("₱${String.format("%.0f", animatedTotalSales)}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text("Total Expenses", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                                    Text("-₱${String.format("%.0f", expenses)}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.error)
+                                    Text("-₱${String.format("%.0f", animatedExpenses)}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.error)
                                 }
                             }
                             
@@ -211,11 +252,11 @@ fun HistoryScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
                                     Text("Goal Progress", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                                    Text("${if(targetSales > 0) ((totalSales / targetSales) * 100).toInt() else 0}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                    Text("${(animatedProgress * 100).toInt()}%", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                                 }
                                 Spacer(modifier = Modifier.height(4.dp))
                                 LinearProgressIndicator(
-                                    progress = { if (targetSales > 0) (totalSales / targetSales).toFloat().coerceIn(0f, 1f) else 0f },
+                                    progress = { animatedProgress },
                                     modifier = Modifier.fillMaxWidth().height(8.dp),
                                     color = MaterialTheme.colorScheme.primary,
                                     trackColor = MaterialTheme.colorScheme.primaryContainer
@@ -231,7 +272,7 @@ fun HistoryScreen(
                             ) {
                                 Column {
                                     Text("Profits (Net Cash Flow)", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
-                                    Text("₱${String.format("%.0f", profits)}", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
+                                    Text("₱${String.format("%.0f", animatedProfits)}", fontWeight = FontWeight.Bold, fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text("Cash Drawer Status", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f))
@@ -244,8 +285,10 @@ fun HistoryScreen(
                             Spacer(modifier = Modifier.height(4.dp))
                             Text("Payment Modes", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             val totalCollected = totalCash + totalGcash
-                            val cashWeight = if (totalCollected > 0) (totalCash / totalCollected).toFloat() else 0.5f
-                            val gcashWeight = if (totalCollected > 0) (totalGcash / totalCollected).toFloat() else 0.5f
+                            val targetCashWeight = if (totalCollected > 0) (totalCash / totalCollected).toFloat() else 0.5f
+                            val targetGcashWeight = if (totalCollected > 0) (totalGcash / totalCollected).toFloat() else 0.5f
+                            val cashWeight by animateFloatAsState(if (startAnimation) targetCashWeight else 0.5f, animationSpec = tween(1000), label = "cashWeight")
+                            val gcashWeight by animateFloatAsState(if (startAnimation) targetGcashWeight else 0.5f, animationSpec = tween(1000), label = "gcashWeight")
                             
                             Row(
                                 modifier = Modifier
