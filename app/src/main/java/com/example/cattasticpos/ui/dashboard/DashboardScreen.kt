@@ -7,6 +7,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.example.cattasticpos.R
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -63,7 +67,17 @@ fun DashboardScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("🐾 Brew ni Cat", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = { 
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(id = R.drawable.logo),
+                            contentDescription = "Brew ni Cat Logo",
+                            modifier = Modifier.size(28.dp).clip(CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Brew ni Cat", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                },
                 actions = {
                     IconButton(onClick = onNavigateToInventory) {
                         Icon(imageVector = Icons.Default.Inventory, contentDescription = "Inventory Management")

@@ -153,7 +153,7 @@ fun HistoryScreen(
                     .scale(zReadingScale)
                     .clickable(
                         interactionSource = zReadingInteractionSource,
-                        indication = androidx.compose.material.ripple.rememberRipple()
+                        indication = androidx.compose.foundation.LocalIndication.current
                     ) { isZReadingExpanded = !isZReadingExpanded }
             ) {
                 Column(
