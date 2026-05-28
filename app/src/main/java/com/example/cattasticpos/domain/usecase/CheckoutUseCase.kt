@@ -59,9 +59,9 @@ class CheckoutUseCase(
                 val qty = cartItem.quantity
                 val mappings = recipeRepository.getMappingsForCheckout(cartItem.item.id, cartItem.variant.name)
                 mappings.forEach { mapping ->
-                    val totalDeduction = (mapping.deductionQuantity * qty).toInt()
+                    val totalDeduction = mapping.deductionQuantity * qty
                     if (totalDeduction > 0) {
-                        inventoryRepository.decrementStock(mapping.inventoryItemId, (mapping.deductionQuantity * cartItem.quantity).toInt())
+                        inventoryRepository.decrementStock(mapping.inventoryItemId, totalDeduction)
                     }
                 }
             }

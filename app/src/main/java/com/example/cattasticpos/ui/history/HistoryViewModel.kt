@@ -73,36 +73,60 @@ class HistoryViewModel(
         _limit.value = 50
     }
 
-    val grossSalesState: StateFlow<Double?> = orderRepository.getGrossSalesForDay(todayStart, todayEnd)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val grossSalesState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
+        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+    }.flatMapLatest { (start, end) -> orderRepository.getGrossSalesForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-    val discountsState: StateFlow<Double?> = orderRepository.getDiscountsGivenForDay(todayStart, todayEnd)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val discountsState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
+        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+    }.flatMapLatest { (start, end) -> orderRepository.getDiscountsGivenForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-    val netRevenueState: StateFlow<Double?> = orderRepository.getNetRevenueForDay(todayStart, todayEnd)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val netRevenueState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
+        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+    }.flatMapLatest { (start, end) -> orderRepository.getNetRevenueForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-    val cashSalesState: StateFlow<Double?> = orderRepository.getCashSalesForDay(todayStart, todayEnd)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val cashSalesState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
+        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+    }.flatMapLatest { (start, end) -> orderRepository.getCashSalesForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-    val gcashSalesState: StateFlow<Double?> = orderRepository.getGcashSalesForDay(todayStart, todayEnd)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val gcashSalesState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
+        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+    }.flatMapLatest { (start, end) -> orderRepository.getGcashSalesForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-    val topSellingItemState: StateFlow<Pair<String, Int>?> = orderRepository.getTopSellingItemForDay(todayStart, todayEnd)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val topSellingItemState: StateFlow<Pair<String, Int>?> = combine(_startDate, _endDate) { start, end ->
+        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+    }.flatMapLatest { (start, end) -> orderRepository.getTopSellingItemForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val expensesListState: StateFlow<List<Expense>> = expenseRepository.getExpensesForDay(todayStart, todayEnd)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val expensesListState: StateFlow<List<Expense>> = combine(_startDate, _endDate) { start, end ->
+        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+    }.flatMapLatest { (start, end) -> expenseRepository.getExpensesForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val totalExpensesState: StateFlow<Double?> = expenseRepository.getTotalExpensesForDay(todayStart, todayEnd)
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val totalExpensesState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
+        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+    }.flatMapLatest { (start, end) -> expenseRepository.getTotalExpensesForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     val appConfigState: StateFlow<AppConfig?> = appConfigRepository.getAppConfig()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    fun updateConfig(targetSales: Double, startingCashFloat: Double) {
+    fun updateConfig(targetSales: Double, startingCashFloat: Double, pinHash: String) {
         viewModelScope.launch {
-            appConfigRepository.updateConfig(targetSales, startingCashFloat)
+            appConfigRepository.updateConfig(targetSales, startingCashFloat, pinHash)
         }
     }
 

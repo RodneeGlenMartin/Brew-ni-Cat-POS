@@ -448,9 +448,10 @@ fun HistoryScreen(
                 EditConfigDialog(
                     initialTarget = appConfig?.targetSales ?: 5000.0,
                     initialFloat = appConfig?.startingCashFloat ?: 500.0,
+                    expectedPinHash = appConfig?.pinHash ?: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
                     onDismiss = { showConfigDialog = false },
-                    onSave = { target, float ->
-                        viewModel.updateConfig(target, float)
+                    onSave = { target, float, pinHash ->
+                        viewModel.updateConfig(target, float, pinHash)
                         showConfigDialog = false
                     }
                 )
@@ -644,11 +645,15 @@ $itemsText
 fun EditConfigDialog(
     initialTarget: Double,
     initialFloat: Double,
+    expectedPinHash: String,
     onDismiss: () -> Unit,
-    onSave: (Double, Double) -> Unit
+    onSave: (Double, Double, String) -> Unit
 ) {
     var targetStr by remember { mutableStateOf(if (initialTarget % 1.0 == 0.0) initialTarget.toInt().toString() else initialTarget.toString()) }
     var floatStr by remember { mutableStateOf(if (initialFloat % 1.0 == 0.0) initialFloat.toInt().toString() else initialFloat.toString()) }
+    var currentPin by remember { mutableStateOf("") }
+    var newPin by remember { mutableStateOf("") }
+    var isError by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -669,14 +674,39 @@ fun EditConfigDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth()
                 )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text("Security Setup", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                OutlinedTextField(
+                    value = currentPin,
+                    onValueChange = { currentPin = it },
+                    label = { Text("Current PIN (Required to Save)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    isError = isError,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (isError) {
+                    Text("Incorrect PIN", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                }
+                OutlinedTextField(
+                    value = newPin,
+                    onValueChange = { newPin = it },
+                    label = { Text("New PIN (Optional)") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    val t = targetStr.toDoubleOrNull() ?: initialTarget
-                    val f = floatStr.toDoubleOrNull() ?: initialFloat
-                    onSave(t, f)
+                    if (AppConfig.hashPin(currentPin) == expectedPinHash) {
+                        val t = targetStr.toDoubleOrNull() ?: initialTarget
+                        val f = floatStr.toDoubleOrNull() ?: initialFloat
+                        val finalPinHash = if (newPin.length == 4) AppConfig.hashPin(newPin) else expectedPinHash
+                        onSave(t, f, finalPinHash)
+                    } else {
+                        isError = true
+                    }
                 }
             ) {
                 Text("Save")

@@ -20,8 +20,8 @@ interface InventoryDao {
     suspend fun updateInventoryItem(item: InventoryEntity)
 
     @Query("UPDATE inventory SET currentStock = currentStock - :amount WHERE id = :inventoryId AND currentStock >= :amount")
-    suspend fun decrementStock(inventoryId: String, amount: Int)
+    suspend fun decrementStock(inventoryId: String, amount: Double)
 
     @Query("UPDATE inventory SET currentStock = currentStock + :addedAmount WHERE id = :itemId")
-    suspend fun restockItem(itemId: String, addedAmount: Int)
+    suspend fun restockItem(itemId: String, addedAmount: Double)
 }

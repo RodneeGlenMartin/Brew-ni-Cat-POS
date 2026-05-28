@@ -129,7 +129,7 @@ fun RawMaterialsTab(
         ) {
             items(inventoryItems, key = { it.id }) { item ->
                 var restockAmountStr by remember { mutableStateOf("") }
-                val amount = restockAmountStr.toIntOrNull()
+                val amount = restockAmountStr.toDoubleOrNull()
 
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
@@ -327,8 +327,8 @@ fun AddRawMaterialDialog(
         },
         confirmButton = {
             Button(onClick = {
-                val stock = stockStr.toIntOrNull() ?: 0
-                val thresh = threshStr.toIntOrNull() ?: 0
+                val stock = stockStr.toDoubleOrNull() ?: 0.0
+                val thresh = threshStr.toDoubleOrNull() ?: 0.0
                 if (name.isNotBlank() && unit.isNotBlank()) {
                     onSave(name, unit, stock, thresh)
                 }

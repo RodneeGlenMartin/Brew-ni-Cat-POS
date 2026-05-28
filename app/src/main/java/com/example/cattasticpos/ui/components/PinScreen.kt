@@ -12,15 +12,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 
+import com.example.cattasticpos.domain.model.AppConfig
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PinScreen(
+    expectedPinHash: String,
     onPinSuccess: () -> Unit,
     onCancel: () -> Unit
 ) {
     var pin by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
-    val correctPin = "1234"
 
     Scaffold(
         topBar = {
@@ -70,7 +72,7 @@ fun PinScreen(
             Spacer(modifier = Modifier.height(32.dp))
             Button(
                 onClick = {
-                    if (pin == correctPin) {
+                    if (AppConfig.hashPin(pin) == expectedPinHash) {
                         onPinSuccess()
                     } else {
                         isError = true

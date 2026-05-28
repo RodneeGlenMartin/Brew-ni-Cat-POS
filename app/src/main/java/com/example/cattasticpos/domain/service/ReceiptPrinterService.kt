@@ -9,12 +9,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.UUID
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import android.os.Build
 
-class ReceiptPrinterService {
+class ReceiptPrinterService(private val context: Context) {
     private val standardSerialPortServiceId: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
 
     @SuppressLint("MissingPermission")
     suspend fun printReceipt(order: Order): Result<Unit> = withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                return@withContext Result.failure(Exception("Bluetooth connect permission is required."))
+            }
+        }
         val adapter: BluetoothAdapter? = BluetoothAdapter.getDefaultAdapter()
         if (adapter == null || !adapter.isEnabled) {
             return@withContext Result.failure(Exception("Bluetooth is disabled or not supported."))

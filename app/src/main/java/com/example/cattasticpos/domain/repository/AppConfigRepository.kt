@@ -5,5 +5,5 @@ import kotlinx.coroutines.flow.Flow
 
 interface AppConfigRepository {
     fun getAppConfig(): Flow<AppConfig?>
-    suspend fun updateConfig(targetSales: Double, startingCashFloat: Double)
+    suspend fun updateConfig(targetSales: Double, startingCashFloat: Double, pinHash: String)
 }

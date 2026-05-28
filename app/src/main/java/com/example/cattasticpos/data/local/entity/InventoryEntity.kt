@@ -8,6 +8,6 @@ data class InventoryEntity(
     @PrimaryKey val id: String,
     val itemName: String,
     val unit: String,
-    val currentStock: Int,
-    val reorderThreshold: Int
+    val currentStock: Double,
+    val reorderThreshold: Double
 )

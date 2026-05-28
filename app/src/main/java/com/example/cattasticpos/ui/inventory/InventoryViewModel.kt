@@ -5,9 +5,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.cattasticpos.CattasticPosApp
-import com.example.cattasticpos.data.local.dao.RecipeDao
-import com.example.cattasticpos.domain.model.InventoryItem
-import com.example.cattasticpos.data.local.entity.RecipeMappingEntity
+import com.example.cattasticpos.domain.model.RecipeMapping
+import com.example.cattasticpos.domain.repository.RecipeRepository
 import com.example.cattasticpos.domain.repository.InventoryRepository
 import com.example.cattasticpos.domain.usecase.GetMenuUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,7 +23,7 @@ import java.util.UUID
 
 class InventoryViewModel(
     private val inventoryRepository: InventoryRepository,
-    private val recipeDao: RecipeDao,
+    private val recipeRepository: RecipeRepository,
     private val getMenuUseCase: GetMenuUseCase
 ) : ViewModel() {
 
@@ -47,7 +46,7 @@ class InventoryViewModel(
             _uiState.map { it.selectedMenuItemId }
                 .distinctUntilChanged()
                 .flatMapLatest { id ->
-                    if (id != null) recipeDao.getMappingsForMenu(id)
+                    if (id != null) recipeRepository.getMappingsForMenu(id)
                     else emptyFlow()
                 }
                 .collect { mappings ->
@@ -56,7 +55,7 @@ class InventoryViewModel(
         }
     }
 
-    fun restockItem(itemId: String, amount: Int) {
+    fun restockItem(itemId: String, amount: Double) {
         viewModelScope.launch {
             if (amount > 0) {
                 inventoryRepository.restockItem(itemId, amount)
@@ -64,7 +63,7 @@ class InventoryViewModel(
         }
     }
 
-    fun addNewRawMaterial(name: String, unit: String, startingStock: Int, threshold: Int) {
+    fun addNewRawMaterial(name: String, unit: String, startingStock: Double, threshold: Double) {
         viewModelScope.launch {
             val newItem = InventoryItem(
                 id = "inv_${UUID.randomUUID()}",
@@ -94,20 +93,20 @@ class InventoryViewModel(
         val variantName = state.selectedVariantName
         
         viewModelScope.launch {
-            val mapping = RecipeMappingEntity(
+            val mapping = RecipeMapping(
                 id = "r_${UUID.randomUUID()}",
                 menuItemId = menuItemId,
                 variantName = variantName,
                 inventoryItemId = inventoryItemId,
                 deductionQuantity = deductionQuantity
             )
-            recipeDao.insertMapping(mapping)
+            recipeRepository.insertMapping(mapping)
         }
     }
 
-    fun removeMapping(mapping: RecipeMappingEntity) {
+    fun removeMapping(mapping: RecipeMapping) {
         viewModelScope.launch {
-            recipeDao.deleteMapping(mapping)
+            recipeRepository.deleteMapping(mapping)
         }
     }
 
@@ -126,7 +125,7 @@ class InventoryViewModel(
                 val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as CattasticPosApp
                 return InventoryViewModel(
                     application.container.inventoryRepository,
-                    application.container.database.recipeDao(),
+                    application.container.recipeRepository,
                     application.container.getMenuUseCase
                 ) as T
             }

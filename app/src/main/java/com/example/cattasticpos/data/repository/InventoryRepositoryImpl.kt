@@ -38,11 +38,11 @@ class InventoryRepositoryImpl(
         inventoryDao.insertInventoryItems(entities)
     }
 
-    override suspend fun decrementStock(inventoryId: String, amount: Int) {
+    override suspend fun decrementStock(inventoryId: String, amount: Double) {
         inventoryDao.decrementStock(inventoryId, amount)
     }
 
-    override suspend fun restockItem(itemId: String, addedAmount: Int) {
+    override suspend fun restockItem(itemId: String, addedAmount: Double) {
         inventoryDao.restockItem(itemId, addedAmount)
     }
 }

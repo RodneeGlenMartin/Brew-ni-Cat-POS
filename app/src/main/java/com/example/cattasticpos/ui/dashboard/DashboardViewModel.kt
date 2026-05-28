@@ -35,7 +35,8 @@ class DashboardViewModel(
     private val checkoutUseCase: CheckoutUseCase,
     private val expenseRepository: ExpenseRepository,
     private val inventoryRepository: InventoryRepository,
-    private val restockItemUseCase: RestockItemUseCase
+    private val restockItemUseCase: RestockItemUseCase,
+    private val receiptPrinterService: ReceiptPrinterService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -178,9 +179,8 @@ class DashboardViewModel(
         viewModelScope.launch {
             val result = checkoutUseCase(currentCart, currentStrategy, paymentMethod, paymentReference)
             if (result.isSuccess) {
-                val order = result.getOrNull()
-                order?.let {
-                    val printerResult = ReceiptPrinterService().printReceipt(it)
+                result.getOrNull()?.let { order ->
+                    val printerResult = receiptPrinterService.printReceipt(order)
                     val printMsg = if (printerResult.isFailure) "\n(Printer: ${printerResult.exceptionOrNull()?.message})" else "\n(Receipt printing...)"
                     
                     _uiState.update { state ->
@@ -203,10 +203,6 @@ class DashboardViewModel(
                 }
             }
         }
-    }
-
-    fun onConfirmCheckout(paymentMethod: String, paymentReference: String?) {
-        confirmCheckout(paymentMethod, paymentReference)
     }
 
     fun clearCheckoutEvent() {
@@ -279,7 +275,7 @@ class DashboardViewModel(
         }
     }
 
-    fun restockItem(itemId: String, addedAmount: Int) {
+    fun restockItem(itemId: String, addedAmount: Double) {
         viewModelScope.launch {
             restockItemUseCase(itemId, addedAmount)
         }
@@ -312,7 +308,8 @@ class DashboardViewModel(
                     application.container.checkoutUseCase,
                     application.container.expenseRepository,
                     application.container.inventoryRepository,
-                    application.container.restockItemUseCase
+                    application.container.restockItemUseCase,
+                    application.container.receiptPrinterService
                 ) as T
             }
         }

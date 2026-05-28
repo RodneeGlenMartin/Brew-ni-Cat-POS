@@ -19,20 +19,21 @@ class ExportDataUseCase(private val context: Context) {
             val dateStr = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val filename = "CatTastic_Backup_$dateStr.csv"
 
-            val sb = java.lang.StringBuilder()
-            sb.append("TYPE,ID,TIMESTAMP,DESCRIPTION_OR_ITEMS,SUBTOTAL,DISCOUNT,TOTAL,PAYMENT_METHOD,RECORDED_BY\n")
+            val csvContent = buildString {
+                append("TYPE,ID,TIMESTAMP,DESCRIPTION_OR_ITEMS,SUBTOTAL,DISCOUNT,TOTAL,PAYMENT_METHOD,RECORDED_BY\n")
 
-            // Append Orders
-            for (order in orders) {
-                val timestampStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(order.timestamp))
-                val itemsStr = order.items.joinToString(" | ") { "${it.quantity}x ${it.itemName}" }.replace(",", "")
-                sb.append("ORDER,${order.id},$timestampStr,$itemsStr,${order.subtotal},${order.discountDeduction},${order.total},${order.paymentMethod},\n")
-            }
+                // Append Orders
+                for (order in orders) {
+                    val timestampStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(order.timestamp))
+                    val itemsStr = order.items.joinToString(" | ") { "${it.quantity}x ${it.itemName}" }.replace(",", "")
+                    append("ORDER,${order.id},$timestampStr,$itemsStr,${order.subtotal},${order.discountDeduction},${order.total},${order.paymentMethod},\n")
+                }
 
-            // Append Expenses
-            for (expense in expenses) {
-                val timestampStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(expense.timestamp))
-                sb.append("EXPENSE,${expense.id},$timestampStr,${expense.description.replace(",", "")},0.0,0.0,${expense.amount},CASH,${expense.recordedBy}\n")
+                // Append Expenses
+                for (expense in expenses) {
+                    val timestampStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(expense.timestamp))
+                    append("EXPENSE,${expense.id},$timestampStr,${expense.description.replace(",", "")},0.0,0.0,${expense.amount},CASH,${expense.recordedBy}\n")
+                }
             }
 
             val resolver = context.contentResolver
@@ -46,7 +47,7 @@ class ExportDataUseCase(private val context: Context) {
                 ?: return@withContext Result.failure(Exception("Failed to create MediaStore entry"))
 
             resolver.openOutputStream(uri)?.use { outputStream ->
-                outputStream.write(sb.toString().toByteArray())
+                outputStream.write(csvContent.toByteArray())
             } ?: return@withContext Result.failure(Exception("Failed to open output stream"))
 
             Result.success(filename)

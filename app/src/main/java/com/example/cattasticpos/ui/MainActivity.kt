@@ -101,13 +101,17 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             "pin_history" -> {
+                                val expectedPinHash = historyViewModel.appConfigState.collectAsState().value?.pinHash ?: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
                                 PinScreen(
+                                    expectedPinHash = expectedPinHash,
                                     onPinSuccess = { currentScreen = "history" },
                                     onCancel = { currentScreen = "dashboard" }
                                 )
                             }
                             "pin_inventory" -> {
+                                val expectedPinHash = historyViewModel.appConfigState.collectAsState().value?.pinHash ?: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"
                                 PinScreen(
+                                    expectedPinHash = expectedPinHash,
                                     onPinSuccess = { currentScreen = "inventory" },
                                     onCancel = { currentScreen = "dashboard" }
                                 )

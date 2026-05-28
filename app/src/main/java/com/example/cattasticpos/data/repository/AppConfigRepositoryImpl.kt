@@ -14,17 +14,18 @@ class AppConfigRepositoryImpl(
     override fun getAppConfig(): Flow<AppConfig?> {
         return dao.getAppConfig().map { entity ->
             entity?.let {
-                AppConfig(targetSales = it.targetSales, startingCashFloat = it.startingCashFloat)
+                AppConfig(targetSales = it.targetSales, startingCashFloat = it.startingCashFloat, pinHash = it.pinHash)
             }
         }
     }
 
-    override suspend fun updateConfig(targetSales: Double, startingCashFloat: Double) {
+    override suspend fun updateConfig(targetSales: Double, startingCashFloat: Double, pinHash: String) {
         dao.updateConfig(
             AppConfigEntity(
                 id = 1,
                 targetSales = targetSales,
-                startingCashFloat = startingCashFloat
+                startingCashFloat = startingCashFloat,
+                pinHash = pinHash
             )
         )
     }

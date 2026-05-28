@@ -19,6 +19,7 @@ import com.example.cattasticpos.domain.usecase.CheckoutUseCase
 import com.example.cattasticpos.domain.usecase.RestockItemUseCase
 import com.example.cattasticpos.domain.usecase.GetMenuUseCase
 import com.example.cattasticpos.domain.usecase.ExportDataUseCase
+import com.example.cattasticpos.domain.service.ReceiptPrinterService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 
@@ -48,6 +49,7 @@ interface AppContainer {
     val recipeRepository: RecipeRepository
     val appConfigRepository: AppConfigRepository
     val restockItemUseCase: RestockItemUseCase
+    val receiptPrinterService: ReceiptPrinterService
 }
 
 class AppContainerImpl(
@@ -101,5 +103,9 @@ class AppContainerImpl(
 
     override val restockItemUseCase: RestockItemUseCase by lazy {
         RestockItemUseCase(inventoryRepository)
+    }
+
+    override val receiptPrinterService: ReceiptPrinterService by lazy {
+        ReceiptPrinterService(context)
     }
 }

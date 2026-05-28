@@ -34,7 +34,8 @@ import kotlinx.coroutines.launch
         RecipeMappingEntity::class,
         AppConfigEntity::class
     ],
-    version = 9,
+    ],
+    version = 10,
     exportSchema = false
 )
 abstract class PosDatabase : RoomDatabase() {
@@ -56,11 +57,21 @@ abstract class PosDatabase : RoomDatabase() {
                     PosDatabase::class.java,
                     "pos_database"
                 )
-                .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_9_10)
                 .addCallback(PosDatabaseCallback(scope))
                 .build()
                 INSTANCE = instance
                 instance
+            }
+        }
+
+        val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_config ADD COLUMN pinHash TEXT NOT NULL DEFAULT '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4'")
+                db.execSQL("CREATE TABLE inventory_new (id TEXT NOT NULL PRIMARY KEY, itemName TEXT NOT NULL, unit TEXT NOT NULL, currentStock REAL NOT NULL, reorderThreshold REAL NOT NULL)")
+                db.execSQL("INSERT INTO inventory_new (id, itemName, unit, currentStock, reorderThreshold) SELECT id, itemName, unit, CAST(currentStock AS REAL), CAST(reorderThreshold AS REAL) FROM inventory")
+                db.execSQL("DROP TABLE inventory")
+                db.execSQL("ALTER TABLE inventory_new RENAME TO inventory")
             }
         }
     }
@@ -78,7 +89,7 @@ abstract class PosDatabase : RoomDatabase() {
         }
 
         private suspend fun prepopulateDatabase(menuDao: MenuDao, inventoryDao: InventoryDao, recipeDao: RecipeDao, appConfigDao: AppConfigDao) {
-            appConfigDao.insertConfig(AppConfigEntity(id = 1, targetSales = 5000.0, startingCashFloat = 500.0))
+            appConfigDao.insertConfig(AppConfigEntity(id = 1, targetSales = 5000.0, startingCashFloat = 500.0, pinHash = "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4"))
             
             val categories = listOf(
                 CategoryEntity("cat_bites", "Cat-Tastic Bites"),
@@ -179,10 +190,10 @@ abstract class PosDatabase : RoomDatabase() {
             menuDao.insertItems(items)
 
             val inventoryItems = listOf(
-                InventoryEntity("inv_cups", "Cups", "pcs", 100, 20),
-                InventoryEntity("inv_takoyaki", "Takoyaki Balls", "pcs", 100, 20),
-                InventoryEntity("inv_fries", "Potato Fries", "grams", 100, 10),
-                InventoryEntity("inv_nachos", "Nacho Chips", "grams", 100, 10)
+                InventoryEntity("inv_cups", "Cups", "pcs", 100.0, 20.0),
+                InventoryEntity("inv_takoyaki", "Takoyaki Balls", "pcs", 100.0, 20.0),
+                InventoryEntity("inv_fries", "Potato Fries", "grams", 100.0, 10.0),
+                InventoryEntity("inv_nachos", "Nacho Chips", "grams", 100.0, 10.0)
             )
             inventoryDao.insertInventoryItems(inventoryItems)
 
