@@ -34,7 +34,6 @@ import kotlinx.coroutines.launch
         RecipeMappingEntity::class,
         AppConfigEntity::class
     ],
-    ],
     version = 10,
     exportSchema = false
 )
