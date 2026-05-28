@@ -588,8 +588,8 @@ fun EditConfigDialog(
     onDismiss: () -> Unit,
     onSave: (Double, Double) -> Unit
 ) {
-    var targetStr by remember { mutableStateOf(initialTarget.toString()) }
-    var floatStr by remember { mutableStateOf(initialFloat.toString()) }
+    var targetStr by remember { mutableStateOf(if (initialTarget % 1.0 == 0.0) initialTarget.toInt().toString() else initialTarget.toString()) }
+    var floatStr by remember { mutableStateOf(if (initialFloat % 1.0 == 0.0) initialFloat.toInt().toString() else initialFloat.toString()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
