@@ -1,5 +1,9 @@
 # Brew-Ni-Cat Coffee Shop POS
 
+<p align="center">
+  <img src="app/src/main/res/drawable/logo.png" width="250" alt="Brew-Ni-Cat Logo">
+</p>
+
 ## Project Overview
 **Brew-Ni-Cat Coffee Shop POS** is a fully featured, offline-first Android Point-of-Sale (POS) application designed for a cat-themed business. It manages menus, dynamic inventory recipes, orders, split payments, and end-of-day financial reporting without requiring a constant internet connection.
 
