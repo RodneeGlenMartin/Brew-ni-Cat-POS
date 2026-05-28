@@ -292,7 +292,7 @@ fun DashboardScreen(
                 finalTotal = uiState.total,
                 onConfirmPayment = { method, ref ->
                     viewModel.setShowPaymentDialog(false)
-                    viewModel.onConfirmCheckout(method, ref)
+                    viewModel.checkout(method, ref)
                 },
                 onDismiss = { viewModel.setShowPaymentDialog(false) }
             )
