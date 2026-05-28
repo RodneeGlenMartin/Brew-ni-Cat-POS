@@ -61,7 +61,7 @@ fun DashboardScreen(
     LaunchedEffect(uiState.checkoutSuccessEvent) {
         uiState.checkoutSuccessEvent?.let { message ->
             val job = launch { snackbarHostState.showSnackbar(message) }
-            kotlinx.coroutines.delay(2000)
+            kotlinx.coroutines.delay(700)
             job.cancel()
             viewModel.clearCheckoutEvent()
         }
@@ -70,7 +70,7 @@ fun DashboardScreen(
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { message ->
             val job = launch { snackbarHostState.showSnackbar(message) }
-            kotlinx.coroutines.delay(200)
+            kotlinx.coroutines.delay(700)
             job.cancel()
             viewModel.clearSnackbarMessage()
         }
