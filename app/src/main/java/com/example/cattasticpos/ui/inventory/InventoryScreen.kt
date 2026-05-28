@@ -19,7 +19,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cattasticpos.domain.model.InventoryItem
-import com.example.cattasticpos.data.local.entity.RecipeMappingEntity
+import com.example.cattasticpos.domain.model.RecipeMapping
 import com.example.cattasticpos.domain.model.Item
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,7 +78,7 @@ fun InventoryScreen(
             }
 
             if (selectedTabIndex == 0) {
-                RawMaterialsTab(
+                InventoryStockTab(
                     inventoryItems = uiState.inventoryItems,
                     onRestock = { itemId, qty -> viewModel.restockItem(itemId, qty) }
                 )
