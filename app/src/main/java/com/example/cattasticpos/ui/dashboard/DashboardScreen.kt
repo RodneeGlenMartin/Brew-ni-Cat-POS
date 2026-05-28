@@ -70,7 +70,7 @@ fun DashboardScreen(
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { message ->
             val job = launch { snackbarHostState.showSnackbar(message) }
-            kotlinx.coroutines.delay(1000)
+            kotlinx.coroutines.delay(200)
             job.cancel()
             viewModel.clearSnackbarMessage()
         }
