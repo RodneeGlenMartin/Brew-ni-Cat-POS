@@ -3,6 +3,7 @@ package com.example.cattasticpos.ui
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Alignment
@@ -79,6 +80,20 @@ fun CattasticTheme(
 }
 
 class MainActivity : ComponentActivity() {
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val connectGranted = permissions[android.Manifest.permission.BLUETOOTH_CONNECT] ?: false
+        val scanGranted = permissions[android.Manifest.permission.BLUETOOTH_SCAN] ?: false
+        if (!connectGranted || !scanGranted) {
+            android.widget.Toast.makeText(
+                this,
+                "Bluetooth permissions are required for receipt printing.",
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -91,7 +106,7 @@ class MainActivity : ComponentActivity() {
                 androidx.core.content.ContextCompat.checkSelfPermission(this, it) != android.content.pm.PackageManager.PERMISSION_GRANTED
             }
             if (missingPermissions.isNotEmpty()) {
-                requestPermissions(missingPermissions.toTypedArray(), 101)
+                requestPermissionLauncher.launch(missingPermissions.toTypedArray())
             }
         }
 

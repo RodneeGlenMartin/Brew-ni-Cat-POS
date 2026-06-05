@@ -24,6 +24,7 @@ import kotlinx.coroutines.launch
 
 import com.example.cattasticpos.domain.repository.ExpenseRepository
 import com.example.cattasticpos.domain.repository.InventoryRepository
+import com.example.cattasticpos.domain.repository.RecipeRepository
 import com.example.cattasticpos.domain.service.ReceiptPrinterService
 import com.example.cattasticpos.domain.model.Expense
 import java.util.UUID
@@ -34,7 +35,8 @@ class DashboardViewModel(
     private val checkoutUseCase: CheckoutUseCase,
     private val expenseRepository: ExpenseRepository,
     private val inventoryRepository: InventoryRepository,
-    private val receiptPrinterService: ReceiptPrinterService
+    private val receiptPrinterService: ReceiptPrinterService,
+    private val recipeRepository: RecipeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -46,6 +48,11 @@ class DashboardViewModel(
         viewModelScope.launch {
             inventoryRepository.getAllInventory().collect { invList ->
                 _uiState.update { it.copy(inventory = invList) }
+            }
+        }
+        viewModelScope.launch {
+            recipeRepository.getAllMappings().collect { mappings ->
+                _uiState.update { it.copy(recipeMappings = mappings) }
             }
         }
         viewModelScope.launch {
@@ -300,7 +307,8 @@ class DashboardViewModel(
                     application.container.checkoutUseCase,
                     application.container.expenseRepository,
                     application.container.inventoryRepository,
-                    application.container.receiptPrinterService
+                    application.container.receiptPrinterService,
+                    application.container.recipeRepository
                 ) as T
             }
         }

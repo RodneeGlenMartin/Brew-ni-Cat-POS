@@ -6,6 +6,7 @@ import com.example.cattasticpos.domain.model.Item
 import com.example.cattasticpos.domain.strategy.DiscountStrategy
 import com.example.cattasticpos.domain.strategy.NoDiscountStrategy
 import com.example.cattasticpos.domain.model.InventoryItem
+import com.example.cattasticpos.domain.model.RecipeMapping
 
 data class HeldQueue(
     val id: String,
@@ -32,5 +33,6 @@ data class DashboardUiState(
     val showPaymentDialog: Boolean = false,
     val showExpenseDialog: Boolean = false,
     val showInventoryDialog: Boolean = false,
-    val inventory: List<InventoryItem> = emptyList()
+    val inventory: List<InventoryItem> = emptyList(),
+    val recipeMappings: List<RecipeMapping> = emptyList()
 )

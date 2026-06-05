@@ -139,15 +139,15 @@ fun DashboardScreen(
                         .padding(horizontal = 12.dp)
                 ) {
                     items(uiState.menuItems, key = { it.id }) { item ->
-                        val mappedInvId = if (item.categoryId == "cat_drinks") "inv_cups"
-                        else when (item.id) {
-                            "bite_takoyaki" -> "inv_takoyaki"
-                            "bite_fries" -> "inv_fries"
-                            "bite_nachos" -> "inv_nachos"
-                            else -> null
+                        val itemMappings = uiState.recipeMappings.filter { it.menuItemId == item.id }
+                        val isLowStock = if (itemMappings.isEmpty()) {
+                            false
+                        } else {
+                            itemMappings.any { mapping ->
+                                val invItem = uiState.inventory.find { it.id == mapping.inventoryItemId }
+                                invItem != null && invItem.currentStock <= invItem.reorderThreshold
+                            }
                         }
-                        val invItem = uiState.inventory.find { it.id == mappedInvId }
-                        val isLowStock = invItem != null && invItem.currentStock <= invItem.reorderThreshold
 
                         ItemCard(
                             item = item,
@@ -465,7 +465,7 @@ fun PaymentCheckoutDialog(finalTotal: Double, onConfirmPayment: (String, String?
 fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Variant, String?) -> Unit) {
     val sheetState = rememberModalBottomSheetState()
     var selectedVariant by remember { mutableStateOf(item.variants.firstOrNull() ?: Variant("", "", 0.0)) }
-    var selectedFlavor by remember { mutableStateOf(if (item.flavors.isNotEmpty()) item.flavors.first() else null) }
+    var selectedFlavor by remember { mutableStateOf<String?>(null) }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 36.dp).verticalScroll(rememberScrollState())) {
@@ -500,7 +500,9 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                 Spacer(modifier = Modifier.height(8.dp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     item.variants.forEach { variant ->
-                        val priceToAdd = variant.getPrice(selectedFlavor)
+                        val priceToAdd = if (selectedFlavor == null && variant.basePrice == 0.0) 0.0 else {
+                            try { variant.getPrice(selectedFlavor) } catch (e: Exception) { 0.0 }
+                        }
                         val priceString = if (item.flavors.isNotEmpty() && selectedFlavor == null && variant.priceByFlavor.isNotEmpty()) {
                             " (Select flavor)"
                         } else if (priceToAdd > 0) {
@@ -522,9 +524,16 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Column {
                     Text("Price Summary", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
-                    Text("₱${String.format("%.0f", selectedVariant.getPrice(selectedFlavor))}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+                    val displayPrice = if (selectedFlavor == null && selectedVariant.basePrice == 0.0) 0.0 else {
+                        try { selectedVariant.getPrice(selectedFlavor) } catch (e: Exception) { 0.0 }
+                    }
+                    Text("₱${String.format("%.0f", displayPrice)}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                 }
-                Button(onClick = { onAddToCart(selectedVariant, selectedFlavor) }, shape = RoundedCornerShape(8.dp)) {
+                Button(
+                    onClick = { onAddToCart(selectedVariant, selectedFlavor) },
+                    enabled = !(item.flavors.isNotEmpty() && selectedFlavor == null),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Add to Order", fontWeight = FontWeight.Bold)
