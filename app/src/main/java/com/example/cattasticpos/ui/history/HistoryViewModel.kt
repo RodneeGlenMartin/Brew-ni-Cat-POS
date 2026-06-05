@@ -33,6 +33,10 @@ class HistoryViewModel(
     private val todayStart: Long
     private val todayEnd: Long
 
+    private val _startDate: MutableStateFlow<Long>
+    private val _endDate: MutableStateFlow<Long>
+    private val _limit = MutableStateFlow<Int>(50)
+
     init {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -46,11 +50,10 @@ class HistoryViewModel(
         calendar.set(Calendar.SECOND, 59)
         calendar.set(Calendar.MILLISECOND, 999)
         todayEnd = calendar.timeInMillis
-    }
 
-    private val _startDate = MutableStateFlow<Long>(0L)
-    private val _endDate = MutableStateFlow<Long>(Long.MAX_VALUE)
-    private val _limit = MutableStateFlow<Int>(50)
+        _startDate = MutableStateFlow(todayStart)
+        _endDate = MutableStateFlow(todayEnd)
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val ordersState: StateFlow<List<Order>> = combine(_startDate, _endDate, _limit) { start, end, limit -> 
@@ -68,56 +71,56 @@ class HistoryViewModel(
     }
 
     fun setDateRange(start: Long?, end: Long?) {
-        _startDate.value = start ?: 0L
-        _endDate.value = end ?: Long.MAX_VALUE
+        _startDate.value = start ?: todayStart
+        _endDate.value = end ?: todayEnd
         _limit.value = 50
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val grossSalesState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
-        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+        start to end
     }.flatMapLatest { (start, end) -> orderRepository.getGrossSalesForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val discountsState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
-        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+        start to end
     }.flatMapLatest { (start, end) -> orderRepository.getDiscountsGivenForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val netRevenueState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
-        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+        start to end
     }.flatMapLatest { (start, end) -> orderRepository.getNetRevenueForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val cashSalesState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
-        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+        start to end
     }.flatMapLatest { (start, end) -> orderRepository.getCashSalesForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val gcashSalesState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
-        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+        start to end
     }.flatMapLatest { (start, end) -> orderRepository.getGcashSalesForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val topSellingItemState: StateFlow<Pair<String, Int>?> = combine(_startDate, _endDate) { start, end ->
-        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+        start to end
     }.flatMapLatest { (start, end) -> orderRepository.getTopSellingItemForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val expensesListState: StateFlow<List<Expense>> = combine(_startDate, _endDate) { start, end ->
-        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+        start to end
     }.flatMapLatest { (start, end) -> expenseRepository.getExpensesForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val totalExpensesState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
-        if (start == 0L && end == Long.MAX_VALUE) todayStart to todayEnd else start to end
+        start to end
     }.flatMapLatest { (start, end) -> expenseRepository.getTotalExpensesForDay(start, end) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 

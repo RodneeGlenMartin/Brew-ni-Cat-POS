@@ -56,7 +56,6 @@ abstract class PosDatabase : RoomDatabase() {
                     PosDatabase::class.java,
                     "pos_database"
                 )
-                .fallbackToDestructiveMigration()
                 .addMigrations(MIGRATION_9_10)
                 .addCallback(PosDatabaseCallback(scope))
                 .build()

@@ -10,8 +10,6 @@ import com.example.cattasticpos.domain.model.Item
 import com.example.cattasticpos.domain.model.Variant
 import com.example.cattasticpos.domain.strategy.DiscountStrategy
 import com.example.cattasticpos.domain.strategy.NoDiscountStrategy
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 import com.example.cattasticpos.domain.usecase.CalculateCartUseCase
 import com.example.cattasticpos.domain.usecase.CheckoutUseCase
@@ -185,9 +183,6 @@ class DashboardViewModel(
             val result = checkoutUseCase(currentCart, currentStrategy, paymentMethod, paymentReference)
             if (result.isSuccess) {
                 result.getOrNull()?.let { order ->
-                    val printerResult = receiptPrinterService.printReceipt(order)
-                    val printMsg = if (printerResult.isFailure) "\n(Printer: ${printerResult.exceptionOrNull()?.message})" else "\n(Receipt printing...)"
-                    
                     _uiState.update { state ->
                         val freshCalculation = calculateCartUseCase(emptyList(), state.selectedDiscountStrategy)
                         state.copy(
@@ -198,8 +193,16 @@ class DashboardViewModel(
                             discountDeduction = freshCalculation.discountDeduction,
                             discountLabel = freshCalculation.discountLabel,
                             total = freshCalculation.total,
-                            checkoutSuccessEvent = "Order placed successfully! 🐾$printMsg"
+                            checkoutSuccessEvent = "Order placed successfully! 🐾\n(Receipt printing...)"
                         )
+                    }
+                    viewModelScope.launch {
+                        val printerResult = receiptPrinterService.printReceipt(order)
+                        if (printerResult.isFailure) {
+                            _uiState.update { state ->
+                                state.copy(snackbarMessage = "Printer: ${printerResult.exceptionOrNull()?.message}")
+                            }
+                        }
                     }
                 }
             } else {

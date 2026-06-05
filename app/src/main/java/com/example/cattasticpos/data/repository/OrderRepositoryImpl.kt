@@ -1,5 +1,7 @@
 package com.example.cattasticpos.data.repository
 
+import androidx.room.withTransaction
+import com.example.cattasticpos.data.local.PosDatabase
 import com.example.cattasticpos.data.local.dao.OrderDao
 import com.example.cattasticpos.data.local.entity.OrderEntity
 import com.example.cattasticpos.data.local.entity.OrderItemEntity
@@ -10,8 +12,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 class OrderRepositoryImpl(
-    private val orderDao: OrderDao
+    private val database: PosDatabase
 ) : OrderRepository {
+
+    private val orderDao: OrderDao = database.orderDao()
 
     override fun getOrdersWithItems(startDate: Long, endDate: Long, limit: Int, offset: Int): Flow<List<Order>> {
         return orderDao.getOrdersWithItems(startDate, endDate, limit, offset).map { list ->
@@ -68,7 +72,10 @@ class OrderRepositoryImpl(
                 totalPrice = item.totalPrice
             )
         }
-        orderDao.insertOrderWithItems(orderEntity, itemEntities)
+        database.withTransaction {
+            orderDao.insertOrder(orderEntity)
+            orderDao.insertOrderItems(itemEntities)
+        }
     }
 
     override fun getTopSellingItemForDay(startOfDay: Long, endOfDay: Long): Flow<Pair<String, Int>?> {
@@ -98,6 +105,9 @@ class OrderRepositoryImpl(
     }
 
     override suspend fun deleteOrder(orderId: String) {
-        orderDao.deleteOrderWithItems(orderId)
+        database.withTransaction {
+            orderDao.deleteOrderItemsForOrder(orderId)
+            orderDao.deleteOrderEntity(orderId)
+        }
     }
 }

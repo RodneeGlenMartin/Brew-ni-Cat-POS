@@ -8,7 +8,11 @@ data class CartItem(
     val quantity: Int
 ) {
     val unitPrice: Double
-        get() = variant.getPrice(flavor)
+        get() = try {
+            variant.getPrice(flavor)
+        } catch (e: Exception) {
+            variant.basePrice
+        }
 
     val totalPrice: Double
         get() = unitPrice * quantity

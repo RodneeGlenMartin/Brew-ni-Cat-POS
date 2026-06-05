@@ -47,6 +47,10 @@ class RecipeRepositoryImpl(
         recipeDao.insertMapping(mapping.toEntity())
     }
 
+    override suspend fun insertMappings(mappings: List<RecipeMapping>) {
+        recipeDao.insertMappings(mappings.map { it.toEntity() })
+    }
+
     override suspend fun deleteMapping(mapping: RecipeMapping) {
         recipeDao.deleteMapping(mapping.toEntity())
     }

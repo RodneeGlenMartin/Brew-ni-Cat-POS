@@ -12,6 +12,7 @@ data class AppConfig(
     val pinHash: String
 ) {
     companion object {
+        const val DEFAULT_PIN_HASH = "otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0="
         private const val ITERATIONS = 10000
         private const val KEY_LENGTH = 256
 

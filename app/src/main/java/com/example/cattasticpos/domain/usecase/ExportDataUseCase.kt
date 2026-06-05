@@ -14,6 +14,16 @@ import java.util.Locale
 
 class ExportDataUseCase(private val context: Context) {
 
+    private fun csvEscape(value: String): String {
+        val prefix = if (value.startsWith("=") || value.startsWith("+") || value.startsWith("-") || value.startsWith("@")) {
+            "'"
+        } else {
+            ""
+        }
+        val escaped = value.replace("\"", "\"\"")
+        return "\"$prefix$escaped\""
+    }
+
     suspend operator fun invoke(orders: List<Order>, expenses: List<Expense>): Result<String> = withContext(Dispatchers.IO) {
         try {
             val dateStr = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
@@ -25,14 +35,14 @@ class ExportDataUseCase(private val context: Context) {
                 // Append Orders
                 for (order in orders) {
                     val timestampStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(order.timestamp))
-                    val itemsStr = order.items.joinToString(" | ") { "${it.quantity}x ${it.itemName}" }.replace(",", "")
-                    append("ORDER,${order.id},$timestampStr,$itemsStr,${order.subtotal},${order.discountDeduction},${order.total},${order.paymentMethod},\n")
+                    val itemsStr = order.items.joinToString(" | ") { "${it.quantity}x ${it.itemName}" }
+                    append("ORDER,${csvEscape(order.id)},$timestampStr,${csvEscape(itemsStr)},${order.subtotal},${order.discountDeduction},${order.total},${csvEscape(order.paymentMethod)},\n")
                 }
 
                 // Append Expenses
                 for (expense in expenses) {
                     val timestampStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(expense.timestamp))
-                    append("EXPENSE,${expense.id},$timestampStr,${expense.description.replace(",", "")},0.0,0.0,${expense.amount},CASH,${expense.recordedBy}\n")
+                    append("EXPENSE,${csvEscape(expense.id)},$timestampStr,${csvEscape(expense.description)},0.0,0.0,${expense.amount},CASH,${csvEscape(expense.recordedBy)}\n")
                 }
             }
 

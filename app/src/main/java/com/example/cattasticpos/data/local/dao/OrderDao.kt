@@ -33,7 +33,6 @@ interface OrderDao {
     suspend fun insertOrderItems(items: List<OrderItemEntity>)
 
     // Note: Room 2.4+ safely wraps suspend functions inside @Transaction in a single database transaction.
-    @Transaction
     suspend fun insertOrderWithItems(order: OrderEntity, items: List<OrderItemEntity>) {
         insertOrder(order)
         insertOrderItems(items)
@@ -68,7 +67,6 @@ interface OrderDao {
     suspend fun deleteOrderItemsForOrder(orderId: String)
 
     // Note: Room 2.4+ safely wraps suspend functions inside @Transaction in a single database transaction.
-    @Transaction
     suspend fun deleteOrderWithItems(orderId: String) {
         deleteOrderItemsForOrder(orderId)
         deleteOrderEntity(orderId)

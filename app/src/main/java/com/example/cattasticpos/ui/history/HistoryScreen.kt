@@ -453,7 +453,7 @@ fun HistoryScreen(
                 EditConfigDialog(
                     initialTarget = appConfig?.targetSales ?: 5000.0,
                     initialFloat = appConfig?.startingCashFloat ?: 500.0,
-                    expectedPinHash = appConfig?.pinHash ?: "03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4",
+                    expectedPinHash = appConfig?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
                     onDismiss = { showConfigDialog = false },
                     onSave = { target, float, pinHash ->
                         viewModel.updateConfig(target, float, pinHash)

@@ -111,7 +111,7 @@ class AppContainerImpl(
     }
 
     override val orderRepository: OrderRepository by lazy {
-        OrderRepositoryImpl(database.orderDao())
+        OrderRepositoryImpl(database)
     }
 
     override val getMenuUseCase: GetMenuUseCase by lazy {

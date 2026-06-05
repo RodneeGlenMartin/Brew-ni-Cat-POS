@@ -48,7 +48,7 @@ class InventoryViewModel(
                 .distinctUntilChanged()
                 .flatMapLatest { id ->
                     if (id != null) recipeRepository.getMappingsForMenu(id)
-                    else emptyFlow()
+                    else kotlinx.coroutines.flow.flowOf(emptyList())
                 }
                 .collect { mappings ->
                     _uiState.update { it.copy(currentRecipeMappings = mappings) }
