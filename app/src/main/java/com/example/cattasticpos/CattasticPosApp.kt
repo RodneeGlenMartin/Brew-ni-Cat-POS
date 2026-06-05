@@ -22,6 +22,8 @@ import com.example.cattasticpos.domain.usecase.RestockItemUseCase
 import com.example.cattasticpos.domain.usecase.GetMenuUseCase
 import com.example.cattasticpos.domain.usecase.ExportDataUseCase
 import com.example.cattasticpos.domain.service.ReceiptPrinterService
+import android.util.Log
+import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 
@@ -34,7 +36,47 @@ class CattasticPosApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        
+        if (!isCrashProcess()) {
+            Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
+                try {
+                    val stackTraceString = Log.getStackTraceString(throwable)
+                    val intent = Intent(this, com.example.cattasticpos.ui.CrashActivity::class.java).apply {
+                        putExtra("error_message", stackTraceString)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                    }
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    // Fallback
+                } finally {
+                    android.os.Process.killProcess(android.os.Process.myPid())
+                    System.exit(1)
+                }
+            }
+        }
+
         container = AppContainerImpl(this, applicationScope)
+    }
+
+    private fun isCrashProcess(): Boolean {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            return Application.getProcessName().endsWith(":crash")
+        }
+        try {
+            val pid = android.os.Process.myPid()
+            val am = getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val runningProcesses = am.runningAppProcesses
+            if (runningProcesses != null) {
+                for (processInfo in runningProcesses) {
+                    if (processInfo.pid == pid) {
+                        return processInfo.processName.endsWith(":crash")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // ignore
+        }
+        return false
     }
 }
 
