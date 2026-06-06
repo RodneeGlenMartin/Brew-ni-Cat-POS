@@ -111,6 +111,13 @@ class InventoryViewModel(
         }
     }
 
+    fun deleteInventoryItem(itemId: String) {
+        viewModelScope.launch {
+            recipeRepository.deleteMappingsForInventory(itemId)
+            inventoryRepository.deleteInventoryItem(itemId)
+        }
+    }
+
     fun setShowAddRawMaterialDialog(show: Boolean) {
         _uiState.update { it.copy(showAddRawMaterialDialog = show) }
     }

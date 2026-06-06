@@ -399,7 +399,8 @@ fun HistoryScreen(
                     items(orders, key = { it.id }) { order ->
                         OrderHistoryCard(
                             order = order,
-                            onShare = { shareOrderReceipt(context, order) }
+                            onShare = { shareOrderReceipt(context, order) },
+                            onDelete = { viewModel.deleteOrder(order.id) }
                         )
                     }
                     
@@ -468,6 +469,7 @@ fun HistoryScreen(
 fun OrderHistoryCard(
     order: Order,
     onShare: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dateFormatter = remember {
@@ -527,6 +529,17 @@ fun OrderHistoryCard(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Share Receipt",
                                 tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = onDelete,
+                            modifier = Modifier.size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete Order",
+                                tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(16.dp)
                             )
                         }

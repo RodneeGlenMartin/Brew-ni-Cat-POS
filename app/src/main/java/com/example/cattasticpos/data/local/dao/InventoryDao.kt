@@ -24,4 +24,7 @@ interface InventoryDao {
 
     @Query("UPDATE inventory SET currentStock = currentStock + :addedAmount WHERE id = :itemId")
     suspend fun restockItem(itemId: String, addedAmount: Double)
+
+    @Query("DELETE FROM inventory WHERE id = :itemId")
+    suspend fun deleteInventoryItem(itemId: String)
 }

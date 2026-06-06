@@ -10,4 +10,5 @@ interface RecipeRepository {
     suspend fun insertMapping(mapping: RecipeMapping)
     suspend fun insertMappings(mappings: List<RecipeMapping>)
     suspend fun deleteMapping(mapping: RecipeMapping)
+    suspend fun deleteMappingsForInventory(inventoryItemId: String)
 }

@@ -80,7 +80,8 @@ fun InventoryScreen(
             if (selectedTabIndex == 0) {
                 InventoryStockTab(
                     inventoryItems = uiState.inventoryItems,
-                    onRestock = { itemId, qty -> viewModel.restockItem(itemId, qty) }
+                    onRestock = { itemId, qty -> viewModel.restockItem(itemId, qty) },
+                    onDelete = { viewModel.deleteInventoryItem(it) }
                 )
             } else {
                 ProductRecipesTab(
@@ -116,7 +117,8 @@ fun InventoryScreen(
 @Composable
 fun InventoryStockTab(
     inventoryItems: List<InventoryItem>,
-    onRestock: (String, Double) -> Unit
+    onRestock: (String, Double) -> Unit,
+    onDelete: (String) -> Unit
 ) {
     if (inventoryItems.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -143,12 +145,17 @@ fun InventoryStockTab(
                                 Text(item.itemName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                                 Text("Reorder at: ${item.reorderThreshold} ${item.unit}", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
                             }
-                            Text(
-                                text = "Stock: ${item.currentStock} ${item.unit}",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp,
-                                color = if (item.currentStock <= item.reorderThreshold) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Stock: ${item.currentStock} ${item.unit}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 16.sp,
+                                    color = if (item.currentStock <= item.reorderThreshold) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
+                                )
+                                IconButton(onClick = { onDelete(item.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
                         }
 
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {

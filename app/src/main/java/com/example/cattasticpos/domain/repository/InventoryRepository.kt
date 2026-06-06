@@ -8,4 +8,5 @@ interface InventoryRepository {
     suspend fun insertInventoryItems(items: List<InventoryItem>)
     suspend fun decrementStock(inventoryId: String, amount: Double)
     suspend fun restockItem(itemId: String, addedAmount: Double)
+    suspend fun deleteInventoryItem(itemId: String)
 }

@@ -45,4 +45,8 @@ class InventoryRepositoryImpl(
     override suspend fun restockItem(itemId: String, addedAmount: Double) {
         inventoryDao.restockItem(itemId, addedAmount)
     }
+
+    override suspend fun deleteInventoryItem(itemId: String) {
+        inventoryDao.deleteInventoryItem(itemId)
+    }
 }

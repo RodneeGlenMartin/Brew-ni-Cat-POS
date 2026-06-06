@@ -54,4 +54,8 @@ class RecipeRepositoryImpl(
     override suspend fun deleteMapping(mapping: RecipeMapping) {
         recipeDao.deleteMapping(mapping.toEntity())
     }
+
+    override suspend fun deleteMappingsForInventory(inventoryItemId: String) {
+        recipeDao.deleteMappingsForInventory(inventoryItemId)
+    }
 }
