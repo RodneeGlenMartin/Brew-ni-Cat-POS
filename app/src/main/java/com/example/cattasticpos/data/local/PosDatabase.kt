@@ -57,6 +57,7 @@ abstract class PosDatabase : RoomDatabase() {
                     "pos_database"
                 )
                 .addMigrations(MIGRATION_9_10)
+                .fallbackToDestructiveMigration()
                 .addCallback(PosDatabaseCallback(scope))
                 .build()
                 INSTANCE = instance
