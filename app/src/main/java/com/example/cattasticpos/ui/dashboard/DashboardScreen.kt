@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -577,8 +576,7 @@ fun PaymentCheckoutDialog(
 @Composable
 fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Variant, String?) -> Unit) {
     val sheetState = rememberModalBottomSheetState()
-    val variantListState = rememberLazyListState()
-    val descriptionScrollState = rememberScrollState()
+    val contentScrollState = rememberScrollState()
     var selectedVariant by remember(item.id) {
         mutableStateOf(item.variants.firstOrNull() ?: Variant("", "", 0.0))
     }
@@ -587,126 +585,126 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
         selectedContainerColor = MaterialTheme.colorScheme.secondary,
         selectedLabelColor = MaterialTheme.colorScheme.onSecondary
     )
+    val hasComboDescriptions = item.variants.any { !it.description.isNullOrBlank() }
+    val displayPrice = if (selectedFlavor == null && selectedVariant.basePrice == 0.0) {
+        0.0
+    } else {
+        try {
+            selectedVariant.getPrice(selectedFlavor)
+        } catch (_: Exception) {
+            0.0
+        }
+    }
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxHeight(0.9f)
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 36.dp)
         ) {
-            Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(contentScrollState)
+            ) {
+                Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
 
-            if (item.flavors.isNotEmpty()) {
-                Text(
-                    "Select Flavor",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                if (item.id == "drink_coffee") {
-                    val grouped = item.flavors.groupBy { if (it.contains(":")) it.substringBefore(":").trim() else "Flavors" }
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        grouped.forEach { (group, flavorsInGroup) ->
-                            Text(
-                                group,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(vertical = 2.dp)
-                            )
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                flavorsInGroup.forEach { flavor ->
-                                    key(flavor) {
-                                        FilterChip(
-                                            selected = selectedFlavor == flavor,
-                                            onClick = { selectedFlavor = flavor },
-                                            label = { Text(flavor.substringAfter(": ").trim(), fontSize = 12.sp) },
-                                            colors = chipColors,
-                                            shape = RoundedCornerShape(8.dp)
-                                        )
+                if (item.flavors.isNotEmpty()) {
+                    Text(
+                        "Select Flavor",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    if (item.id == "drink_coffee") {
+                        val grouped = item.flavors.groupBy { if (it.contains(":")) it.substringBefore(":").trim() else "Flavors" }
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            grouped.forEach { (group, flavorsInGroup) ->
+                                Text(
+                                    group,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(vertical = 2.dp)
+                                )
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    flavorsInGroup.forEach { flavor ->
+                                        key(flavor) {
+                                            FilterChip(
+                                                selected = selectedFlavor == flavor,
+                                                onClick = { selectedFlavor = flavor },
+                                                label = { Text(flavor.substringAfter(": ").trim(), fontSize = 12.sp) },
+                                                colors = chipColors,
+                                                shape = RoundedCornerShape(8.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
+                    } else {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            item.flavors.forEach { flavor ->
+                                key(flavor) {
+                                    FilterChip(
+                                        selected = selectedFlavor == flavor,
+                                        onClick = { selectedFlavor = flavor },
+                                        label = { Text(flavor, fontSize = 12.sp) },
+                                        colors = chipColors,
+                                        shape = RoundedCornerShape(8.dp)
+                                    )
+                                }
+                            }
+                        }
                     }
-                } else {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                if (item.variants.isNotEmpty()) {
+                    Text(
+                        "Select Size/Option",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        item.flavors.forEach { flavor ->
-                            key(flavor) {
-                                FilterChip(
-                                    selected = selectedFlavor == flavor,
-                                    onClick = { selectedFlavor = flavor },
-                                    label = { Text(flavor, fontSize = 12.sp) },
-                                    colors = chipColors,
-                                    shape = RoundedCornerShape(8.dp)
+                        item.variants.forEach { variant ->
+                            key(variant.id) {
+                                VariantOptionRow(
+                                    variant = variant,
+                                    item = item,
+                                    selectedFlavor = selectedFlavor,
+                                    isSelected = selectedVariant.id == variant.id,
+                                    onSelect = { selectedVariant = variant }
                                 )
                             }
                         }
                     }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
 
-            if (item.variants.isNotEmpty()) {
-                Text(
-                    "Select Size/Option",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                val hasComboDescriptions = item.variants.any { !it.description.isNullOrBlank() }
-                val variantListModifier = if (hasComboDescriptions && item.variants.size > 4) {
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 280.dp)
-                } else {
-                    Modifier.fillMaxWidth()
-                }
-
-                LazyColumn(
-                    state = variantListState,
-                    modifier = variantListModifier,
-                    userScrollEnabled = hasComboDescriptions && item.variants.size > 4,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(item.variants, key = { it.id }) { variant ->
-                        VariantOptionRow(
-                            variant = variant,
-                            item = item,
-                            selectedFlavor = selectedFlavor,
-                            isSelected = selectedVariant.id == variant.id,
-                            onSelect = { selectedVariant = variant }
-                        )
-                    }
-                }
-
-                if (hasComboDescriptions) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(104.dp)
-                            .background(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .padding(horizontal = 10.dp, vertical = 8.dp)
-                    ) {
+                    if (hasComboDescriptions) {
+                        Spacer(modifier = Modifier.height(12.dp))
                         Column(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .verticalScroll(descriptionScrollState)
+                                .fillMaxWidth()
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 10.dp, vertical = 8.dp)
                         ) {
                             Text(
                                 "Included in this combo:",
@@ -723,27 +721,21 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                             )
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
 
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp, bottom = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
                     Text("Price Summary", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
-                    val displayPrice = if (selectedFlavor == null && selectedVariant.basePrice == 0.0) {
-                        0.0
-                    } else {
-                        try {
-                            selectedVariant.getPrice(selectedFlavor)
-                        } catch (_: Exception) {
-                            0.0
-                        }
-                    }
                     Text(
                         "₱${String.format("%.0f", displayPrice)}",
                         fontWeight = FontWeight.Bold,
