@@ -2,28 +2,26 @@ package com.example.cattasticpos.ui.icons
 
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.LocalCafe
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Print
-import androidx.compose.material.icons.filled.Queue
-import androidx.compose.material.icons.filled.ReceiptLong
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Wallet
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.Print
+import androidx.compose.material.icons.outlined.Queue
+import androidx.compose.material.icons.outlined.ReceiptLong
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -34,32 +32,47 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Fluent UI System Icons integration layer (24dp regular sizing spec).
- * Uses Material vector glyphs with Fluent-aligned proportions and accent-aware tinting.
+ * SF Symbols–inspired icon layer: thin outlined Material glyphs + custom category vectors.
  */
 object FluentIcons {
-    val History: ImageVector = Icons.Filled.History
-    val Settings: ImageVector = Icons.Filled.Settings
-    val Calendar: ImageVector = Icons.Filled.CalendarMonth
-    val Box: ImageVector = Icons.Filled.Inventory2
-    val Wallet: ImageVector = Icons.Filled.Wallet
-    val List: ImageVector = Icons.AutoMirrored.Filled.List
-    val Queue: ImageVector = Icons.Filled.Queue
-    val ArrowLeft: ImageVector = Icons.AutoMirrored.Filled.ArrowBack
-    val Print: ImageVector = Icons.Filled.Print
-    val ArrowDownload: ImageVector = Icons.Filled.Download
-    val Share: ImageVector = Icons.Filled.Share
-    val Delete: ImageVector = Icons.Filled.Delete
-    val ChevronUp: ImageVector = Icons.Filled.ExpandLess
-    val ChevronDown: ImageVector = Icons.Filled.ExpandMore
-    val Receipt: ImageVector = Icons.Filled.ReceiptLong
-    val Trophy: ImageVector = Icons.Filled.EmojiEvents
-    val Add: ImageVector = Icons.Filled.Add
-    val Subtract: ImageVector = Icons.Filled.Remove
-    val Pause: ImageVector = Icons.Filled.Pause
-    val CheckmarkCircle: ImageVector = Icons.Filled.CheckCircle
-    val DrinkCoffee: ImageVector = Icons.Filled.LocalCafe
-    val Food: ImageVector = Icons.Filled.Fastfood
+    val History: ImageVector = Icons.Outlined.History
+    val Settings: ImageVector = Icons.Outlined.Settings
+    val Calendar: ImageVector = Icons.Outlined.CalendarMonth
+    val Box: ImageVector = Icons.Outlined.Inventory2
+    val Wallet: ImageVector = Icons.Outlined.AccountBalanceWallet
+    val List: ImageVector = Icons.AutoMirrored.Outlined.List
+    val Queue: ImageVector = Icons.Outlined.Queue
+    val ArrowLeft: ImageVector = Icons.AutoMirrored.Outlined.ArrowBack
+    val Print: ImageVector = Icons.Outlined.Print
+    val ArrowDownload: ImageVector = Icons.Outlined.Download
+    val Share: ImageVector = Icons.Outlined.Share
+    val Delete: ImageVector = Icons.Outlined.Delete
+    val ChevronUp: ImageVector = Icons.Outlined.ExpandLess
+    val ChevronDown: ImageVector = Icons.Outlined.ExpandMore
+    val Receipt: ImageVector = Icons.Outlined.ReceiptLong
+    val Trophy: ImageVector = Icons.Outlined.EmojiEvents
+    val Add: ImageVector = Icons.Outlined.Add
+    val Subtract: ImageVector = Icons.Outlined.Remove
+    val Pause: ImageVector = Icons.Outlined.Pause
+    val CheckmarkCircle: ImageVector = Icons.Outlined.CheckCircle
+
+    /** Cat-Tastic Drinks — beverage cup. */
+    val DrinkCoffee: ImageVector = SfCup
+
+    /** Cat-Tastic Bites — snack / cookie plate. */
+    val FoodBites: ImageVector = SfCookie
+
+    /** Combos & Packages — grouped gift stack. */
+    val ComboPackage: ImageVector = SfGiftStack
+
+    /** @deprecated Use [FoodBites] or [categoryIcon]. */
+    val Food: ImageVector = FoodBites
+
+    fun categoryIcon(categoryId: String): ImageVector = when (categoryId) {
+        "cat_drinks" -> DrinkCoffee
+        "combos" -> ComboPackage
+        else -> FoodBites
+    }
 }
 
 @Composable

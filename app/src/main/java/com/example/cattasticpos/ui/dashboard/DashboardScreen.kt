@@ -473,7 +473,7 @@ fun ItemCard(item: Item, isLowStock: Boolean, onClick: () -> Unit, modifier: Mod
                     contentAlignment = Alignment.Center
                 ) {
                     FluentIcon(
-                        imageVector = if (item.categoryId == "cat_drinks") FluentIcons.DrinkCoffee else FluentIcons.Food,
+                        imageVector = FluentIcons.categoryIcon(item.categoryId),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         size = 20.dp
