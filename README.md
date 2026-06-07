@@ -1,57 +1,74 @@
-# 🐾 Brew ni Cat POS 
-## *Bionic Glass Architecture & Production Milestone*
+# 🐾 Brew ni Cat POS
+## *Bionic Glass UI, Live Orders & Editable Receipts*
 
 <p align="center">
   <img src="app/src/main/res/drawable/logo.png" width="250" alt="Brew-Ni-Cat Logo">
 </p>
 
-**Brew ni Cat POS** is a high-performance, offline-first Android Point-of-Sale system built for modern retail. Featuring a sophisticated "Bionic Glass" design language and a robust Room v11 database backbone, this application delivers a premium, adaptive experience for fast-paced, cat-themed retail environments.
+**Brew ni Cat POS** is a high-performance, offline-first Android Point-of-Sale system built for modern retail. It pairs a **Bionic Glass** design language with a **Room v12** data layer, reactive Kotlin Flow pipelines, and human-readable receipt numbers—delivering a premium, adaptive experience for fast-paced, cat-themed retail environments.
 
 ---
 
 ## 🚀 What's New in v1.1.0
-This release marks a major production milestone, transitioning the core into a reactive, adaptive, and fully un-hardcoded architecture:
 
-* **Bionic Glass Architecture:** Implemented a system-wide adaptive glassmorphism design language, featuring smooth `iOSSpringSpec` physics, nested scrolling scaffold animations, and adaptive layouts for mobile and tablet parity.
-* **Reactive Data Pipeline:** Migrated from one-shot fetches to a real-time reactive stream using Room v11 and Kotlin Flow, ensuring history logs and inventory deducts update instantly.
-* **Dynamic Operations:** Introduced a zero-migration `PaymentConfigJson` wrapper, allowing for real-time management of GCash rosters and cashier profiles without database version bumps.
-* **Responsive Engine:** Fully adaptive storefront catalog that intelligently switches between single-column mobile viewports and dual-pane tablet sidebars.
-* **Timezone-Sanitized Sync:** Precision timestamp mapping ensuring 100% calendar accuracy across Z-reading reporting.
+Production milestone (`versionCode 10100`) bringing the core POS into a reactive, glass-themed, and operationally flexible architecture:
+
+* **Bionic Glass UI:** System-wide adaptive glass surfaces (`AdaptiveGlassDialog`, `AdaptiveGlassCard`) with `iOSSpringSpec` physics, collapsing headers, and complementary dual-tone themes tuned for both dark and light mode.
+* **Styled payment checkout:** Cash/GCash segment chips, rounded inputs, and a primary confirm flow aligned with the glass design system.
+* **Catalog search:** Full-width dashboard search with flat results while typing and grouped category browsing when idle.
+* **Incremental receipt numbers:** Auto-increment order IDs displayed as `Order #0001` on receipts, history, exports, and prints.
+* **Editable receipts:** Open any order from History to change line items, adjust discounts, add menu items, and save—with inventory restored for removed lines and deducted for new ones.
+* **Reactive order history:** Live `observeOrdersPage()` streams replace one-shot fetches; collapsible order cards keep the timeline scannable.
+* **Dynamic operations:** Zero-migration `PaymentConfigJson` for cashier and GCash SIM management from Settings (PIN-protected).
+* **Responsive storefront:** Single-column mobile catalog with overlay checkout; dual-pane catalog + cart on tablets.
+* **Timezone-safe reporting:** UTC/local date-picker mapping for accurate history filters and Z-Reading ranges.
+* **Inventory recipe clarity:** Size-selected BOM editor surfaces inherited base mappings (e.g. cups) alongside size-specific rows.
+
+> **Upgrade note:** v1.1.0 moves orders to Room **v12** with auto-increment IDs. Existing order history may reset on upgrade when the v12 migration runs.
 
 ---
 
 ## 🏗️ Core Architecture
-We prioritize clean, maintainable code using industry-standard patterns:
 
 | Layer | Technology |
 | :--- | :--- |
 | **Language** | Kotlin (Coroutines, Flow) |
 | **UI Toolkit** | Jetpack Compose + Material 3 |
-| **Database** | Room (v11) with Reactive Streams |
-| **Architecture** | MVVM + Repository Pattern |
-| **Physics** | iOS-inspired Spring Dynamics |
+| **Database** | Room (v12) with reactive streams |
+| **Architecture** | MVVM + Repository + Use Cases |
+| **Physics** | iOS-inspired spring dynamics (`iOSSpringSpec`) |
 
 ---
 
 ## 📋 Key Features
 
-* **Adaptive Inventory Engine:** Multi-variant mapping (Sizes + Flavors) for precision Bill of Materials (BOM) management.
-* **Financial Integrity:** Robust Z-Reading generation with detailed tax/expense reporting and live cash flow tracking.
-* **Adaptive UX:** Built-in mobile/tablet responsive viewports with seamless collapsible checkout panels.
-* **Operational Security:** PIN-protected administration and dynamic resource management.
-* **Bluetooth Connectivity:** ESC/POS service for hardware receipt printing.
+* **Adaptive catalog & checkout:** Product config sheets (size/flavor), collapsible cart panel, held-order queues, and discount strategies (None, 5%, 10%, 20%, Free).
+* **Editable receipt workflow:** Post-checkout corrections via `UpdateOrderUseCase` with transactional inventory adjustment.
+* **Adaptive inventory engine:** Multi-variant BOM mapping (sizes + flavors) with flavor-aware checkout deduction.
+* **Financial integrity:** Z-Reading summaries, expense logging, cashier sales breakdown, and export to Downloads.
+* **Order history log:** Real-time paging, date-range filter, receipt share, and void with inventory restoration.
+* **Operational admin:** PIN-protected app settings; direct navigation to History and Inventory from the dashboard.
+* **Bluetooth printing:** ESC/POS service for hardware receipt and Z-Reading output.
 
 ---
 
 ## ⚙️ Setup Instructions
 
-1.  **Clone the Repository:** `git clone https://github.com/RodneeGlenMartin/Brew-ni-Cat-POS.git`
-2.  **Open in Android Studio:** Ensure you are using the latest stable Flamingo/Giraffe build or higher.
-3.  **Sync Gradle:** Allow the project to fetch all dependencies.
-4.  **Deploy:** Click **Run** (`Shift + F10`) to build.
-    * *Note: Ensure you have an active Bluetooth ESC/POS printer paired if you intend to test printing workflows on physical hardware.*
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/RodneeGlenMartin/Brew-ni-Cat-POS.git
+   ```
+2. **Open in Android Studio** — latest stable release recommended.
+3. **Sync Gradle** and wait for dependencies to resolve.
+4. **Run on device or emulator** — **Run** (`Shift + F10`) or:
+   ```bash
+   ./gradlew assembleDebug
+   adb install -r app/build/outputs/apk/debug/app-debug.apk
+   ```
+   *Pair a Bluetooth ESC/POS printer if you plan to test print workflows on physical hardware.*
 
 ---
 
 ## 🛡️ License
+
 MIT License. Copyright (c) 2026 Brew-Ni-Cat Coffee Shop.
