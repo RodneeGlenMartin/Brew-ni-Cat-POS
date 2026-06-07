@@ -21,18 +21,10 @@ import android.content.Context
 import androidx.core.app.ShareCompat
 import com.example.cattasticpos.domain.model.ZReadingSummary
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.EmojiEvents
-import androidx.compose.material.icons.rounded.ExpandLess
-import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.ReceiptLong
-import androidx.compose.material.icons.rounded.Settings
+import com.example.cattasticpos.ui.icons.FluentIcon
+import com.example.cattasticpos.ui.icons.FluentIcons
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
@@ -77,6 +69,7 @@ fun HistoryScreen(
     val totalExpenses by viewModel.totalExpensesState.collectAsState()
     val exportMessage by viewModel.exportMessage.collectAsState()
     val appConfig by viewModel.appConfigState.collectAsState()
+    val cashierSalesToday by viewModel.cashierSalesTodayState.collectAsState()
     val showDateRangeDialog by viewModel.showDateRangeDialog.collectAsState()
     val canLoadMore by viewModel.canLoadMore.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -96,10 +89,10 @@ fun HistoryScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Rounded.History,
+                        FluentIcon(
+                            imageVector = FluentIcons.History,
                             contentDescription = null,
-                            modifier = Modifier.size(22.dp)
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
@@ -110,15 +103,20 @@ fun HistoryScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Go Back"
+                        FluentIcon(
+                            imageVector = FluentIcons.ArrowLeft,
+                            contentDescription = "Go Back",
+                            tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.setShowDateRangeDialog(true) }) {
-                        Icon(imageVector = Icons.Rounded.CalendarMonth, contentDescription = "Filter by Date")
+                        FluentIcon(
+                            imageVector = FluentIcons.Calendar,
+                            contentDescription = "Filter by Date",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -240,7 +238,11 @@ fun HistoryScreen(
                             modifier = Modifier.padding(end = 8.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.Print, contentDescription = "Print Z-Reading", modifier = Modifier.size(16.dp))
+                            FluentIcon(
+                                imageVector = FluentIcons.Print,
+                                contentDescription = "Print Z-Reading",
+                                size = 16.dp
+                            )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Print Z", fontSize = 12.sp)
                         }
@@ -250,17 +252,25 @@ fun HistoryScreen(
                             modifier = Modifier.padding(end = 8.dp),
                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.Download, contentDescription = "Export CSV", modifier = Modifier.size(16.dp))
+                            FluentIcon(
+                                imageVector = FluentIcons.ArrowDownload,
+                                contentDescription = "Export CSV",
+                                size = 16.dp
+                            )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text("Export", fontSize = 12.sp)
                         }
                         
                         IconButton(onClick = { showConfigDialog = true }, modifier = Modifier.size(32.dp)) {
-                            Icon(imageVector = Icons.Rounded.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            FluentIcon(
+                                imageVector = FluentIcons.Settings,
+                                contentDescription = "Settings",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        
-                        Icon(
-                            imageVector = if (isZReadingExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+
+                        FluentIcon(
+                            imageVector = if (isZReadingExpanded) FluentIcons.ChevronUp else FluentIcons.ChevronDown,
                             contentDescription = "Expand/Collapse",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -386,10 +396,10 @@ fun HistoryScreen(
                                         modifier = Modifier.fillMaxWidth(),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.EmojiEvents,
+                                        FluentIcon(
+                                            imageVector = FluentIcons.Trophy,
                                             contentDescription = null,
-                                            modifier = Modifier.size(16.dp),
+                                            size = 16.dp,
                                             tint = MaterialTheme.colorScheme.secondary
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
@@ -519,6 +529,8 @@ fun HistoryScreen(
                     initialFloat = appConfig?.startingCashFloat ?: 500.0,
                     expectedPinHash = appConfig?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
                     cashiers = appConfig?.cashiers.orEmpty(),
+                    activeCashierId = appConfig?.activeCashierId,
+                    cashierSalesToday = cashierSalesToday,
                     gcashAccounts = appConfig?.gcashAccounts.orEmpty(),
                     initialThemeAccentId = appConfig?.themeAccentId ?: AppThemeAccent.DEFAULT_ID,
                     onDismiss = { showConfigDialog = false },
@@ -527,6 +539,7 @@ fun HistoryScreen(
                         showConfigDialog = false
                     },
                     onThemeAccentChange = { viewModel.updateThemeAccent(it) },
+                    onSelectActiveCashier = { viewModel.selectActiveCashier(it) },
                     onAddCashier = { viewModel.addCashier(it) },
                     onRemoveCashier = { viewModel.removeCashier(it) },
                     onAddGcashAccount = { viewModel.addGcashAccount(it) },
@@ -618,22 +631,21 @@ fun OrderHistoryCard(
                             onClick = onShare,
                             modifier = Modifier.size(24.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
+                            FluentIcon(
+                                imageVector = FluentIcons.Share,
                                 contentDescription = "Share Receipt",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(16.dp)
+                                size = 16.dp
                             )
                         }
                         IconButton(
                             onClick = onDelete,
                             modifier = Modifier.size(24.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
+                            FluentIcon(
+                                imageVector = FluentIcons.Delete,
                                 contentDescription = "Delete Order",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
+                                size = 16.dp,
+                                tint = MaterialTheme.colorScheme.error
                             )
                         }
                     }
@@ -776,11 +788,14 @@ fun EditConfigDialog(
     initialFloat: Double,
     expectedPinHash: String,
     cashiers: List<Cashier>,
+    activeCashierId: String?,
+    cashierSalesToday: Map<String, Double>,
     gcashAccounts: List<GcashAccount>,
     initialThemeAccentId: String,
     onDismiss: () -> Unit,
     onSave: (Double, Double, String) -> Unit,
     onThemeAccentChange: (String) -> Unit,
+    onSelectActiveCashier: (String) -> Unit,
     onAddCashier: (String) -> Unit,
     onRemoveCashier: (String) -> Unit,
     onAddGcashAccount: (String) -> Unit,
@@ -890,15 +905,16 @@ fun EditConfigDialog(
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                ConfigListSection(
-                    title = "Cashiers",
+                CashierRosterSection(
+                    cashiers = cashiers,
+                    activeCashierId = activeCashierId,
+                    salesByCashier = cashierSalesToday,
                     expanded = cashiersExpanded,
                     onToggle = { cashiersExpanded = !cashiersExpanded },
-                    items = cashiers.map { it.name },
-                    onRemove = { index -> onRemoveCashier(cashiers[index].id) },
+                    onSelect = onSelectActiveCashier,
+                    onRemove = onRemoveCashier,
                     newValue = newCashierName,
                     onNewValueChange = { newCashierName = it },
-                    addLabel = "Cashier Name",
                     onAdd = {
                         onAddCashier(newCashierName)
                         newCashierName = ""
@@ -964,6 +980,106 @@ fun EditConfigDialog(
 }
 
 @Composable
+private fun CashierRosterSection(
+    cashiers: List<Cashier>,
+    activeCashierId: String?,
+    salesByCashier: Map<String, Double>,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    onSelect: (String) -> Unit,
+    onRemove: (String) -> Unit,
+    newValue: String,
+    onNewValueChange: (String) -> Unit,
+    onAdd: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text("Cashiers", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        FluentIcon(
+            imageVector = if (expanded) FluentIcons.ChevronUp else FluentIcons.ChevronDown,
+            contentDescription = null
+        )
+    }
+
+    AnimatedVisibility(visible = expanded) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            cashiers.forEach { cashier ->
+                val sales = salesByCashier[cashier.id] ?: 0.0
+                val isActive = cashier.id == activeCashierId
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(cashier.id) }
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = isActive,
+                        onClick = { onSelect(cashier.id) }
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "${cashier.name} (₱${String.format("%.0f", sales)} sales)",
+                            fontSize = 13.sp,
+                            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                            color = if (isActive) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            }
+                        )
+                        if (isActive) {
+                            Text(
+                                text = "Active operator",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
+                            )
+                        }
+                    }
+                    if (isActive) {
+                        FluentIcon(
+                            imageVector = FluentIcons.CheckmarkCircle,
+                            contentDescription = "Active cashier",
+                            size = 18.dp,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                    }
+                    TextButton(onClick = { onRemove(cashier.id) }) {
+                        Text("Remove", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = newValue,
+                    onValueChange = onNewValueChange,
+                    label = { Text("Cashier Name") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                Button(
+                    onClick = onAdd,
+                    enabled = newValue.isNotBlank(),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text("Add")
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun ConfigListSection(
     title: String,
     expanded: Boolean,
@@ -983,8 +1099,8 @@ private fun ConfigListSection(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        Icon(
-            imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+        FluentIcon(
+            imageVector = if (expanded) FluentIcons.ChevronUp else FluentIcons.ChevronDown,
             contentDescription = null
         )
     }

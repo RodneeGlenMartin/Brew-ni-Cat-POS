@@ -78,8 +78,11 @@ class DashboardViewModel(
                 val cashiers = config?.cashiers.orEmpty()
                 val gcashAccounts = config?.gcashAccounts.orEmpty()
                 _uiState.update { state ->
-                    val selected = state.selectedCashierId.ifBlank {
-                        cashiers.firstOrNull()?.id ?: "cashier_default"
+                    val activeFromConfig = config?.activeCashierId
+                    val selected = when {
+                        !activeFromConfig.isNullOrBlank() && cashiers.any { it.id == activeFromConfig } -> activeFromConfig
+                        state.selectedCashierId.isNotBlank() && cashiers.any { it.id == state.selectedCashierId } -> state.selectedCashierId
+                        else -> cashiers.firstOrNull()?.id ?: "cashier_default"
                     }
                     val defaultGcash = gcashAccounts.firstOrNull()?.label.orEmpty()
                     val paymentState = if (state.showPaymentDialog) {
@@ -301,6 +304,9 @@ class DashboardViewModel(
 
     fun selectCashier(cashierId: String) {
         _uiState.update { it.copy(selectedCashierId = cashierId) }
+        viewModelScope.launch {
+            appConfigRepository.updateActiveCashier(cashierId)
+        }
     }
 
     fun resumeOrder(queueId: String) {

@@ -12,9 +12,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.rounded.ReceiptLong
+import com.example.cattasticpos.ui.icons.FluentIcon
+import com.example.cattasticpos.ui.icons.FluentIcons
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -241,10 +240,9 @@ fun ReceiptPreviewDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = {
-            Icon(
-                imageVector = Icons.Rounded.ReceiptLong,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
+            FluentIcon(
+                imageVector = FluentIcons.Receipt,
+                contentDescription = null
             )
         },
         title = { Text("Receipt Preview", fontWeight = FontWeight.Bold) },
@@ -259,10 +257,11 @@ fun ReceiptPreviewDialog(
         },
         confirmButton = {
             Button(onClick = onShare) {
-                Icon(
-                    imageVector = Icons.Default.Share,
+                FluentIcon(
+                    imageVector = FluentIcons.Share,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    size = 18.dp,
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text("Share")

@@ -99,6 +99,15 @@ class OrderRepositoryImpl(
         return orderDao.getGcashSalesForDay(startOfDay, endOfDay)
     }
 
+    override fun observeCashierSalesForDay(startOfDay: Long, endOfDay: Long): Flow<Map<String, Double>> {
+        return orderDao.observeCashierSalesForDay(startOfDay, endOfDay).map { rows ->
+            rows.mapNotNull { row ->
+                val id = row.cashierId ?: return@mapNotNull null
+                id to (row.totalSales ?: 0.0)
+            }.toMap()
+        }
+    }
+
     override suspend fun deleteOrder(orderId: String) {
         database.withTransaction {
             orderDao.deleteOrderItemsForOrder(orderId)

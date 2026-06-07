@@ -10,4 +10,5 @@ interface AppConfigRepository {
     suspend fun updateConfig(targetSales: Double, startingCashFloat: Double, pinHash: String)
     suspend fun updatePaymentConfig(cashiers: List<Cashier>, gcashAccounts: List<GcashAccount>)
     suspend fun updateThemeAccent(themeAccentId: String)
+    suspend fun updateActiveCashier(activeCashierId: String)
 }

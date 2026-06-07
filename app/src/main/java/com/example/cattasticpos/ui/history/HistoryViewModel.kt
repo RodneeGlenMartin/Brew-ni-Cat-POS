@@ -182,6 +182,10 @@ class HistoryViewModel(
     val appConfigState: StateFlow<AppConfig?> = appConfigRepository.getAppConfig()
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    val cashierSalesTodayState: StateFlow<Map<String, Double>> =
+        orderRepository.observeCashierSalesForDay(todayStart, todayEnd)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
     fun updateConfig(targetSales: Double, startingCashFloat: Double, pinHash: String) {
         viewModelScope.launch {
             appConfigRepository.updateConfig(targetSales, startingCashFloat, pinHash)
@@ -208,6 +212,12 @@ class HistoryViewModel(
             val updated = config.cashiers.filterNot { it.id == cashierId }
             if (updated.isEmpty()) return@launch
             appConfigRepository.updatePaymentConfig(updated, config.gcashAccounts)
+        }
+    }
+
+    fun selectActiveCashier(cashierId: String) {
+        viewModelScope.launch {
+            appConfigRepository.updateActiveCashier(cashierId)
         }
     }
 

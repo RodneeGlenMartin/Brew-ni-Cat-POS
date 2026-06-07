@@ -12,7 +12,8 @@ data class AppConfig(
     val pinHash: String,
     val cashiers: List<Cashier> = Cashier.defaultCashiers(),
     val gcashAccounts: List<GcashAccount> = GcashAccount.defaultAccounts(),
-    val themeAccentId: String = AppThemeAccent.DEFAULT_ID
+    val themeAccentId: String = AppThemeAccent.DEFAULT_ID,
+    val activeCashierId: String? = null
 ) {
     companion object {
         const val DEFAULT_PIN_HASH = "otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0="

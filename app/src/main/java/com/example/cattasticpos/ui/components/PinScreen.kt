@@ -2,8 +2,8 @@ package com.example.cattasticpos.ui.components
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import com.example.cattasticpos.ui.icons.FluentIcon
+import com.example.cattasticpos.ui.icons.FluentIcons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,7 +46,10 @@ fun PinScreen(
                 title = { Text("Enter PIN") },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Cancel")
+                        FluentIcon(
+                            imageVector = FluentIcons.ArrowLeft,
+                            contentDescription = "Cancel"
+                        )
                     }
                 }
             )

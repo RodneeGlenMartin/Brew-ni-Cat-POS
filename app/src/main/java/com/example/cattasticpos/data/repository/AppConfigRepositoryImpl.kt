@@ -30,11 +30,7 @@ class AppConfigRepositoryImpl(
                 targetSales = targetSales,
                 startingCashFloat = startingCashFloat,
                 pinHash = pinHash,
-                cashiersJson = PaymentConfigJson.toStoredJson(
-                    paymentConfig.cashiers,
-                    paymentConfig.gcashAccounts,
-                    paymentConfig.themeAccentId
-                )
+                cashiersJson = paymentConfig.toStoredJson()
             )
         )
     }
@@ -42,6 +38,8 @@ class AppConfigRepositoryImpl(
     override suspend fun updatePaymentConfig(cashiers: List<Cashier>, gcashAccounts: List<GcashAccount>) {
         val existing = dao.getAppConfigOnce()
         val paymentConfig = PaymentConfigJson.fromStoredJson(existing?.cashiersJson.orEmpty())
+        val activeId = paymentConfig.activeCashierId?.takeIf { id -> cashiers.any { it.id == id } }
+            ?: cashiers.firstOrNull()?.id
         dao.updateConfig(
             AppConfigEntity(
                 id = 1,
@@ -49,9 +47,10 @@ class AppConfigRepositoryImpl(
                 startingCashFloat = existing?.startingCashFloat ?: 500.0,
                 pinHash = existing?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
                 cashiersJson = PaymentConfigJson.toStoredJson(
-                    cashiers,
-                    gcashAccounts,
-                    paymentConfig.themeAccentId
+                    cashiers = cashiers,
+                    gcashAccounts = gcashAccounts,
+                    themeAccentId = paymentConfig.themeAccentId,
+                    activeCashierId = activeId
                 )
             )
         )
@@ -66,24 +65,48 @@ class AppConfigRepositoryImpl(
                 targetSales = existing?.targetSales ?: 5000.0,
                 startingCashFloat = existing?.startingCashFloat ?: 500.0,
                 pinHash = existing?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
-                cashiersJson = PaymentConfigJson.toStoredJson(
-                    paymentConfig.cashiers,
-                    paymentConfig.gcashAccounts,
-                    themeAccentId
-                )
+                cashiersJson = paymentConfig.copy(themeAccentId = themeAccentId).toStoredJson()
+            )
+        )
+    }
+
+    override suspend fun updateActiveCashier(activeCashierId: String) {
+        val existing = dao.getAppConfigOnce()
+        val paymentConfig = PaymentConfigJson.fromStoredJson(existing?.cashiersJson.orEmpty())
+        if (paymentConfig.cashiers.none { it.id == activeCashierId }) return
+        dao.updateConfig(
+            AppConfigEntity(
+                id = 1,
+                targetSales = existing?.targetSales ?: 5000.0,
+                startingCashFloat = existing?.startingCashFloat ?: 500.0,
+                pinHash = existing?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
+                cashiersJson = paymentConfig.copy(activeCashierId = activeCashierId).toStoredJson()
             )
         )
     }
 
     private fun toAppConfig(entity: AppConfigEntity): AppConfig {
         val paymentConfig = PaymentConfigJson.fromStoredJson(entity.cashiersJson)
+        val resolvedActiveId = paymentConfig.activeCashierId?.takeIf { id ->
+            paymentConfig.cashiers.any { it.id == id }
+        } ?: paymentConfig.cashiers.firstOrNull()?.id
         return AppConfig(
             targetSales = entity.targetSales,
             startingCashFloat = entity.startingCashFloat,
             pinHash = entity.pinHash,
             cashiers = paymentConfig.cashiers,
             gcashAccounts = paymentConfig.gcashAccounts,
-            themeAccentId = paymentConfig.themeAccentId
+            themeAccentId = paymentConfig.themeAccentId,
+            activeCashierId = resolvedActiveId
+        )
+    }
+
+    private fun PaymentConfigJson.toStoredJson(): String {
+        return PaymentConfigJson.toStoredJson(
+            cashiers = cashiers,
+            gcashAccounts = gcashAccounts,
+            themeAccentId = themeAccentId,
+            activeCashierId = activeCashierId
         )
     }
 }

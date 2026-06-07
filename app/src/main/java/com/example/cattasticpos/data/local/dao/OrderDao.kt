@@ -24,6 +24,11 @@ data class TopSellingItemResult(
     val totalQuantity: Int
 )
 
+data class CashierSalesResult(
+    val cashierId: String?,
+    val totalSales: Double?
+)
+
 @Dao
 interface OrderDao {
     @Insert
@@ -83,6 +88,15 @@ interface OrderDao {
 
     @Query("SELECT SUM(total) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND paymentMethod = 'GCASH'")
     fun getGcashSalesForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>
+
+    @Query(
+        """
+        SELECT cashierId, SUM(total) as totalSales FROM orders
+        WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay
+        GROUP BY cashierId
+        """
+    )
+    fun observeCashierSalesForDay(startOfDay: Long, endOfDay: Long): Flow<List<CashierSalesResult>>
 
     @Query("DELETE FROM orders WHERE id = :orderId")
     suspend fun deleteOrderEntity(orderId: String)

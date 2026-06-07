@@ -33,10 +33,8 @@ import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.rounded.AccountBalanceWallet
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Inventory2
-import androidx.compose.material.icons.rounded.Queue
+import com.example.cattasticpos.ui.icons.FluentIcon
+import com.example.cattasticpos.ui.icons.FluentIcons
 import kotlinx.coroutines.launch
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -103,16 +101,32 @@ fun DashboardScreen(
                 },
                 actions = {
                     IconButton(onClick = onNavigateToInventory) {
-                        Icon(imageVector = Icons.Rounded.Inventory2, contentDescription = "Inventory Management")
+                        FluentIcon(
+                            imageVector = FluentIcons.Box,
+                            contentDescription = "Inventory Management",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                     IconButton(onClick = { viewModel.setShowExpenseDialog(true) }) {
-                        Icon(imageVector = Icons.Rounded.AccountBalanceWallet, contentDescription = "Add Expense")
+                        FluentIcon(
+                            imageVector = FluentIcons.Wallet,
+                            contentDescription = "Add Expense",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                     IconButton(onClick = { viewModel.setShowQueuesDialog(true) }) {
-                        Icon(imageVector = Icons.Rounded.Queue, contentDescription = "View Queues")
+                        FluentIcon(
+                            imageVector = FluentIcons.Queue,
+                            contentDescription = "View Queues",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                     IconButton(onClick = { onNavigateToHistory() }) {
-                        Icon(imageVector = Icons.Rounded.History, contentDescription = "History")
+                        FluentIcon(
+                            imageVector = FluentIcons.History,
+                            contentDescription = "History",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -841,10 +855,10 @@ fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDism
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Rounded.Queue,
+                FluentIcon(
+                    imageVector = FluentIcons.Queue,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp)
+                    size = 20.dp
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Held Orders Queue", fontWeight = FontWeight.Bold)
