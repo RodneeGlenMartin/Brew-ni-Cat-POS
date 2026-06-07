@@ -1,7 +1,10 @@
 package com.example.cattasticpos.ui.components.unstyled
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.ui.Alignment
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -42,7 +45,12 @@ fun PosPrimaryButton(
                 LocalContentColor provides contentColor,
                 LocalTextStyle provides MaterialTheme.typography.labelLarge.copy(color = contentColor)
             ) {
-                content()
+                Row(
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    content()
+                }
             }
         }
     )

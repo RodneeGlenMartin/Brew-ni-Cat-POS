@@ -205,8 +205,11 @@ fun InventoryStockTab(
                                     tint = MaterialTheme.colorScheme.onPrimary,
                                     size = 16.dp
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Restock")
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Restock",
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
                             }
                         }
                     }
