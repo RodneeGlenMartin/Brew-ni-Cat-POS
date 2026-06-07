@@ -15,7 +15,6 @@ import com.example.cattasticpos.ui.adaptive.CupertinoSection
 import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
 import com.example.cattasticpos.ui.adaptive.adaptiveNestedScroll
 import com.example.cattasticpos.ui.adaptive.rememberAdaptiveTopBarScrollBehavior
-import com.example.cattasticpos.ui.components.GlassSearchBar
 import com.example.cattasticpos.ui.components.unstyled.PosPrimaryButton
 import com.example.cattasticpos.ui.theme.AdaptiveGlassCard
 import com.example.cattasticpos.ui.theme.AdaptiveGlassDialog
@@ -37,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.example.cattasticpos.domain.model.InventoryItem
 import com.example.cattasticpos.domain.model.RecipeMapping
 import com.example.cattasticpos.domain.model.Item
+import com.example.cattasticpos.domain.usecase.RecipeDeductionResolver
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -149,16 +149,6 @@ fun InventoryStockTab(
     onRestock: (String, Double) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    val filteredItems = remember(searchQuery, inventoryItems) {
-        val query = searchQuery.trim()
-        if (query.isEmpty()) inventoryItems
-        else inventoryItems.filter { item ->
-            item.itemName.contains(query, ignoreCase = true) ||
-                item.unit.contains(query, ignoreCase = true)
-        }
-    }
-
     if (inventoryItems.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No inventory tracked. Click + to add.", color = MaterialTheme.colorScheme.outline)
@@ -168,26 +158,7 @@ fun InventoryStockTab(
             modifier = Modifier.fillMaxSize().padding(16.dp).adaptiveNestedScroll(scrollBehavior),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
-                GlassSearchBar(
-                    query = searchQuery,
-                    onQueryChange = { searchQuery = it },
-                    placeholder = "Search raw materials..."
-                )
-            }
-            if (filteredItems.isEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("No materials match your search.", color = MaterialTheme.colorScheme.outline)
-                    }
-                }
-            } else {
-                items(filteredItems, key = { it.id }) { item ->
+            items(inventoryItems, key = { it.id }) { item ->
                 var amountStr by remember { mutableStateOf("") }
 
                 CupertinoSection {
@@ -254,7 +225,6 @@ fun InventoryStockTab(
                     }
                 }
             }
-            }
         }
     }
 }
@@ -269,29 +239,21 @@ fun ProductRecipesTab(
     onRemoveMapping: (RecipeMapping) -> Unit
 ) {
     var menuDropdownExpanded by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
 
     val selectedMenu = uiState.menuItems.find { it.id == uiState.selectedMenuItemId }
-    val filteredMenuItems = remember(searchQuery, uiState.menuItems) {
-        val query = searchQuery.trim()
-        if (query.isEmpty()) uiState.menuItems
-        else uiState.menuItems.filter { it.name.contains(query, ignoreCase = true) }
+    val recipeTargetGroups = remember(selectedMenu) {
+        selectedMenu?.recipeTargetGroups() ?: emptyList()
     }
-    val recipeTargetGroups = remember(selectedMenu, searchQuery) {
-        selectedMenu?.filteredRecipeTargetGroups(searchQuery) ?: emptyList()
+    val filteredMappings = remember(uiState.currentRecipeMappings, uiState.selectedVariantName) {
+        RecipeDeductionResolver.forRecipeEditorTarget(
+            uiState.currentRecipeMappings,
+            uiState.selectedVariantName
+        )
     }
-    val filteredMappings = remember(uiState.currentRecipeMappings, uiState.selectedVariantName, searchQuery, uiState.inventoryItems) {
-        val variantScoped = uiState.currentRecipeMappings.filter { it.variantName == uiState.selectedVariantName }
-        val query = searchQuery.trim()
-        if (query.isEmpty()) {
-            variantScoped
-        } else {
-            variantScoped.filter { mapping ->
-                uiState.inventoryItems.find { it.id == mapping.inventoryItemId }
-                    ?.itemName
-                    ?.contains(query, ignoreCase = true) == true
-            }
-        }
+    val selectedTargetLabel = remember(uiState.selectedVariantName) {
+        uiState.selectedVariantName?.substringAfter(": ")?.trim()
+            ?.ifEmpty { uiState.selectedVariantName }
+            ?: "All Variants"
     }
     val darkTheme = isSystemInDarkTheme()
     val menuDropdownShape = RoundedCornerShape(12.dp)
@@ -302,13 +264,6 @@ fun ProductRecipesTab(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item {
-            GlassSearchBar(
-                query = searchQuery,
-                onQueryChange = { searchQuery = it },
-                placeholder = "Search menu items, variants, ingredients..."
-            )
-        }
         item {
             AdaptiveGlassCard(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.padding(16.dp)) {
@@ -355,7 +310,7 @@ fun ProductRecipesTab(
                                     shape = menuDropdownShape
                                 )
                         ) {
-                            filteredMenuItems.forEach { menuItem ->
+                            uiState.menuItems.forEach { menuItem ->
                                 DropdownMenuItem(
                                     text = { Text(menuItem.name) },
                                     onClick = {
@@ -397,28 +352,20 @@ fun ProductRecipesTab(
                             isSelected = uiState.selectedVariantName == null,
                             onClick = { onSelectVariant(null) }
                         )
-                        if (recipeTargetGroups.isEmpty() && searchQuery.isNotBlank()) {
+                        recipeTargetGroups.forEach { (groupLabel, targets) ->
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "No variants match your search.",
-                                color = MaterialTheme.colorScheme.outline,
-                                fontSize = 13.sp
+                                text = groupLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
-                        } else {
-                            recipeTargetGroups.forEach { (groupLabel, targets) ->
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = groupLabel,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                            targets.forEach { targetName ->
+                                InventoryVariantTargetRow(
+                                    label = targetName.substringAfter(": ").trim().ifEmpty { targetName },
+                                    isSelected = uiState.selectedVariantName == targetName,
+                                    onClick = { onSelectVariant(targetName) }
                                 )
-                                targets.forEach { targetName ->
-                                    InventoryVariantTargetRow(
-                                        label = targetName.substringAfter(": ").trim().ifEmpty { targetName },
-                                        isSelected = uiState.selectedVariantName == targetName,
-                                        onClick = { onSelectVariant(targetName) }
-                                    )
-                                }
                             }
                         }
                     }
@@ -432,7 +379,14 @@ fun ProductRecipesTab(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Recipe BOM Mappings", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Column {
+                        Text("Recipe BOM Mappings", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(
+                            text = "Target: $selectedTargetLabel",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
                     Button(onClick = onOpenLinkDialog) {
                         Text("+ Link Ingredient")
                     }
@@ -448,10 +402,10 @@ fun ProductRecipesTab(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = if (searchQuery.isNotBlank()) {
-                                "No ingredients match your search."
+                            text = if (uiState.selectedVariantName == null) {
+                                "No base ingredients mapped."
                             } else {
-                                "No ingredients mapped."
+                                "No ingredients mapped for $selectedTargetLabel."
                             },
                             color = MaterialTheme.colorScheme.outline
                         )
@@ -460,6 +414,7 @@ fun ProductRecipesTab(
             } else {
                 items(filteredMappings, key = { it.id }) { mapping ->
                     val inventoryItem = uiState.inventoryItems.find { it.id == mapping.inventoryItemId }
+                    val isInheritedBase = mapping.variantName == null && uiState.selectedVariantName != null
                     AdaptiveGlassCard(modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier
@@ -479,14 +434,23 @@ fun ProductRecipesTab(
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.primary
                                 )
+                                if (isInheritedBase) {
+                                    Text(
+                                        text = "Applies to all sizes & flavors",
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.outline
+                                    )
+                                }
                             }
-                            IconButton(onClick = { onRemoveMapping(mapping) }) {
-                                FluentIcon(
-                                    imageVector = FluentIcons.Delete,
-                                    contentDescription = "Remove",
-                                    tint = MaterialTheme.colorScheme.error,
-                                    size = 24.dp
-                                )
+                            if (!isInheritedBase) {
+                                IconButton(onClick = { onRemoveMapping(mapping) }) {
+                                    FluentIcon(
+                                        imageVector = FluentIcons.Delete,
+                                        contentDescription = "Remove",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        size = 24.dp
+                                    )
+                                }
                             }
                         }
                     }

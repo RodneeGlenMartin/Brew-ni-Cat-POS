@@ -67,6 +67,7 @@ class DashboardViewModel(
                     }
                     state.copy(
                         categories = categories,
+                        allMenuItems = allItems,
                         selectedCategoryId = defaultCatId,
                         menuItems = filterItemsByCategoryId(allItems, defaultCatId)
                     )

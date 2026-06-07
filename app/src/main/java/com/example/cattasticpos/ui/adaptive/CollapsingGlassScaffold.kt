@@ -35,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -200,6 +201,7 @@ fun CollapsingGlassScaffold(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
+                .clipToBounds()
                 .zIndex(2f)
         ) {
             Box(
@@ -261,7 +263,7 @@ fun CollapsingGlassScaffold(
                         .graphicsLayer {
                             alpha = largeTitleAlpha
                             translationY = -collapseProgress * largeTitleShiftPx
-                            clip = false
+                            clip = true
                         }
                 )
             } else {
@@ -275,7 +277,7 @@ fun CollapsingGlassScaffold(
                         .graphicsLayer {
                             alpha = largeTitleAlpha
                             translationY = -collapseProgress * largeTitleShiftPx
-                            clip = false
+                            clip = true
                         },
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 34.sp,

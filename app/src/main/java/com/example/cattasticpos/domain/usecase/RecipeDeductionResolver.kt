@@ -7,6 +7,20 @@ import com.example.cattasticpos.domain.model.RecipeMapping
  * Base mappings (variantName = null) always apply; size and flavor mappings stack additively.
  */
 object RecipeDeductionResolver {
+
+    /** Mappings visible in the recipe editor for the currently selected target chip. */
+    fun forRecipeEditorTarget(
+        mappings: List<RecipeMapping>,
+        selectedVariantName: String?
+    ): List<RecipeMapping> =
+        if (selectedVariantName == null) {
+            mappings.filter { it.variantName == null }
+        } else {
+            mappings.filter { mapping ->
+                mapping.variantName == null || mapping.variantName == selectedVariantName
+            }
+        }
+
     fun resolve(
         mappings: List<RecipeMapping>,
         sizeVariantName: String?,
@@ -15,9 +29,20 @@ object RecipeDeductionResolver {
         mappings.filter { mapping ->
             when (mapping.variantName) {
                 null -> true
-                else ->
-                    (flavor != null && mapping.variantName == flavor) ||
-                        (sizeVariantName != null && mapping.variantName == sizeVariantName)
+                else -> targetMatches(mapping.variantName, sizeVariantName, flavor)
             }
         }
+
+    private fun targetMatches(
+        mappingTarget: String,
+        sizeVariantName: String?,
+        flavor: String?
+    ): Boolean {
+        if (sizeVariantName != null && mappingTarget == sizeVariantName) return true
+        if (flavor == null) return false
+        if (mappingTarget == flavor) return true
+        val cleanMapping = mappingTarget.substringAfter(": ").trim().ifEmpty { mappingTarget }
+        val cleanFlavor = flavor.substringAfter(": ").trim().ifEmpty { flavor }
+        return cleanMapping == cleanFlavor
+    }
 }

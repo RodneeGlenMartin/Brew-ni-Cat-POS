@@ -73,6 +73,8 @@ import com.example.cattasticpos.domain.strategy.FreeOrderDiscountStrategy
 import com.example.cattasticpos.domain.strategy.NoDiscountStrategy
 import com.example.cattasticpos.domain.strategy.PercentageDiscountStrategy
 import com.example.cattasticpos.domain.strategy.FivePercentDiscountStrategy
+import com.example.cattasticpos.ui.components.GlassSearchBar
+import androidx.compose.foundation.layout.widthIn
 import com.example.cattasticpos.ui.components.SleepingCatGraphic
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.cattasticpos.ui.theme.AlabasterPalette
@@ -121,6 +123,8 @@ fun DashboardScreen(
     val cupertino = LocalCupertinoColors.current
     val hazeState = rememberLiquidGlassHazeState()
     val headerState = rememberCollapsingHeaderState()
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
 
     CollapsingGlassScaffold(
         title = "Brew ni Cat",
@@ -135,6 +139,19 @@ fun DashboardScreen(
             )
         },
         actions = {
+            IconButton(onClick = {
+                isSearchExpanded = !isSearchExpanded
+                if (!isSearchExpanded) searchQuery = ""
+            }) {
+                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    FluentIcon(
+                        imageVector = FluentIcons.Search,
+                        contentDescription = "Search menu",
+                        tint = cupertino.accent,
+                        size = 24.dp
+                    )
+                }
+            }
             IconButton(onClick = onNavigateToInventory) {
                 Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
                     FluentIcon(
@@ -211,6 +228,10 @@ fun DashboardScreen(
                         uiState = uiState,
                         hazeState = hazeState,
                         headerState = headerState,
+                        searchQuery = searchQuery,
+                        isSearchExpanded = isSearchExpanded,
+                        onSearchQueryChange = { searchQuery = it },
+                        onSearchExpandedChange = { isSearchExpanded = it },
                         onCategorySelected = { viewModel.selectCategory(it) },
                         onItemClick = { viewModel.showConfigurationSheet(it) },
                         compactGlows = false
@@ -240,6 +261,10 @@ fun DashboardScreen(
                     uiState = uiState,
                     hazeState = hazeState,
                     headerState = headerState,
+                    searchQuery = searchQuery,
+                    isSearchExpanded = isSearchExpanded,
+                    onSearchQueryChange = { searchQuery = it },
+                    onSearchExpandedChange = { isSearchExpanded = it },
                     onCategorySelected = { viewModel.selectCategory(it) },
                     onItemClick = { viewModel.showConfigurationSheet(it) },
                     compactGlows = true
@@ -307,6 +332,10 @@ private fun StorefrontCatalogPane(
     uiState: DashboardUiState,
     hazeState: HazeState,
     headerState: CollapsingHeaderState,
+    searchQuery: String,
+    isSearchExpanded: Boolean,
+    onSearchQueryChange: (String) -> Unit,
+    onSearchExpandedChange: (Boolean) -> Unit,
     onCategorySelected: (String) -> Unit,
     onItemClick: (Item) -> Unit,
     modifier: Modifier = Modifier,
@@ -322,41 +351,224 @@ private fun StorefrontCatalogPane(
             modifier = Modifier.fillMaxSize(),
             compactLayout = compactGlows
         )
+        val isSearching = searchQuery.isNotEmpty()
+        val searchResults = remember(searchQuery, uiState.allMenuItems) {
+            val query = searchQuery.trim()
+            if (query.isEmpty()) {
+                emptyList()
+            } else {
+                uiState.allMenuItems.mapNotNull { it.toCatalogSearchHit(query) }
+            }
+        }
+        val browseGroupedItems = remember(
+            uiState.menuItems,
+            uiState.selectedCategoryId,
+            uiState.categories
+        ) {
+            if (uiState.menuItems.isEmpty()) {
+                emptyList()
+            } else {
+                val categoryName = uiState.categories
+                    .find { it.id == uiState.selectedCategoryId }
+                    ?.name
+                    .orEmpty()
+                listOf(categoryName to uiState.menuItems)
+            }
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
-            CategorySelector(
-                categories = uiState.categories,
-                selectedCategoryId = uiState.selectedCategoryId,
-                onCategorySelected = onCategorySelected,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
-            )
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            if (isSearchExpanded || isSearching) {
+                GlassSearchBar(
+                    query = searchQuery,
+                    onQueryChange = onSearchQueryChange,
+                    placeholder = "Search menu...",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    onClose = {
+                        onSearchQueryChange("")
+                        onSearchExpandedChange(false)
+                    }
+                )
+            }
+            if (!isSearching) {
+                CategorySelector(
+                    categories = uiState.categories,
+                    selectedCategoryId = uiState.selectedCategoryId,
+                    onCategorySelected = onCategorySelected,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .weight(1f)
+                    .fillMaxWidth()
                     .padding(horizontal = 12.dp)
-                    .collapsingNestedScroll(headerState)
+                    .collapsingNestedScroll(headerState),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(uiState.menuItems, key = { it.id }) { item ->
-                    val itemMappings = uiState.recipeMappings.filter { it.menuItemId == item.id }
-                    val isLowStock = if (itemMappings.isEmpty()) {
-                        false
+                if (isSearching) {
+                    if (searchResults.isEmpty()) {
+                        item(key = "search_empty") {
+                            Text(
+                                text = "No menu items match your search.",
+                                color = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.padding(32.dp)
+                            )
+                        }
                     } else {
-                        itemMappings.any { mapping ->
-                            val invItem = uiState.inventory.find { it.id == mapping.inventoryItemId }
-                            invItem != null && invItem.currentStock <= invItem.reorderThreshold
+                        items(
+                            items = searchResults.chunked(2),
+                            key = { row -> "search_${row.joinToString("_") { it.item.id }}" }
+                        ) { rowHits ->
+                            CatalogSearchResultRow(
+                                hits = rowHits,
+                                uiState = uiState,
+                                onItemClick = onItemClick
+                            )
                         }
                     }
-                    ItemCard(
-                        item = item,
-                        isLowStock = isLowStock,
-                        onClick = { onItemClick(item) }
-                    )
+                } else {
+                    if (browseGroupedItems.isEmpty()) {
+                        item(key = "browse_empty") {
+                            Text(
+                                text = "No items in this category.",
+                                color = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.padding(32.dp)
+                            )
+                        }
+                    } else {
+                        browseGroupedItems.forEach { (categoryName, categoryItems) ->
+                            item(key = "header_$categoryName") {
+                                Text(
+                                    text = categoryName,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                                )
+                            }
+                            items(
+                                items = categoryItems.chunked(2),
+                                key = { row -> "browse_${categoryName}_${row.joinToString("_") { it.id }}" }
+                            ) { rowProducts ->
+                                CatalogProductRow(
+                                    products = rowProducts,
+                                    uiState = uiState,
+                                    onItemClick = onItemClick
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+private data class CatalogSearchHit(
+    val item: Item,
+    val matchLabel: String?
+)
+
+@Composable
+private fun CatalogSearchResultRow(
+    hits: List<CatalogSearchHit>,
+    uiState: DashboardUiState,
+    onItemClick: (Item) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        hits.forEach { hit ->
+            val itemMappings = uiState.recipeMappings.filter { it.menuItemId == hit.item.id }
+            val isLowStock = if (itemMappings.isEmpty()) {
+                false
+            } else {
+                itemMappings.any { mapping ->
+                    val invItem = uiState.inventory.find { it.id == mapping.inventoryItemId }
+                    invItem != null && invItem.currentStock <= invItem.reorderThreshold
+                }
+            }
+            ItemCard(
+                item = hit.item,
+                isLowStock = isLowStock,
+                searchMatchLabel = hit.matchLabel,
+                onClick = { onItemClick(hit.item) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (hits.size == 1) {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun CatalogProductRow(
+    products: List<Item>,
+    uiState: DashboardUiState,
+    onItemClick: (Item) -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        products.forEach { item ->
+            val itemMappings = uiState.recipeMappings.filter { it.menuItemId == item.id }
+            val isLowStock = if (itemMappings.isEmpty()) {
+                false
+            } else {
+                itemMappings.any { mapping ->
+                    val invItem = uiState.inventory.find { it.id == mapping.inventoryItemId }
+                    invItem != null && invItem.currentStock <= invItem.reorderThreshold
+                }
+            }
+            ItemCard(
+                item = item,
+                isLowStock = isLowStock,
+                onClick = { onItemClick(item) },
+                modifier = Modifier.weight(1f)
+            )
+        }
+        if (products.size == 1) {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+private fun Item.toCatalogSearchHit(query: String): CatalogSearchHit? {
+    val tokens = query.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+    if (tokens.isEmpty()) return null
+
+    val flavorMatch = flavors.firstOrNull { flavor ->
+        val flavorText = flavor.substringAfter(": ").trim().ifEmpty { flavor }
+        tokens.all { token ->
+            flavor.contains(token, ignoreCase = true) ||
+                flavorText.contains(token, ignoreCase = true)
+        }
+    }
+    if (flavorMatch != null) {
+        val label = flavorMatch.substringAfter(": ").trim().ifEmpty { flavorMatch }
+        return CatalogSearchHit(this, label)
+    }
+
+    val variantMatch = variants.firstOrNull { variant ->
+        tokens.all { token -> variant.name.contains(token, ignoreCase = true) }
+    }?.name
+    if (variantMatch != null) {
+        return CatalogSearchHit(this, variantMatch)
+    }
+
+    if (tokens.all { token -> name.contains(token, ignoreCase = true) }) {
+        return CatalogSearchHit(this, matchLabel = null)
+    }
+
+    return null
 }
 
 @Composable
@@ -614,7 +826,13 @@ fun CategorySelector(categories: List<com.example.cattasticpos.domain.model.Cate
 }
 
 @Composable
-fun ItemCard(item: Item, isLowStock: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun ItemCard(
+    item: Item,
+    isLowStock: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    searchMatchLabel: String? = null
+) {
     ObsidianGlassCard(
         modifier = modifier.fillMaxWidth().height(128.dp),
         onClick = onClick
@@ -646,6 +864,15 @@ fun ItemCard(item: Item, isLowStock: Boolean, onClick: () -> Unit, modifier: Mod
                         overflow = TextOverflow.Ellipsis,
                         lineHeight = 18.sp
                     )
+                    if (!searchMatchLabel.isNullOrBlank()) {
+                        Text(
+                            text = searchMatchLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         "₱${String.format("%.0f", item.startingPrice)}",

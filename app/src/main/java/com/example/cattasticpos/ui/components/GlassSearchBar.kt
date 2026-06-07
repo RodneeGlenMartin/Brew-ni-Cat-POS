@@ -4,7 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,7 +35,9 @@ fun GlassSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     placeholder: String = "Search...",
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+    onClose: (() -> Unit)? = null
 ) {
     val darkTheme = isSystemInDarkTheme()
     val shape = RoundedCornerShape(12.dp)
@@ -41,19 +49,40 @@ fun GlassSearchBar(
         value = query,
         onValueChange = onQueryChange,
         modifier = modifier
-            .fillMaxWidth()
+            .then(if (compact) Modifier.height(40.dp) else Modifier.fillMaxWidth())
             .clip(shape)
             .background(adaptiveGlassBrush(darkTheme))
             .border(1.dp, borderColor, shape),
-        placeholder = { Text(placeholder, color = placeholderColor) },
+        placeholder = {
+            Text(
+                placeholder,
+                color = placeholderColor,
+                style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium
+            )
+        },
         leadingIcon = {
             FluentIcon(
                 imageVector = FluentIcons.Search,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                size = 20.dp
+                size = if (compact) 16.dp else 20.dp
             )
         },
+        trailingIcon = if (onClose != null) {
+            {
+                IconButton(onClick = onClose, modifier = Modifier.size(if (compact) 32.dp else 40.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close search",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(if (compact) 16.dp else 20.dp)
+                    )
+                }
+            }
+        } else {
+            null
+        },
+        textStyle = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
         colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.Transparent,
             unfocusedContainerColor = Color.Transparent,

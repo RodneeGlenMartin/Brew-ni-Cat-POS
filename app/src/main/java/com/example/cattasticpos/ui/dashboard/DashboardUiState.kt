@@ -26,6 +26,7 @@ data class PaymentDialogState(
 
 data class DashboardUiState(
     val categories: List<Category> = emptyList(),
+    val allMenuItems: List<Item> = emptyList(),
     val menuItems: List<Item> = emptyList(),
     val selectedCategoryId: String = "",
     val activeCart: List<CartItem> = emptyList(),
