@@ -51,6 +51,21 @@ class HistoryViewModel(
     val showDateRangeDialog: StateFlow<Boolean> = _showDateRangeDialog.asStateFlow()
     val canLoadMore: StateFlow<Boolean> = _canLoadMore.asStateFlow()
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val firstPageOrders = combine(_startDate, _endDate) { start, end -> start to end }
+        .flatMapLatest { (start, end) ->
+            orderRepository.observeOrdersPage(
+                startDate = start,
+                endDate = end,
+                beforeTimestamp = Long.MAX_VALUE,
+                limit = PAGE_SIZE
+            )
+        }
+
+    val ordersState: StateFlow<List<Order>> = combine(firstPageOrders, _extraOrderPages) { first, extra ->
+        first + extra
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     init {
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, 0)
@@ -81,21 +96,6 @@ class HistoryViewModel(
             }
         }
     }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private val firstPageOrders = combine(_startDate, _endDate) { start, end -> start to end }
-        .flatMapLatest { (start, end) ->
-            orderRepository.observeOrdersPage(
-                startDate = start,
-                endDate = end,
-                beforeTimestamp = Long.MAX_VALUE,
-                limit = PAGE_SIZE
-            )
-        }
-
-    val ordersState: StateFlow<List<Order>> = combine(firstPageOrders, _extraOrderPages) { first, extra ->
-        first + extra
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun loadMoreOrders() {
         if (!_canLoadMore.value) return

@@ -1,6 +1,7 @@
 package com.example.cattasticpos
 
 import android.app.Application
+import androidx.work.Configuration
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -35,17 +36,23 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import java.util.concurrent.TimeUnit
 
-class CattasticPosApp : Application() {
+class CattasticPosApp : Application(), Configuration.Provider {
     
     private val applicationScope = CoroutineScope(SupervisorJob())
 
     lateinit var container: AppContainer
 
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder().build()
+
     override fun onCreate() {
         super.onCreate()
+
+        if (isCrashProcess()) {
+            return
+        }
         
-        if (!isCrashProcess()) {
-            Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
+        Thread.setDefaultUncaughtExceptionHandler { _, throwable ->
                 try {
                     val stackTraceString = Log.getStackTraceString(throwable)
                     val intent = Intent(this, com.example.cattasticpos.ui.CrashActivity::class.java).apply {
@@ -60,7 +67,6 @@ class CattasticPosApp : Application() {
                     System.exit(1)
                 }
             }
-        }
 
         container = AppContainerImpl(this, applicationScope)
         scheduleLowStockChecks()

@@ -110,22 +110,6 @@ fun DashboardScreen(
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            if (uiState.cashiers.isNotEmpty()) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(uiState.cashiers, key = { it.id }) { cashier ->
-                        FilterChip(
-                            selected = cashier.id == uiState.selectedCashierId,
-                            onClick = { viewModel.selectCashier(cashier.id) },
-                            label = { Text(cashier.name, fontSize = 12.sp) }
-                        )
-                    }
-                }
-            }
             if (!uiState.activeTableLabel.isNullOrBlank()) {
                 Text(
                     text = "Label: ${uiState.activeTableLabel}",
