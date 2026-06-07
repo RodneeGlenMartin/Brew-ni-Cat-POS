@@ -9,8 +9,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -163,6 +166,8 @@ fun HistoryScreen(
             ) {
             val context = LocalContext.current
             var isZReadingExpanded by remember { mutableStateOf(false) }
+            var isExpenseTimelineExpanded by remember { mutableStateOf(true) }
+            var isOrderTimelineExpanded by remember { mutableStateOf(true) }
             var startAnimation by remember { mutableStateOf(false) }
 
             LaunchedEffect(Unit) {
@@ -512,44 +517,60 @@ fun HistoryScreen(
                 ) {
                     if (expensesList.isNotEmpty()) {
                         item {
-                            Text("Expense Timeline", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(vertical = 8.dp))
+                            CollapsibleTimelineHeader(
+                                title = "Expense Timeline",
+                                expanded = isExpenseTimelineExpanded,
+                                onToggle = { isExpenseTimelineExpanded = !isExpenseTimelineExpanded }
+                            )
                         }
-                        items(expensesList, key = { "exp_${it.id}" }) { expense ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp)).padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(expense.description, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onErrorContainer)
-                                    Text("By: ${expense.recordedBy}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f))
+                        if (isExpenseTimelineExpanded) {
+                            items(expensesList, key = { "exp_${it.id}" }) { expense ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp)).padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(expense.description, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onErrorContainer)
+                                        Text("By: ${expense.recordedBy}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f))
+                                    }
+                                    Text("- ₱${String.format("%.0f", expense.amount)}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
                                 }
-                                Text("- ₱${String.format("%.0f", expense.amount)}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
                             }
                         }
                         if (orders.isNotEmpty()) {
                             item {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 HorizontalDivider()
-                                Text("Order Timeline", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(vertical = 8.dp))
+                                CollapsibleTimelineHeader(
+                                    title = "Order Timeline",
+                                    expanded = isOrderTimelineExpanded,
+                                    onToggle = { isOrderTimelineExpanded = !isOrderTimelineExpanded }
+                                )
                             }
                         }
                     } else if (orders.isNotEmpty()) {
                         item {
-                            Text("Order Timeline", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(vertical = 8.dp))
+                            CollapsibleTimelineHeader(
+                                title = "Order Timeline",
+                                expanded = isOrderTimelineExpanded,
+                                onToggle = { isOrderTimelineExpanded = !isOrderTimelineExpanded }
+                            )
                         }
                     }
 
-                    items(orders, key = { "order_${it.id}" }) { order ->
-                        OrderHistoryCard(
-                            order = order,
-                            onShare = { shareOrderReceipt(context, order) },
-                            onEdit = { receiptPreviewOrder = order },
-                            onDelete = { pendingVoidOrderId = order.id }
-                        )
+                    if (isOrderTimelineExpanded) {
+                        items(orders, key = { "order_${it.id}" }) { order ->
+                            OrderHistoryCard(
+                                order = order,
+                                onShare = { shareOrderReceipt(context, order) },
+                                onEdit = { receiptPreviewOrder = order },
+                                onDelete = { pendingVoidOrderId = order.id }
+                            )
+                        }
                     }
-                    
-                    if (canLoadMore) {
+
+                    if (isOrderTimelineExpanded && canLoadMore) {
                         item {
                             OutlinedButton(
                                 onClick = { viewModel.loadMoreOrders() },
@@ -685,6 +706,37 @@ fun HistoryScreen(
 }
 
 @Composable
+private fun CollapsibleTimelineHeader(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        FluentIcon(
+            imageVector = if (expanded) FluentIcons.ChevronUp else FluentIcons.ChevronDown,
+            contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            size = 20.dp,
+            useGlassGradient = false
+        )
+    }
+}
+
+@Composable
 fun OrderHistoryCard(
     order: Order,
     onShare: () -> Unit,
@@ -702,6 +754,7 @@ fun OrderHistoryCard(
     var dragOffset by remember(order.id) { mutableFloatStateOf(0f) }
     var isDragging by remember(order.id) { mutableStateOf(false) }
     val displayOffset = if (isDragging) dragOffset else offsetAnim.value
+    val revealProgress = (displayOffset / actionWidthPx).coerceIn(0f, 1f)
 
     fun closeReveal() {
         scope.launch { offsetAnim.animateTo(0f, swipeSnapSpec) }
@@ -714,10 +767,11 @@ fun OrderHistoryCard(
     ) {
         Row(
             modifier = Modifier
-                .align(Alignment.CenterStart)
+                .align(Alignment.CenterEnd)
                 .width(actionWidth)
                 .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f))
+                .graphicsLayer { alpha = revealProgress }
+                .background(MaterialTheme.colorScheme.background)
                 .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly
@@ -751,9 +805,12 @@ fun OrderHistoryCard(
 
         OrderHistoryCardContent(
             order = order,
+            cardShape = cardShape,
             modifier = Modifier
                 .fillMaxWidth()
-                .offset { IntOffset(displayOffset.coerceIn(0f, actionWidthPx).roundToInt(), 0) }
+                .offset {
+                    IntOffset(-displayOffset.coerceIn(0f, actionWidthPx).roundToInt(), 0)
+                }
                 .pointerInput(order.id, actionWidthPx) {
                     detectHorizontalDragGestures(
                         onDragStart = {
@@ -770,7 +827,7 @@ fun OrderHistoryCard(
                         },
                         onHorizontalDrag = { change, dragAmount ->
                             change.consume()
-                            dragOffset = (dragOffset + dragAmount).coerceIn(0f, actionWidthPx)
+                            dragOffset = (dragOffset - dragAmount).coerceIn(0f, actionWidthPx)
                         },
                         onDragEnd = {
                             isDragging = false
@@ -810,9 +867,11 @@ private fun OrderSwipeActionIcon(
 @Composable
 private fun OrderHistoryCardContent(
     order: Order,
+    cardShape: RoundedCornerShape,
     modifier: Modifier = Modifier
 ) {
     var isExpanded by remember(order.id) { mutableStateOf(false) }
+    val darkTheme = isSystemInDarkTheme()
     val dateFormatter = remember {
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     }
@@ -820,18 +879,37 @@ private fun OrderHistoryCardContent(
         dateFormatter.format(Date(order.timestamp))
     }
 
-    ObsidianGlassCard(modifier = modifier) {
+    val cardColor = if (darkTheme) {
+        MaterialTheme.colorScheme.surface
+    } else {
+        MaterialTheme.colorScheme.background
+    }
+    val expandInteractionSource = remember(order.id) { MutableInteractionSource() }
+
+    Surface(
+        modifier = modifier,
+        shape = cardShape,
+        color = cardColor,
+        shadowElevation = if (darkTheme) 0.dp else 2.dp,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (darkTheme) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.06f)
+        )
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { isExpanded = !isExpanded },
+                    .clickable(
+                        interactionSource = expandInteractionSource,
+                        indication = null,
+                        onClick = { isExpanded = !isExpanded }
+                    ),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -857,13 +935,13 @@ private fun OrderHistoryCardContent(
                             Text(
                                 text = "Cashier: ${order.cashierName}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.outline
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         Text(
                             text = dateStr,
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.outline
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

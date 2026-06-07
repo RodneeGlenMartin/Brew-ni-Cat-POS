@@ -1721,29 +1721,62 @@ fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDism
 @Composable
 fun HoldOrderDialog(onHold: (String?) -> Unit, onDismiss: () -> Unit) {
     var tableLabel by remember { mutableStateOf("") }
-    AlertDialog(
+
+    AdaptiveGlassDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Hold Order", fontWeight = FontWeight.Bold) },
-        text = {
-            OutlinedTextField(
-                value = tableLabel,
-                onValueChange = { tableLabel = it },
-                label = { Text("Table / Label (Optional)") },
-                placeholder = { Text("e.g. Table 3, Take-out #5") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+        surfaceAlpha = 0.93f,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FluentIcon(
+                    imageVector = FluentIcons.Pause,
+                    contentDescription = null,
+                    size = 20.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Hold Order", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
         },
         confirmButton = {
-            PosPrimaryButton(onClick = { onHold(tableLabel) }) {
-                Text(
-                    text = "Hold Order",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold
+            PosPrimaryButton(onClick = { onHold(tableLabel.takeIf { it.isNotBlank() }) }) {
+                PosButtonIconLabel(
+                    icon = {
+                        FluentIcon(
+                            imageVector = FluentIcons.Pause,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            size = 18.dp
+                        )
+                    },
+                    label = "Hold Order",
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        content = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Park this order and resume it later from the queue.",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                OutlinedTextField(
+                    value = tableLabel,
+                    onValueChange = { tableLabel = it },
+                    label = { Text("Table / Label (Optional)") },
+                    placeholder = { Text("e.g. Table 3, Take-out #5") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
     )
 }
 
