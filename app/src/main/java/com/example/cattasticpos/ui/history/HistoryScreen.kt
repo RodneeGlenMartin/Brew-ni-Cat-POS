@@ -60,6 +60,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.OrderItem
+import com.example.cattasticpos.domain.model.Expense
+import com.example.cattasticpos.ui.components.GlassSearchBar
 import com.example.cattasticpos.ui.components.SleepingCatGraphic
 import com.example.cattasticpos.ui.theme.ObsidianGlassCard
 import java.text.SimpleDateFormat
@@ -89,6 +91,14 @@ fun HistoryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingVoidOrderId by remember { mutableStateOf<String?>(null) }
     var receiptPreviewOrder by remember { mutableStateOf<Order?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredOrders = remember(orders, searchQuery) {
+        orders.filter { it.matchesHistorySearch(searchQuery) }
+    }
+    val filteredExpenses = remember(expensesList, searchQuery) {
+        expensesList.filter { it.matchesHistorySearch(searchQuery) }
+    }
     
     LaunchedEffect(exportMessage) {
         exportMessage?.let {
@@ -474,7 +484,7 @@ fun HistoryScreen(
                 }
             }
 
-            if (orders.isEmpty()) {
+            if (orders.isEmpty() && expensesList.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -502,11 +512,18 @@ fun HistoryScreen(
                         .weight(1f),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    if (expensesList.isNotEmpty()) {
+                    item {
+                        GlassSearchBar(
+                            query = searchQuery,
+                            onQueryChange = { searchQuery = it },
+                            placeholder = "Search orders, items, payments..."
+                        )
+                    }
+                    if (filteredExpenses.isNotEmpty()) {
                         item {
                             Text("Expense Timeline", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(vertical = 8.dp))
                         }
-                        items(expensesList, key = { "exp_${it.id}" }) { expense ->
+                        items(filteredExpenses, key = { "exp_${it.id}" }) { expense ->
                             Row(
                                 modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp)).padding(12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -519,14 +536,36 @@ fun HistoryScreen(
                                 Text("- ₱${String.format("%.0f", expense.amount)}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
                             }
                         }
+                        if (filteredOrders.isNotEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                HorizontalDivider()
+                                Text("Order Timeline", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(vertical = 8.dp))
+                            }
+                        }
+                    } else if (filteredOrders.isNotEmpty()) {
                         item {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            HorizontalDivider()
                             Text("Order Timeline", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(vertical = 8.dp))
                         }
                     }
-                    
-                    items(orders, key = { "order_${it.id}" }) { order ->
+
+                    if (filteredOrders.isEmpty() && searchQuery.isNotBlank()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No orders or expenses match your search.",
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
+
+                    items(filteredOrders, key = { "order_${it.id}" }) { order ->
                         OrderHistoryCard(
                             order = order,
                             onShare = { receiptPreviewOrder = order },
@@ -1267,5 +1306,26 @@ private fun ConfigListSection(
     }
 }
 
+private fun Order.matchesHistorySearch(query: String): Boolean {
+    val trimmed = query.trim()
+    if (trimmed.isEmpty()) return true
+    return id.contains(trimmed, ignoreCase = true) ||
+        paymentMethod.contains(trimmed, ignoreCase = true) ||
+        discountLabel.contains(trimmed, ignoreCase = true) ||
+        paymentReference?.contains(trimmed, ignoreCase = true) == true ||
+        tableLabel?.contains(trimmed, ignoreCase = true) == true ||
+        cashierId?.contains(trimmed, ignoreCase = true) == true ||
+        items.any { item ->
+            item.itemName.contains(trimmed, ignoreCase = true) ||
+                item.variantName.contains(trimmed, ignoreCase = true) ||
+                item.flavor?.contains(trimmed, ignoreCase = true) == true
+        }
+}
 
+private fun Expense.matchesHistorySearch(query: String): Boolean {
+    val trimmed = query.trim()
+    if (trimmed.isEmpty()) return true
+    return description.contains(trimmed, ignoreCase = true) ||
+        recordedBy.contains(trimmed, ignoreCase = true)
+}
 

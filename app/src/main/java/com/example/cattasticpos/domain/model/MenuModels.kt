@@ -57,4 +57,16 @@ data class Item(
         if (variants.isNotEmpty()) add("Sizes" to variants.map { it.name })
         if (flavors.isNotEmpty()) add("Flavors" to flavors)
     }
+
+    fun filteredRecipeTargetGroups(query: String): List<Pair<String, List<String>>> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) return recipeTargetGroups()
+        return recipeTargetGroups().mapNotNull { (groupLabel, targets) ->
+            val filtered = targets.filter { target ->
+                target.contains(trimmed, ignoreCase = true) ||
+                    target.substringAfter(": ").trim().contains(trimmed, ignoreCase = true)
+            }
+            if (filtered.isEmpty()) null else groupLabel to filtered
+        }
+    }
 }

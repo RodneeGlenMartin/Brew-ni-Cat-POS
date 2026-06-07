@@ -29,6 +29,7 @@ import com.composables.icons.lucide.Pause
 import com.composables.icons.lucide.Plus
 import com.composables.icons.lucide.Printer
 import com.composables.icons.lucide.ReceiptText
+import com.composables.icons.lucide.Search
 import com.composables.icons.lucide.Settings
 import com.composables.icons.lucide.Share2
 import com.composables.icons.lucide.ShoppingBag
@@ -43,6 +44,7 @@ import com.example.cattasticpos.ui.adaptive.glassIconGradient
 object FluentIcons {
     val History: ImageVector = Lucide.History
     val Settings: ImageVector = Lucide.Settings
+    val Search: ImageVector = Lucide.Search
     val Calendar: ImageVector = Lucide.Calendar
     val Box: ImageVector = Lucide.Package
     val Wallet: ImageVector = Lucide.Wallet
