@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Remove
+import com.example.cattasticpos.ui.components.unstyled.PosFilterChip
 import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
 import kotlinx.coroutines.launch
@@ -101,32 +102,44 @@ fun DashboardScreen(
                 },
                 actions = {
                     IconButton(onClick = onNavigateToInventory) {
-                        FluentIcon(
-                            imageVector = FluentIcons.Box,
-                            contentDescription = "Inventory Management",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            FluentIcon(
+                                imageVector = FluentIcons.Box,
+                                contentDescription = "Inventory Management",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                size = 24.dp
+                            )
+                        }
                     }
                     IconButton(onClick = { viewModel.setShowExpenseDialog(true) }) {
-                        FluentIcon(
-                            imageVector = FluentIcons.Wallet,
-                            contentDescription = "Add Expense",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            FluentIcon(
+                                imageVector = FluentIcons.Wallet,
+                                contentDescription = "Add Expense",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                size = 24.dp
+                            )
+                        }
                     }
                     IconButton(onClick = { viewModel.setShowQueuesDialog(true) }) {
-                        FluentIcon(
-                            imageVector = FluentIcons.Queue,
-                            contentDescription = "View Queues",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            FluentIcon(
+                                imageVector = FluentIcons.Queue,
+                                contentDescription = "View Queues",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                size = 24.dp
+                            )
+                        }
                     }
                     IconButton(onClick = { onNavigateToHistory() }) {
-                        FluentIcon(
-                            imageVector = FluentIcons.History,
-                            contentDescription = "History",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            FluentIcon(
+                                imageVector = FluentIcons.History,
+                                contentDescription = "History",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                size = 24.dp
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -390,17 +403,14 @@ fun DashboardScreen(
 // ─────────────────────────────────────────────────────────────
 // Shared Components
 // ─────────────────────────────────────────────────────────────
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategorySelector(categories: List<com.example.cattasticpos.domain.model.Category>, selectedCategoryId: String, onCategorySelected: (String) -> Unit, modifier: Modifier = Modifier) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
         items(categories) { category ->
-            FilterChip(
+            PosFilterChip(
                 selected = category.id == selectedCategoryId,
                 onClick = { onCategorySelected(category.id) },
-                label = { Text(category.name) },
-                colors = FilterChipDefaults.filterChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer),
-                shape = RoundedCornerShape(16.dp)
+                label = category.name
             )
         }
     }
@@ -427,7 +437,12 @@ fun ItemCard(item: Item, isLowStock: Boolean, onClick: () -> Unit, modifier: Mod
                     modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(if (item.categoryId == "cat_drinks") Icons.Default.LocalCafe else Icons.Default.Fastfood, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    FluentIcon(
+                        imageVector = if (item.categoryId == "cat_drinks") FluentIcons.DrinkCoffee else FluentIcons.Food,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        size = 18.dp
+                    )
                 }
                 Column {
                     Text(item.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)

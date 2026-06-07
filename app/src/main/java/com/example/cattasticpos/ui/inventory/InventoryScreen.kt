@@ -6,10 +6,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
+import com.example.cattasticpos.ui.components.unstyled.PosFloatingActionButton
+import com.example.cattasticpos.ui.components.unstyled.PosPrimaryButton
+import com.example.cattasticpos.ui.icons.FluentIcon
+import com.example.cattasticpos.ui.icons.FluentIcons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,7 +38,14 @@ fun InventoryScreen(
                 title = { Text("📦 Inventory & Recipes", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Go Back")
+                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            FluentIcon(
+                                imageVector = FluentIcons.ArrowLeft,
+                                contentDescription = "Go Back",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                size = 24.dp
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -51,8 +58,13 @@ fun InventoryScreen(
         },
         floatingActionButton = {
             if (selectedTabIndex == 0) {
-                FloatingActionButton(onClick = { viewModel.setShowAddRawMaterialDialog(true) }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Raw Material")
+                PosFloatingActionButton(onClick = { viewModel.setShowAddRawMaterialDialog(true) }) {
+                    FluentIcon(
+                        imageVector = FluentIcons.Add,
+                        contentDescription = "Add Raw Material",
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        size = 24.dp
+                    )
                 }
             }
         },
@@ -153,7 +165,12 @@ fun InventoryStockTab(
                                     color = if (item.currentStock <= item.reorderThreshold) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                                 )
                                 IconButton(onClick = { onDelete(item.id) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.error)
+                                    FluentIcon(
+                                        imageVector = FluentIcons.Delete,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        size = 24.dp
+                                    )
                                 }
                             }
                         }
@@ -167,7 +184,7 @@ fun InventoryStockTab(
                                 modifier = Modifier.width(100.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Button(
+                            PosPrimaryButton(
                                 onClick = {
                                     val amt = amountStr.toDoubleOrNull()
                                     if (amt != null && amt > 0) {
@@ -178,7 +195,12 @@ fun InventoryStockTab(
                                 enabled = amountStr.toDoubleOrNull() != null && (amountStr.toDoubleOrNull() ?: 0.0) > 0,
                                 modifier = Modifier.height(50.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                FluentIcon(
+                                    imageVector = FluentIcons.Add,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                    size = 16.dp
+                                )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Restock")
                             }
@@ -301,7 +323,12 @@ fun ProductRecipesTab(
                                 Text("Deduct: ${mapping.deductionQuantity} ${inventoryItem?.unit ?: ""}", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
                             }
                             IconButton(onClick = { onRemoveMapping(mapping) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Remove", tint = MaterialTheme.colorScheme.error)
+                                FluentIcon(
+                                    imageVector = FluentIcons.Delete,
+                                    contentDescription = "Remove",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    size = 24.dp
+                                )
                             }
                         }
                     }

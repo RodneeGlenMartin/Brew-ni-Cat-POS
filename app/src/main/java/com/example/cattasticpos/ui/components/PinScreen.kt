@@ -1,22 +1,23 @@
 package com.example.cattasticpos.ui.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
-import com.example.cattasticpos.ui.icons.FluentIcon
-import com.example.cattasticpos.ui.icons.FluentIcons
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
-
-import com.example.cattasticpos.domain.model.AppConfig
+import androidx.compose.material3.*
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cattasticpos.ui.components.unstyled.PosOutlinedTextField
+import com.example.cattasticpos.ui.components.unstyled.PosPrimaryButton
+import com.example.cattasticpos.ui.config.PinGateViewModel
+import com.example.cattasticpos.ui.icons.FluentIcon
+import com.example.cattasticpos.ui.icons.FluentIcons
+import kotlinx.coroutines.launch
 
 class BulletVisualTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
@@ -33,12 +34,14 @@ class BulletVisualTransformation : VisualTransformation {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PinScreen(
-    expectedPinHash: String,
     onPinSuccess: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    pinGateViewModel: PinGateViewModel = viewModel(factory = PinGateViewModel.Factory)
 ) {
     var pin by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
+    var isVerifying by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -46,10 +49,14 @@ fun PinScreen(
                 title = { Text("Enter PIN") },
                 navigationIcon = {
                     IconButton(onClick = onCancel) {
-                        FluentIcon(
-                            imageVector = FluentIcons.ArrowLeft,
-                            contentDescription = "Cancel"
-                        )
+                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                            FluentIcon(
+                                imageVector = FluentIcons.ArrowLeft,
+                                contentDescription = "Cancel",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                size = 24.dp
+                            )
+                        }
                     }
                 }
             )
@@ -63,21 +70,25 @@ fun PinScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text("Admin Access Required", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                "Admin Access Required",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Spacer(modifier = Modifier.height(24.dp))
-            OutlinedTextField(
+            PosOutlinedTextField(
                 value = pin,
-                onValueChange = { 
-                    if (it.length <= 4) {
-                        pin = it
+                onValueChange = {
+                    val digits = it.filter { char -> char.isDigit() }
+                    if (digits.length <= 4) {
+                        pin = digits
                         isError = false
                     }
                 },
-                label = { Text("PIN") },
+                label = "PIN",
                 isError = isError,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                keyboardType = KeyboardType.NumberPassword,
                 visualTransformation = BulletVisualTransformation(),
-                singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
             if (isError) {
@@ -89,19 +100,24 @@ fun PinScreen(
                 )
             }
             Spacer(modifier = Modifier.height(32.dp))
-            Button(
+            PosPrimaryButton(
                 onClick = {
-                    if (AppConfig.verifyPin(pin, expectedPinHash)) {
-                        onPinSuccess()
-                    } else {
-                        isError = true
-                        pin = ""
+                    scope.launch {
+                        isVerifying = true
+                        val verified = pinGateViewModel.verifyPin(pin)
+                        isVerifying = false
+                        if (verified) {
+                            onPinSuccess()
+                        } else {
+                            isError = true
+                            pin = ""
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = pin.length == 4
+                enabled = pin.length == 4 && !isVerifying
             ) {
-                Text("Verify")
+                Text(if (isVerifying) "Verifying..." else "Verify")
             }
         }
     }

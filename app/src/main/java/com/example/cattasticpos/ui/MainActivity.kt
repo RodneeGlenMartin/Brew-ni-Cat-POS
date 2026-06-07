@@ -29,8 +29,6 @@ import com.example.cattasticpos.ui.history.HistoryViewModel
 import com.example.cattasticpos.ui.inventory.InventoryScreen
 import com.example.cattasticpos.ui.inventory.InventoryViewModel
 import com.example.cattasticpos.ui.components.PinScreen
-import com.example.cattasticpos.ui.config.AppConfigViewModel
-import com.example.cattasticpos.ui.config.AppConfigUiState
 import com.example.cattasticpos.ui.theme.darkColorSchemeFor
 import com.example.cattasticpos.ui.theme.lightColorSchemeFor
 
@@ -94,7 +92,6 @@ class MainActivity : ComponentActivity() {
                     val dashboardViewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory)
                     val historyViewModel: HistoryViewModel = viewModel(factory = HistoryViewModel.Factory)
                     val inventoryViewModel: InventoryViewModel = viewModel(factory = InventoryViewModel.Factory)
-                    val appConfigViewModel: AppConfigViewModel = viewModel(factory = AppConfigViewModel.Factory)
 
                     Crossfade(targetState = currentScreen, label = "ScreenTransition") { screen ->
                         when (screen) {
@@ -106,44 +103,12 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             "pin_history", "pin_inventory" -> {
-                                val configState by appConfigViewModel.uiState.collectAsState()
-                                when (val state = configState) {
-                                    AppConfigUiState.Loading -> {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CircularProgressIndicator()
-                                        }
-                                    }
-                                    is AppConfigUiState.Ready -> {
-                                        PinScreen(
-                                            expectedPinHash = state.config.pinHash,
-                                            onPinSuccess = {
-                                                currentScreen = if (screen == "pin_history") "history" else "inventory"
-                                            },
-                                            onCancel = { currentScreen = "dashboard" }
-                                        )
-                                    }
-                                    is AppConfigUiState.Error -> {
-                                        Column(
-                                            modifier = Modifier.fillMaxSize().padding(24.dp),
-                                            verticalArrangement = Arrangement.Center,
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            Text(state.message, textAlign = TextAlign.Center)
-                                            Spacer(modifier = Modifier.height(16.dp))
-                                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                                Button(onClick = { appConfigViewModel.loadConfig() }) {
-                                                    Text("Retry")
-                                                }
-                                                OutlinedButton(onClick = { currentScreen = "dashboard" }) {
-                                                    Text("Go Back")
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                PinScreen(
+                                    onPinSuccess = {
+                                        currentScreen = if (screen == "pin_history") "history" else "inventory"
+                                    },
+                                    onCancel = { currentScreen = "dashboard" }
+                                )
                             }
                             "history" -> {
                                 HistoryScreen(

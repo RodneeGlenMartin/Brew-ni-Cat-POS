@@ -6,6 +6,7 @@ composeBom = "2024.12.01"
 room = "2.6.1"
 work = "2.9.1"
 coroutines = "1.9.0"
+composeUnstyled = "2.0.0"
 coreKtx = "1.12.0"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
@@ -38,6 +39,12 @@ work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version
 
 # Coroutines
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+
+# Compose Unstyled
+compose-unstyled-theming = { group = "com.composables", name = "composeunstyled-theming", version.ref = "composeUnstyled" }
+compose-unstyled-button = { group = "com.composables", name = "composeunstyled-button", version.ref = "composeUnstyled" }
+compose-unstyled-text-field = { group = "com.composables", name = "composeunstyled-text-field", version.ref = "composeUnstyled" }
+compose-unstyled-platformtheme = { group = "com.composables", name = "composeunstyled-platformtheme", version.ref = "composeUnstyled" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

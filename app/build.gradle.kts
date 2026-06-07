@@ -71,4 +71,10 @@ dependencies {
 
     // WorkManager
     implementation(libs.work.runtime.ktx)
+
+    // Compose Unstyled (requires Kotlin 2.3+ KSP — wrappers in ui/components/unstyled until toolchain catches up)
+    // implementation(libs.compose.unstyled.theming)
+    // implementation(libs.compose.unstyled.button)
+    // implementation(libs.compose.unstyled.text.field)
+    // implementation(libs.compose.unstyled.platformtheme)
 }
