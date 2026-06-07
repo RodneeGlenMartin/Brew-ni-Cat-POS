@@ -234,8 +234,8 @@ fun ProductRecipesTab(
         var variantDropdownExpanded by remember { mutableStateOf(false) }
 
         val selectedMenu = uiState.menuItems.find { it.id == uiState.selectedMenuItemId }
-        val variants = remember(selectedMenu) {
-            selectedMenu?.variants?.map { it.name } ?: emptyList()
+        val recipeTargetGroups = remember(selectedMenu) {
+            selectedMenu?.recipeTargetGroups() ?: emptyList()
         }
 
         ExposedDropdownMenuBox(
@@ -273,7 +273,9 @@ fun ProductRecipesTab(
                 onExpandedChange = { variantDropdownExpanded = it }
             ) {
                 OutlinedTextField(
-                    value = uiState.selectedVariantName ?: "All Variants (Base Item)",
+                    value = uiState.selectedVariantName?.let { name ->
+                        name.substringAfter(": ").trim().ifEmpty { name }
+                    } ?: "All Variants (Base Item)",
                     onValueChange = {},
                     readOnly = true,
                     modifier = Modifier.fillMaxWidth().menuAnchor(),
@@ -290,14 +292,33 @@ fun ProductRecipesTab(
                             variantDropdownExpanded = false
                         }
                     )
-                    variants.forEach { vName ->
+                    recipeTargetGroups.forEach { (groupLabel, targets) ->
                         DropdownMenuItem(
-                            text = { Text(vName) },
-                            onClick = {
-                                onSelectVariant(vName)
-                                variantDropdownExpanded = false
-                            }
+                            text = {
+                                Text(
+                                    groupLabel,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            onClick = {},
+                            enabled = false
                         )
+                        targets.forEach { targetName ->
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        targetName.substringAfter(": ").trim().ifEmpty { targetName },
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                },
+                                onClick = {
+                                    onSelectVariant(targetName)
+                                    variantDropdownExpanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.cattasticpos.CattasticPosApp
+import com.example.cattasticpos.domain.model.Item
 import com.example.cattasticpos.domain.model.RecipeMapping
 import com.example.cattasticpos.domain.repository.RecipeRepository
 import com.example.cattasticpos.domain.repository.InventoryRepository
@@ -86,7 +87,7 @@ class InventoryViewModel(
         _uiState.update { it.copy(selectedVariantName = variantName) }
     }
 
-
+    fun recipeTargetGroupsFor(item: Item): List<Pair<String, List<String>>> = item.recipeTargetGroups()
 
     fun linkIngredient(inventoryItemId: String, deductionQuantity: Double) {
         val state = _uiState.value

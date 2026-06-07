@@ -48,4 +48,13 @@ data class Item(
                 }
             }
         }
+
+    /** All recipe-mapping targets: size variant names plus flavor option strings. */
+    fun allRecipeTargets(): List<String> = variants.map { it.name } + flavors
+
+    /** Grouped recipe-mapping targets for inventory UI (sizes vs flavors). */
+    fun recipeTargetGroups(): List<Pair<String, List<String>>> = buildList {
+        if (variants.isNotEmpty()) add("Sizes" to variants.map { it.name })
+        if (flavors.isNotEmpty()) add("Flavors" to flavors)
+    }
 }
