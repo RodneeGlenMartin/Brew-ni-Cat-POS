@@ -186,7 +186,11 @@ fun CupertinoSegmentChip(
     val cupertino = LocalCupertinoColors.current
     val darkTheme = isSystemInDarkTheme()
     val shape = RoundedCornerShape(14.dp)
-    val fill = if (selected) cupertino.accent.copy(alpha = if (darkTheme) 0.1f else 0.12f) else adaptiveGlassFill(darkTheme)
+    val fill = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
+    } else {
+        adaptiveGlassFill(darkTheme)
+    }
     val borderBrush = if (selected) {
         neonSelectionBrush(cupertino.accent)
     } else if (darkTheme) {

@@ -2,6 +2,7 @@ package com.example.cattasticpos.ui.dashboard
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -40,7 +41,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import com.example.cattasticpos.ui.adaptive.CupertinoSection
+import com.example.cattasticpos.ui.adaptive.BionicHaptic
 import com.example.cattasticpos.ui.adaptive.CupertinoSegmentChip
+import com.example.cattasticpos.ui.adaptive.rememberBionicHaptic
 import com.example.cattasticpos.ui.components.unstyled.PosFilterChip
 import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
@@ -78,6 +81,7 @@ import com.example.cattasticpos.ui.components.unstyled.PosPrimaryButton
 import com.example.cattasticpos.ui.theme.AdaptiveAmbientGlows
 import com.example.cattasticpos.ui.theme.AdaptiveGlassDialog
 import com.example.cattasticpos.ui.theme.AdaptiveGlassCard
+import com.example.cattasticpos.ui.theme.adaptiveGlassBrush
 import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassContentColor
 import com.example.cattasticpos.ui.theme.ObsidianGlassCard
@@ -1032,11 +1036,42 @@ private fun VariantOptionRow(
     } else {
         adaptiveBodyMuted(darkTheme)
     }
+    val optionShape = RoundedCornerShape(16.dp)
+    val performHaptic = rememberBionicHaptic()
 
-    AdaptiveGlassCard(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-        selected = isSelected,
-        onClick = onSelect
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .clip(optionShape)
+            .then(
+                if (isSelected) {
+                    Modifier.background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                        shape = optionShape
+                    )
+                } else {
+                    Modifier.background(
+                        brush = adaptiveGlassBrush(darkTheme),
+                        shape = optionShape
+                    )
+                }
+            )
+            .border(
+                width = 1.dp,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else if (darkTheme) {
+                    Color.White.copy(alpha = 0.05f)
+                } else {
+                    Color.Black.copy(alpha = 0.05f)
+                },
+                shape = optionShape
+            )
+            .clickable {
+                performHaptic(BionicHaptic.Selection)
+                onSelect()
+            }
     ) {
         Row(
             modifier = Modifier

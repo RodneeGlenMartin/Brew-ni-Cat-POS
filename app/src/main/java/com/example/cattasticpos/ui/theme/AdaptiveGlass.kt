@@ -316,7 +316,7 @@ fun AdaptiveGlassSurface(
         else -> glassBrush
     }
     val fillColor: Color? = when {
-        selected -> accent.copy(alpha = if (darkTheme) 0.1f else 0.12f)
+        selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.20f)
         dialogMode && surfaceAlpha != null -> MaterialTheme.colorScheme.surface.copy(alpha = surfaceAlpha)
         else -> null
     }
