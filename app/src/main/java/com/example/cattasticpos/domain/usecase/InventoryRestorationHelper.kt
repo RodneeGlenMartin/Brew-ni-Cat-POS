@@ -15,6 +15,8 @@ object InventoryRestorationHelper {
             restoreComponents(
                 menuItemId = cartItem.item.id,
                 variantId = cartItem.variant.id,
+                sizeVariantName = cartItem.variant.name,
+                flavor = cartItem.flavor,
                 quantity = cartItem.quantity,
                 recipeRepository = recipeRepository,
                 inventoryRepository = inventoryRepository
@@ -31,6 +33,8 @@ object InventoryRestorationHelper {
             restoreComponents(
                 menuItemId = orderItem.itemId,
                 variantId = orderItem.variantId,
+                sizeVariantName = orderItem.variantName,
+                flavor = orderItem.flavor,
                 quantity = orderItem.quantity,
                 recipeRepository = recipeRepository,
                 inventoryRepository = inventoryRepository
@@ -41,13 +45,25 @@ object InventoryRestorationHelper {
     private suspend fun restoreComponents(
         menuItemId: String,
         variantId: String,
+        sizeVariantName: String,
+        flavor: String?,
         quantity: Int,
         recipeRepository: RecipeRepository,
         inventoryRepository: InventoryRepository
     ) {
-        val components = ComboBundleResolver.expand(menuItemId, variantId, quantity)
+        val components = ComboBundleResolver.expand(
+            menuItemId = menuItemId,
+            variantId = variantId,
+            sizeVariantName = sizeVariantName,
+            flavor = flavor,
+            orderQuantity = quantity
+        )
         components.forEach { component ->
-            val mappings = recipeRepository.getMappingsForCheckout(component.menuItemId, component.variantName)
+            val mappings = recipeRepository.resolveCheckoutMappings(
+                component.menuItemId,
+                component.sizeVariantName,
+                component.flavor
+            )
             mappings.forEach { mapping ->
                 val restoreAmount = mapping.deductionQuantity * component.quantity
                 if (restoreAmount > 0) {

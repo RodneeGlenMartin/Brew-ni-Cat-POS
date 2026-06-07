@@ -62,15 +62,12 @@ class CheckoutUseCase(
                 orderRepository.saveOrder(order)
                 
                 items.forEach { cartItem ->
-                    val components = ComboBundleResolver.expand(
-                        cartItem.item.id,
-                        cartItem.variant.id,
-                        cartItem.quantity
-                    )
+                    val components = ComboBundleResolver.expandFromCartItem(cartItem)
                     components.forEach { component ->
-                        val mappings = recipeRepository.getMappingsForCheckout(
+                        val mappings = recipeRepository.resolveCheckoutMappings(
                             component.menuItemId,
-                            component.variantName
+                            component.sizeVariantName,
+                            component.flavor
                         )
                         mappings.forEach { mapping ->
                             val totalDeduction = mapping.deductionQuantity * component.quantity

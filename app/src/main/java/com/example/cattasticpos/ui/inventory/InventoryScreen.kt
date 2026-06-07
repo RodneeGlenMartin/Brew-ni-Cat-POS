@@ -1,6 +1,8 @@
 package com.example.cattasticpos.ui.inventory
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,13 +16,19 @@ import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
 import com.example.cattasticpos.ui.adaptive.adaptiveNestedScroll
 import com.example.cattasticpos.ui.adaptive.rememberAdaptiveTopBarScrollBehavior
 import com.example.cattasticpos.ui.components.unstyled.PosPrimaryButton
+import com.example.cattasticpos.ui.theme.AdaptiveGlassCard
 import com.example.cattasticpos.ui.theme.AdaptiveGlassDialog
+import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
+import com.example.cattasticpos.ui.theme.adaptiveGlassBrush
 import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -229,127 +237,179 @@ fun ProductRecipesTab(
     onOpenLinkDialog: () -> Unit,
     onRemoveMapping: (RecipeMapping) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        var menuDropdownExpanded by remember { mutableStateOf(false) }
-        var variantDropdownExpanded by remember { mutableStateOf(false) }
+    var menuDropdownExpanded by remember { mutableStateOf(false) }
 
-        val selectedMenu = uiState.menuItems.find { it.id == uiState.selectedMenuItemId }
-        val recipeTargetGroups = remember(selectedMenu) {
-            selectedMenu?.recipeTargetGroups() ?: emptyList()
-        }
+    val selectedMenu = uiState.menuItems.find { it.id == uiState.selectedMenuItemId }
+    val recipeTargetGroups = remember(selectedMenu) {
+        selectedMenu?.recipeTargetGroups() ?: emptyList()
+    }
+    val filteredMappings = remember(uiState.currentRecipeMappings, uiState.selectedVariantName) {
+        uiState.currentRecipeMappings.filter { it.variantName == uiState.selectedVariantName }
+    }
+    val darkTheme = isSystemInDarkTheme()
+    val menuDropdownShape = RoundedCornerShape(12.dp)
 
-        ExposedDropdownMenuBox(
-            expanded = menuDropdownExpanded,
-            onExpandedChange = { menuDropdownExpanded = it }
-        ) {
-            OutlinedTextField(
-                value = selectedMenu?.name ?: "Select Menu Item",
-                onValueChange = {},
-                readOnly = true,
-                modifier = Modifier.fillMaxWidth().menuAnchor(),
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuDropdownExpanded) }
-            )
-            ExposedDropdownMenu(
-                expanded = menuDropdownExpanded,
-                onDismissRequest = { menuDropdownExpanded = false }
-            ) {
-                uiState.menuItems.forEach { item ->
-                    DropdownMenuItem(
-                        text = { Text(item.name) },
-                        onClick = {
-                            onSelectMenu(item.id)
-                            menuDropdownExpanded = false
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            AdaptiveGlassCard(modifier = Modifier.fillMaxWidth()) {
+                Box(modifier = Modifier.padding(16.dp)) {
+                    ExposedDropdownMenuBox(
+                        expanded = menuDropdownExpanded,
+                        onExpandedChange = { menuDropdownExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = selectedMenu?.name ?: "Select Menu Item",
+                            onValueChange = {},
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuDropdownExpanded)
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                disabledContainerColor = Color.Transparent,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                unfocusedBorderColor = if (darkTheme) {
+                                    Color.White.copy(alpha = 0.12f)
+                                } else {
+                                    Color.Black.copy(alpha = 0.08f)
+                                }
+                            )
+                        )
+                        ExposedDropdownMenu(
+                            expanded = menuDropdownExpanded,
+                            onDismissRequest = { menuDropdownExpanded = false },
+                            containerColor = Color.Transparent,
+                            tonalElevation = 0.dp,
+                            shadowElevation = 0.dp,
+                            modifier = Modifier
+                                .clip(menuDropdownShape)
+                                .background(adaptiveGlassBrush(darkTheme))
+                                .border(
+                                    width = 1.dp,
+                                    color = if (darkTheme) {
+                                        Color.White.copy(alpha = 0.08f)
+                                    } else {
+                                        Color.Black.copy(alpha = 0.05f)
+                                    },
+                                    shape = menuDropdownShape
+                                )
+                        ) {
+                            uiState.menuItems.forEach { menuItem ->
+                                DropdownMenuItem(
+                                    text = { Text(menuItem.name) },
+                                    onClick = {
+                                        onSelectMenu(menuItem.id)
+                                        menuDropdownExpanded = false
+                                    },
+                                    colors = MenuDefaults.itemColors(
+                                        textColor = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    modifier = Modifier.background(Color.Transparent)
+                                )
+                            }
                         }
-                    )
+                    }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         if (selectedMenu != null) {
-            ExposedDropdownMenuBox(
-                expanded = variantDropdownExpanded,
-                onExpandedChange = { variantDropdownExpanded = it }
-            ) {
-                OutlinedTextField(
-                    value = uiState.selectedVariantName?.let { name ->
-                        name.substringAfter(": ").trim().ifEmpty { name }
-                    } ?: "All Variants (Base Item)",
-                    onValueChange = {},
-                    readOnly = true,
-                    modifier = Modifier.fillMaxWidth().menuAnchor(),
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = variantDropdownExpanded) }
-                )
-                ExposedDropdownMenu(
-                    expanded = variantDropdownExpanded,
-                    onDismissRequest = { variantDropdownExpanded = false }
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                AdaptiveGlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
                 ) {
-                    DropdownMenuItem(
-                        text = { Text("All Variants (Base Item)", fontWeight = FontWeight.Bold) },
-                        onClick = {
-                            onSelectVariant(null)
-                            variantDropdownExpanded = false
-                        }
-                    )
-                    recipeTargetGroups.forEach { (groupLabel, targets) ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    groupLabel,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            },
-                            onClick = {},
-                            enabled = false
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Recipe Target",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        targets.forEach { targetName ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        targetName.substringAfter(": ").trim().ifEmpty { targetName },
-                                        modifier = Modifier.padding(start = 8.dp)
-                                    )
-                                },
-                                onClick = {
-                                    onSelectVariant(targetName)
-                                    variantDropdownExpanded = false
-                                }
+                        InventoryVariantTargetRow(
+                            label = "All Variants (Base Item)",
+                            isSelected = uiState.selectedVariantName == null,
+                            onClick = { onSelectVariant(null) }
+                        )
+                        recipeTargetGroups.forEach { (groupLabel, targets) ->
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = groupLabel,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
+                            targets.forEach { targetName ->
+                                InventoryVariantTargetRow(
+                                    label = targetName.substringAfter(": ").trim().ifEmpty { targetName },
+                                    isSelected = uiState.selectedVariantName == targetName,
+                                    onClick = { onSelectVariant(targetName) }
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Recipe BOM Mappings", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Button(onClick = onOpenLinkDialog) {
-                    Text("+ Link Ingredient")
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Recipe BOM Mappings", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Button(onClick = onOpenLinkDialog) {
+                        Text("+ Link Ingredient")
+                    }
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
 
-            val filteredMappings = uiState.currentRecipeMappings.filter { it.variantName == uiState.selectedVariantName }
             if (filteredMappings.isEmpty()) {
-                Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text("No ingredients mapped.", color = MaterialTheme.colorScheme.outline)
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No ingredients mapped.", color = MaterialTheme.colorScheme.outline)
+                    }
                 }
             } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(filteredMappings) { mapping ->
-                        val inventoryItem = uiState.inventoryItems.find { it.id == mapping.inventoryItemId }
+                items(filteredMappings, key = { it.id }) { mapping ->
+                    val inventoryItem = uiState.inventoryItems.find { it.id == mapping.inventoryItemId }
+                    AdaptiveGlassCard(modifier = Modifier.fillMaxWidth()) {
                         Row(
-                            modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp)).padding(12.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
-                                Text(inventoryItem?.itemName ?: "Unknown Item", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("Deduct: ${mapping.deductionQuantity} ${inventoryItem?.unit ?: ""}", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    inventoryItem?.itemName ?: "Unknown Item",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                                Text(
+                                    "Deduct: ${mapping.deductionQuantity} ${inventoryItem?.unit ?: ""}",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
                             }
                             IconButton(onClick = { onRemoveMapping(mapping) }) {
                                 FluentIcon(
@@ -364,6 +424,62 @@ fun ProductRecipesTab(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun InventoryVariantTargetRow(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val darkTheme = isSystemInDarkTheme()
+    val optionShape = RoundedCornerShape(12.dp)
+    val labelColor = if (isSelected) {
+        if (darkTheme) Color.White else MaterialTheme.colorScheme.onSurface
+    } else {
+        adaptiveBodyMuted(darkTheme)
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 44.dp)
+            .clip(optionShape)
+            .then(
+                if (isSelected) {
+                    Modifier.background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                        shape = optionShape
+                    )
+                } else {
+                    Modifier.background(
+                        brush = adaptiveGlassBrush(darkTheme),
+                        shape = optionShape
+                    )
+                }
+            )
+            .border(
+                width = 1.dp,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else if (darkTheme) {
+                    Color.White.copy(alpha = 0.05f)
+                } else {
+                    Color.Black.copy(alpha = 0.05f)
+                },
+                shape = optionShape
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(
+            text = label,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            fontSize = 14.sp,
+            color = labelColor
+        )
     }
 }
 

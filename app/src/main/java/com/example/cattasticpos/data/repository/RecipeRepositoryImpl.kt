@@ -4,6 +4,7 @@ import com.example.cattasticpos.data.local.dao.RecipeDao
 import com.example.cattasticpos.data.local.entity.RecipeMappingEntity
 import com.example.cattasticpos.domain.model.RecipeMapping
 import com.example.cattasticpos.domain.repository.RecipeRepository
+import com.example.cattasticpos.domain.usecase.RecipeDeductionResolver
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -41,6 +42,15 @@ class RecipeRepositoryImpl(
 
     override suspend fun getMappingsForCheckout(menuItemId: String, variantName: String?): List<RecipeMapping> {
         return recipeDao.getMappingsForCheckout(menuItemId, variantName).map { it.toDomain() }
+    }
+
+    override suspend fun resolveCheckoutMappings(
+        menuItemId: String,
+        sizeVariantName: String?,
+        flavor: String?
+    ): List<RecipeMapping> {
+        val mappings = recipeDao.getMappingsForMenuOnce(menuItemId).map { it.toDomain() }
+        return RecipeDeductionResolver.resolve(mappings, sizeVariantName, flavor)
     }
 
     override suspend fun insertMapping(mapping: RecipeMapping) {

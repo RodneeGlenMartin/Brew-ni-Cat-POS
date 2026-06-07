@@ -7,6 +7,11 @@ interface RecipeRepository {
     fun getAllMappings(): Flow<List<RecipeMapping>>
     fun getMappingsForMenu(menuItemId: String): Flow<List<RecipeMapping>>
     suspend fun getMappingsForCheckout(menuItemId: String, variantName: String?): List<RecipeMapping>
+    suspend fun resolveCheckoutMappings(
+        menuItemId: String,
+        sizeVariantName: String?,
+        flavor: String?
+    ): List<RecipeMapping>
     suspend fun insertMapping(mapping: RecipeMapping)
     suspend fun insertMappings(mappings: List<RecipeMapping>)
     suspend fun deleteMapping(mapping: RecipeMapping)

@@ -16,6 +16,9 @@ interface RecipeDao {
     @Query("SELECT * FROM recipe_mappings WHERE menuItemId = :menuItemId")
     fun getMappingsForMenu(menuItemId: String): Flow<List<RecipeMappingEntity>>
 
+    @Query("SELECT * FROM recipe_mappings WHERE menuItemId = :menuItemId")
+    suspend fun getMappingsForMenuOnce(menuItemId: String): List<RecipeMappingEntity>
+
     @Query("SELECT * FROM recipe_mappings WHERE menuItemId = :menuItemId AND (variantName = :variantName OR variantName IS NULL)")
     suspend fun getMappingsForCheckout(menuItemId: String, variantName: String?): List<RecipeMappingEntity>
 
