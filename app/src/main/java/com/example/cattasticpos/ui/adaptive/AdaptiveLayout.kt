@@ -30,8 +30,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.cattasticpos.ui.theme.AlabasterPalette
 import com.example.cattasticpos.ui.theme.AdaptiveGlassCard
+import com.example.cattasticpos.ui.theme.adaptiveGlassContentColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,8 +145,7 @@ fun AdaptiveSnackbarHost(hostState: SnackbarHostState) {
 
 @Composable
 private fun AdaptiveGlassSnackbar(data: SnackbarData) {
-    val darkTheme = isSystemInDarkTheme()
-    val textColor = if (darkTheme) Color.White else AlabasterPalette.Heading
+    val textColor = adaptiveGlassContentColor()
 
     AdaptiveGlassCard(
         modifier = Modifier

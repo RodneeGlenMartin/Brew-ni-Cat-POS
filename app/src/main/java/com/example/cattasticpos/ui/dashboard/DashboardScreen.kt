@@ -77,8 +77,11 @@ import com.example.cattasticpos.domain.strategy.FivePercentDiscountStrategy
 import com.example.cattasticpos.ui.components.SleepingCatGraphic
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.cattasticpos.ui.theme.AlabasterPalette
+import com.example.cattasticpos.ui.components.unstyled.PosPrimaryButton
 import com.example.cattasticpos.ui.theme.AdaptiveAmbientGlows
 import com.example.cattasticpos.ui.theme.AdaptiveGlassCard
+import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
+import com.example.cattasticpos.ui.theme.adaptiveGlassContentColor
 import com.example.cattasticpos.ui.theme.ObsidianGlassCard
 import com.example.cattasticpos.ui.theme.ObsidianSheetHandle
 import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
@@ -173,7 +176,7 @@ fun DashboardScreen(
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
-            if (!uiState.activeTableLabel.isNullOrBlank()) {
+            if (!uiState.activeTableLabel.isNullOrBlank() && cartItemCount > 0) {
                 Text(
                     text = "Label: ${uiState.activeTableLabel}",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -382,7 +385,7 @@ fun DashboardScreen(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text(
-                                    "Place Order",
+                                    text = "Place Order",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
                                     color = MaterialTheme.colorScheme.onPrimary,
@@ -776,28 +779,27 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
 
                     if (hasComboDescriptions) {
                         Spacer(modifier = Modifier.height(12.dp))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(
-                                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                                    RoundedCornerShape(8.dp)
+                        val panelTextColor = adaptiveGlassContentColor()
+                        AdaptiveGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                            ) {
+                                Text(
+                                    "Included in this combo:",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                "Included in this combo:",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = selectedVariant.description ?: "Select an option to view combo details.",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                lineHeight = 16.sp
-                            )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = selectedVariant.description ?: "Select an option to view combo details.",
+                                    fontSize = 12.sp,
+                                    color = panelTextColor,
+                                    lineHeight = 16.sp
+                                )
+                            }
                         }
                     }
 
@@ -823,14 +825,10 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                Button(
+                PosPrimaryButton(
                     onClick = { onAddToCart(selectedVariant, selectedFlavor) },
                     enabled = !(item.flavors.isNotEmpty() && selectedFlavor == null),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    modifier = Modifier.defaultMinSize(minWidth = 0.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
@@ -839,7 +837,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        "Add to Order",
+                        text = "Add to Order",
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimary
                     )
@@ -914,6 +912,8 @@ private fun formatVariantPriceLabel(variant: Variant, item: Item, selectedFlavor
 
 @Composable
 fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDismiss: () -> Unit) {
+    val panelTextColor = adaptiveGlassContentColor()
+    val mutedTextColor = adaptiveBodyMuted()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -936,16 +936,45 @@ fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDism
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         items(heldQueues) { queue ->
-                            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)), modifier = Modifier.fillMaxWidth()) {
-                                Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            AdaptiveGlassCard(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         val labelText = queue.tableLabel?.let { " [$it]" } ?: ""
-                                        Text("Queue #${queue.id}$labelText", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        val timeStr = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(queue.timestamp))
-                                        Text("Held at: $timeStr", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
-                                        Text("${queue.items.sumOf { it.quantity }} items • ₱${String.format("%.0f", queue.items.sumOf { it.totalPrice })}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(
+                                            "Queue #${queue.id}$labelText",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = panelTextColor
+                                        )
+                                        val timeStr = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault())
+                                            .format(java.util.Date(queue.timestamp))
+                                        Text(
+                                            "Held at: $timeStr",
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            "${queue.items.sumOf { it.quantity }} items • ₱${String.format("%.0f", queue.items.sumOf { it.totalPrice })}",
+                                            fontSize = 12.sp,
+                                            color = mutedTextColor
+                                        )
                                     }
-                                    Button(onClick = { onResume(queue.id) }, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp), shape = RoundedCornerShape(8.dp)) { Text("Resume", fontSize = 12.sp) }
+                                    PosPrimaryButton(
+                                        onClick = { onResume(queue.id) },
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = "Resume",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -974,7 +1003,13 @@ fun HoldOrderDialog(onHold: (String?) -> Unit, onDismiss: () -> Unit) {
             )
         },
         confirmButton = {
-            Button(onClick = { onHold(tableLabel) }) { Text("Hold Order") }
+            PosPrimaryButton(onClick = { onHold(tableLabel) }) {
+                Text(
+                    text = "Hold Order",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )

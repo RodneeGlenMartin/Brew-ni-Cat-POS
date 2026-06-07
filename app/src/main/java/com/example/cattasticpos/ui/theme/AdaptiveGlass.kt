@@ -94,6 +94,10 @@ fun adaptiveBodyMuted(darkTheme: Boolean = isAdaptiveDarkTheme()): Color =
     if (darkTheme) ObsidianPalette.BodyMuted else AlabasterPalette.BodyMuted
 
 @Composable
+fun adaptiveGlassContentColor(darkTheme: Boolean = isAdaptiveDarkTheme()): Color =
+    if (darkTheme) Color.White else AlabasterPalette.Heading
+
+@Composable
 fun adaptiveGlassRadius(darkTheme: Boolean = isAdaptiveDarkTheme()): Dp =
     if (darkTheme) ObsidianPalette.GlassRadius else AlabasterPalette.GlassRadius
 

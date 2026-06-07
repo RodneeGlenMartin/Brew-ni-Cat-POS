@@ -192,8 +192,11 @@ class DashboardViewModel(
             }
             
             val calculation = calculateCartUseCase(updatedCart, state.selectedDiscountStrategy)
+            val cartCleared = updatedCart.isEmpty()
             state.copy(
                 activeCart = updatedCart,
+                activeTableLabel = if (cartCleared) null else state.activeTableLabel,
+                currentQueueId = if (cartCleared) null else state.currentQueueId,
                 subtotal = calculation.subtotal,
                 discountDeduction = calculation.discountDeduction,
                 discountLabel = calculation.discountLabel,
@@ -288,6 +291,7 @@ class DashboardViewModel(
             state.copy(
                 heldQueues = updatedQueues,
                 currentQueueId = null,
+                activeTableLabel = null,
                 activeCart = emptyList(),
                 subtotal = freshCalculation.subtotal,
                 discountDeduction = freshCalculation.discountDeduction,
