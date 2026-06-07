@@ -105,6 +105,7 @@ fun CollapsingGlassScaffold(
     modifier: Modifier = Modifier,
     hazeState: HazeState,
     headerState: CollapsingHeaderState = rememberCollapsingHeaderState(),
+    showBrandWordmark: Boolean = false,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
@@ -228,24 +229,38 @@ fun CollapsingGlassScaffold(
                 )
             }
 
-            Text(
-                text = title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(largeTitleBlockHeight * (1f - collapseProgress))
-                    .padding(horizontal = 16.dp)
-                    .graphicsLayer {
-                        alpha = largeTitleAlpha
-                        translationY = -collapseProgress * largeTitleShiftPx
-                        clip = true
-                    },
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 34.sp,
-                letterSpacing = (-0.5).sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = MaterialTheme.colorScheme.onBackground
-            )
+            if (showBrandWordmark) {
+                GlassWordmark(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(largeTitleBlockHeight * (1f - collapseProgress))
+                        .padding(horizontal = 16.dp)
+                        .graphicsLayer {
+                            alpha = largeTitleAlpha
+                            translationY = -collapseProgress * largeTitleShiftPx
+                            clip = true
+                        }
+                )
+            } else {
+                Text(
+                    text = title,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(largeTitleBlockHeight * (1f - collapseProgress))
+                        .padding(horizontal = 16.dp)
+                        .graphicsLayer {
+                            alpha = largeTitleAlpha
+                            translationY = -collapseProgress * largeTitleShiftPx
+                            clip = true
+                        },
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 34.sp,
+                    letterSpacing = (-0.5).sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
         }
     }
 }

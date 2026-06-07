@@ -24,15 +24,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Fastfood
-import androidx.compose.material.icons.filled.LocalCafe
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Remove
 import com.example.cattasticpos.ui.adaptive.AdaptiveSnackbarHost
 import com.example.cattasticpos.ui.adaptive.CollapsingGlassScaffold
 import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
@@ -125,6 +116,7 @@ fun DashboardScreen(
         title = "Brew ni Cat",
         hazeState = hazeState,
         headerState = headerState,
+        showBrandWordmark = true,
         snackbarHost = { AdaptiveSnackbarHost(snackbarHostState) },
         modifier = modifier,
         actions = {
@@ -268,14 +260,20 @@ fun DashboardScreen(
                                 enabled = uiState.activeCart.isNotEmpty(),
                                 modifier = Modifier.height(32.dp)
                             ) {
-                                Icon(Icons.Default.Pause, contentDescription = null, modifier = Modifier.size(14.dp))
+                                FluentIcon(
+                                    imageVector = FluentIcons.Pause,
+                                    contentDescription = null,
+                                    size = 14.dp,
+                                    useGlassGradient = false
+                                )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Hold", fontSize = 12.sp)
                             }
                             IconButton(onClick = { isCartExpanded = !isCartExpanded }) {
-                                Icon(
-                                    imageVector = if (isCartExpanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                    contentDescription = if (isCartExpanded) "Collapse order panel" else "Expand order panel"
+                                FluentIcon(
+                                    imageVector = if (isCartExpanded) FluentIcons.ChevronDown else FluentIcons.ChevronUp,
+                                    contentDescription = if (isCartExpanded) "Collapse order panel" else "Expand order panel",
+                                    useGlassGradient = false
                                 )
                             }
                         }
@@ -522,9 +520,15 @@ fun CartItemRow(cartItem: CartItem, onQuantityChange: (String, Int) -> Unit) {
                 Text("${cartItem.quantity}x ${cartItem.item.name} ($variantFlavorText) - ₱${String.format("%.0f", cartItem.totalPrice)}", fontWeight = FontWeight.Medium, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { onQuantityChange(cartItem.id, -1) }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Remove, contentDescription = null, modifier = Modifier.size(14.dp)) }
-                IconButton(onClick = { onQuantityChange(cartItem.id, 1) }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp)) }
-                IconButton(onClick = { onQuantityChange(cartItem.id, -cartItem.quantity) }, modifier = Modifier.size(24.dp)) { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(14.dp)) }
+                IconButton(onClick = { onQuantityChange(cartItem.id, -1) }, modifier = Modifier.size(24.dp)) {
+                    FluentIcon(imageVector = FluentIcons.Subtract, contentDescription = null, size = 14.dp, useGlassGradient = false)
+                }
+                IconButton(onClick = { onQuantityChange(cartItem.id, 1) }, modifier = Modifier.size(24.dp)) {
+                    FluentIcon(imageVector = FluentIcons.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, size = 14.dp)
+                }
+                IconButton(onClick = { onQuantityChange(cartItem.id, -cartItem.quantity) }, modifier = Modifier.size(24.dp)) {
+                    FluentIcon(imageVector = FluentIcons.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, size = 14.dp)
+                }
             }
         }
     }
@@ -830,10 +834,11 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                     enabled = !(item.flavors.isNotEmpty() && selectedFlavor == null),
                     modifier = Modifier.defaultMinSize(minWidth = 0.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
+                    FluentIcon(
+                        imageVector = FluentIcons.Add,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        size = 24.dp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(

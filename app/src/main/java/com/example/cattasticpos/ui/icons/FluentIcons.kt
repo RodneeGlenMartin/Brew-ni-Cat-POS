@@ -1,27 +1,6 @@
 package com.example.cattasticpos.ui.icons
 
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.EmojiEvents
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.Print
-import androidx.compose.material.icons.outlined.Queue
-import androidx.compose.material.icons.outlined.ReceiptLong
-import androidx.compose.material.icons.outlined.Remove
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.outlined.AccountBalanceWallet
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -30,40 +9,69 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.composables.icons.lucide.ArrowLeft
+import com.composables.icons.lucide.Calendar
+import com.composables.icons.lucide.ChevronDown
+import com.composables.icons.lucide.ChevronUp
+import com.composables.icons.lucide.CircleCheck
+import com.composables.icons.lucide.Coffee
+import com.composables.icons.lucide.Cookie
+import com.composables.icons.lucide.Download
+import com.composables.icons.lucide.Gift
+import com.composables.icons.lucide.History
+import com.composables.icons.lucide.Layers
+import com.composables.icons.lucide.LayoutGrid
+import com.composables.icons.lucide.LayoutList
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.Minus
+import com.composables.icons.lucide.Package
+import com.composables.icons.lucide.Pause
+import com.composables.icons.lucide.Plus
+import com.composables.icons.lucide.Printer
+import com.composables.icons.lucide.ReceiptText
+import com.composables.icons.lucide.Settings
+import com.composables.icons.lucide.Share2
+import com.composables.icons.lucide.ShoppingBag
+import com.composables.icons.lucide.Trash2
+import com.composables.icons.lucide.Trophy
+import com.composables.icons.lucide.Wallet
+import com.example.cattasticpos.ui.adaptive.glassIconGradient
 
 /**
- * SF Symbols–inspired icon layer: thin outlined Material glyphs + custom category vectors.
+ * Lucide thin-stroke icon layer with optional liquid neon gradient tinting.
  */
 object FluentIcons {
-    val History: ImageVector = Icons.Outlined.History
-    val Settings: ImageVector = Icons.Outlined.Settings
-    val Calendar: ImageVector = Icons.Outlined.CalendarMonth
-    val Box: ImageVector = Icons.Outlined.Inventory2
-    val Wallet: ImageVector = Icons.Outlined.AccountBalanceWallet
-    val List: ImageVector = Icons.AutoMirrored.Outlined.List
-    val Queue: ImageVector = Icons.Outlined.Queue
-    val ArrowLeft: ImageVector = Icons.AutoMirrored.Outlined.ArrowBack
-    val Print: ImageVector = Icons.Outlined.Print
-    val ArrowDownload: ImageVector = Icons.Outlined.Download
-    val Share: ImageVector = Icons.Outlined.Share
-    val Delete: ImageVector = Icons.Outlined.Delete
-    val ChevronUp: ImageVector = Icons.Outlined.ExpandLess
-    val ChevronDown: ImageVector = Icons.Outlined.ExpandMore
-    val Receipt: ImageVector = Icons.Outlined.ReceiptLong
-    val Trophy: ImageVector = Icons.Outlined.EmojiEvents
-    val Add: ImageVector = Icons.Outlined.Add
-    val Subtract: ImageVector = Icons.Outlined.Remove
-    val Pause: ImageVector = Icons.Outlined.Pause
-    val CheckmarkCircle: ImageVector = Icons.Outlined.CheckCircle
+    val History: ImageVector = Lucide.History
+    val Settings: ImageVector = Lucide.Settings
+    val Calendar: ImageVector = Lucide.Calendar
+    val Box: ImageVector = Lucide.Package
+    val Wallet: ImageVector = Lucide.Wallet
+    val List: ImageVector = Lucide.LayoutList
+    val Queue: ImageVector = Lucide.Layers
+    val ArrowLeft: ImageVector = Lucide.ArrowLeft
+    val Print: ImageVector = Lucide.Printer
+    val ArrowDownload: ImageVector = Lucide.Download
+    val Share: ImageVector = Lucide.Share2
+    val Delete: ImageVector = Lucide.Trash2
+    val ChevronUp: ImageVector = Lucide.ChevronUp
+    val ChevronDown: ImageVector = Lucide.ChevronDown
+    val Receipt: ImageVector = Lucide.ReceiptText
+    val Trophy: ImageVector = Lucide.Trophy
+    val Add: ImageVector = Lucide.Plus
+    val Subtract: ImageVector = Lucide.Minus
+    val Pause: ImageVector = Lucide.Pause
+    val CheckmarkCircle: ImageVector = Lucide.CircleCheck
+    val LayoutGrid: ImageVector = Lucide.LayoutGrid
+    val ShoppingBag: ImageVector = Lucide.ShoppingBag
 
     /** Cat-Tastic Drinks — beverage cup. */
-    val DrinkCoffee: ImageVector = SfCup
+    val DrinkCoffee: ImageVector = Lucide.Coffee
 
-    /** Cat-Tastic Bites — snack / cookie plate. */
-    val FoodBites: ImageVector = SfCookie
+    /** Cat-Tastic Bites — pastry / snack silhouette. */
+    val FoodBites: ImageVector = Lucide.Cookie
 
-    /** Combos & Packages — grouped gift stack. */
-    val ComboPackage: ImageVector = SfGiftStack
+    /** Combos & Packages — grouped package. */
+    val ComboPackage: ImageVector = Lucide.Gift
 
     /** @deprecated Use [FoodBites] or [categoryIcon]. */
     val Food: ImageVector = FoodBites
@@ -80,13 +88,23 @@ fun FluentIcon(
     imageVector: ImageVector,
     contentDescription: String?,
     modifier: Modifier = Modifier,
-    tint: Color = MaterialTheme.colorScheme.primary,
-    size: Dp = 24.dp
+    tint: Color? = null,
+    size: Dp = 24.dp,
+    useGlassGradient: Boolean = true
 ) {
+    val useGradient = useGlassGradient && tint == null
     Icon(
         imageVector = imageVector,
         contentDescription = contentDescription,
-        modifier = modifier.size(size),
-        tint = tint
+        modifier = if (useGradient) {
+            modifier.size(size).glassIconGradient()
+        } else {
+            modifier.size(size)
+        },
+        tint = if (useGradient) {
+            Color.Unspecified
+        } else {
+            tint ?: MaterialTheme.colorScheme.primary
+        }
     )
 }

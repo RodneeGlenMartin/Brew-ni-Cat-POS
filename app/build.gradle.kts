@@ -75,6 +75,9 @@ dependencies {
     // Haze liquid glass blur
     implementation(libs.haze)
 
+    // Lucide thin-stroke icons
+    implementation(libs.icons.lucide.android)
+
     // Compose Unstyled (requires Kotlin 2.3+ KSP — wrappers in ui/components/unstyled until toolchain catches up)
     // implementation(libs.compose.unstyled.theming)
     // implementation(libs.compose.unstyled.button)
