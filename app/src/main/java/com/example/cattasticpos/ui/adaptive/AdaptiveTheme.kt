@@ -7,9 +7,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.example.cattasticpos.domain.model.AppThemeAccent
+import com.example.cattasticpos.ui.theme.AlabasterPalette
+import com.example.cattasticpos.ui.theme.ObsidianPalette
+import com.example.cattasticpos.ui.theme.adaptiveTypography
 import com.example.cattasticpos.ui.theme.darkColorSchemeFor
 import com.example.cattasticpos.ui.theme.lightColorSchemeFor
-import com.example.cattasticpos.ui.theme.obsidianTypography
 
 data class CupertinoColors(
     val accent: Color,
@@ -41,18 +43,33 @@ val LocalCupertinoColors = staticCompositionLocalOf {
 
 fun cupertinoColorsFor(accent: AppThemeAccent, darkTheme: Boolean): CupertinoColors {
     val material = if (darkTheme) darkColorSchemeFor(accent) else lightColorSchemeFor(accent)
-    return CupertinoColors(
-        accent = material.primary,
-        onAccent = Color.White,
-        label = Color.White,
-        secondaryLabel = com.example.cattasticpos.ui.theme.ObsidianPalette.BodyMuted,
-        tertiaryLabel = Color.White.copy(alpha = 0.45f),
-        systemBackground = material.background,
-        secondarySystemBackground = material.surface,
-        groupedBackground = com.example.cattasticpos.ui.theme.ObsidianPalette.GlassFill,
-        separator = Color.White.copy(alpha = 0.1f),
-        fill = Color.White.copy(alpha = 0.06f)
-    )
+    return if (darkTheme) {
+        CupertinoColors(
+            accent = material.primary,
+            onAccent = Color.White,
+            label = Color.White,
+            secondaryLabel = ObsidianPalette.BodyMuted,
+            tertiaryLabel = Color.White.copy(alpha = 0.45f),
+            systemBackground = material.background,
+            secondarySystemBackground = material.surface,
+            groupedBackground = ObsidianPalette.GlassFill,
+            separator = Color.White.copy(alpha = 0.1f),
+            fill = Color.White.copy(alpha = 0.06f)
+        )
+    } else {
+        CupertinoColors(
+            accent = material.primary,
+            onAccent = material.onPrimary,
+            label = AlabasterPalette.Heading,
+            secondaryLabel = AlabasterPalette.BodyMuted,
+            tertiaryLabel = Color.Black.copy(alpha = 0.45f),
+            systemBackground = material.background,
+            secondarySystemBackground = material.surface,
+            groupedBackground = AlabasterPalette.GlassFill,
+            separator = AlabasterPalette.RingBorder,
+            fill = Color.Black.copy(alpha = 0.04f)
+        )
+    }
 }
 
 @Composable
@@ -82,7 +99,7 @@ fun AdaptiveTheme(
     val colorScheme = if (darkTheme) darkColorSchemeFor(accent) else lightColorSchemeFor(accent)
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = obsidianTypography()
+        typography = adaptiveTypography(darkTheme)
     ) {
         CupertinoTheme(accent = accent, darkTheme = darkTheme) {
             content()

@@ -33,12 +33,13 @@ import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Remove
-import com.example.cattasticpos.ui.adaptive.AdaptiveScaffold
 import com.example.cattasticpos.ui.adaptive.AdaptiveSnackbarHost
-import com.example.cattasticpos.ui.adaptive.AdaptiveTopAppBar
+import com.example.cattasticpos.ui.adaptive.CollapsingGlassScaffold
 import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
-import com.example.cattasticpos.ui.adaptive.adaptiveNestedScroll
-import com.example.cattasticpos.ui.adaptive.rememberAdaptiveTopBarScrollBehavior
+import com.example.cattasticpos.ui.adaptive.collapsingNestedScroll
+import com.example.cattasticpos.ui.adaptive.iOSSpringSpec
+import com.example.cattasticpos.ui.adaptive.iOSSpringSize
+import com.example.cattasticpos.ui.adaptive.rememberCollapsingHeaderState
 import com.example.cattasticpos.ui.adaptive.rememberLiquidGlassHazeState
 import com.example.cattasticpos.ui.adaptive.liquidGlassSource
 import com.example.cattasticpos.ui.adaptive.liquidGlassChild
@@ -74,10 +75,15 @@ import com.example.cattasticpos.domain.strategy.NoDiscountStrategy
 import com.example.cattasticpos.domain.strategy.PercentageDiscountStrategy
 import com.example.cattasticpos.domain.strategy.FivePercentDiscountStrategy
 import com.example.cattasticpos.ui.components.SleepingCatGraphic
-import com.example.cattasticpos.ui.theme.ObsidianAmbientGlows
+import androidx.compose.foundation.isSystemInDarkTheme
+import com.example.cattasticpos.ui.theme.AlabasterPalette
+import com.example.cattasticpos.ui.theme.AdaptiveAmbientGlows
+import com.example.cattasticpos.ui.theme.AdaptiveGlassCard
 import com.example.cattasticpos.ui.theme.ObsidianGlassCard
-import com.example.cattasticpos.ui.theme.ObsidianPalette
 import com.example.cattasticpos.ui.theme.ObsidianSheetHandle
+import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
+import com.example.cattasticpos.ui.theme.adaptiveGlassFill
+import com.example.cattasticpos.ui.theme.specularBorderBrush
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,62 +114,58 @@ fun DashboardScreen(
         }
     }
 
-    val scrollBehavior = rememberAdaptiveTopBarScrollBehavior()
     val cupertino = LocalCupertinoColors.current
     val hazeState = rememberLiquidGlassHazeState()
+    val headerState = rememberCollapsingHeaderState()
 
-    AdaptiveScaffold(
-        topBar = {
-            AdaptiveTopAppBar(
-                title = "Brew ni Cat",
-                scrollBehavior = scrollBehavior,
-                hazeState = hazeState,
-                actions = {
-                    IconButton(onClick = onNavigateToInventory) {
-                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                            FluentIcon(
-                                imageVector = FluentIcons.Box,
-                                contentDescription = "Inventory Management",
-                                tint = cupertino.accent,
-                                size = 24.dp
-                            )
-                        }
-                    }
-                    IconButton(onClick = { viewModel.setShowExpenseDialog(true) }) {
-                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                            FluentIcon(
-                                imageVector = FluentIcons.Wallet,
-                                contentDescription = "Add Expense",
-                                tint = cupertino.accent,
-                                size = 24.dp
-                            )
-                        }
-                    }
-                    IconButton(onClick = { viewModel.setShowQueuesDialog(true) }) {
-                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                            FluentIcon(
-                                imageVector = FluentIcons.Queue,
-                                contentDescription = "View Queues",
-                                tint = cupertino.accent,
-                                size = 24.dp
-                            )
-                        }
-                    }
-                    IconButton(onClick = { onNavigateToHistory() }) {
-                        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                            FluentIcon(
-                                imageVector = FluentIcons.History,
-                                contentDescription = "History",
-                                tint = cupertino.accent,
-                                size = 24.dp
-                            )
-                        }
-                    }
-                }
-            )
-        },
+    CollapsingGlassScaffold(
+        title = "Brew ni Cat",
+        hazeState = hazeState,
+        headerState = headerState,
         snackbarHost = { AdaptiveSnackbarHost(snackbarHostState) },
-        modifier = modifier
+        modifier = modifier,
+        actions = {
+            IconButton(onClick = onNavigateToInventory) {
+                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    FluentIcon(
+                        imageVector = FluentIcons.Box,
+                        contentDescription = "Inventory Management",
+                        tint = cupertino.accent,
+                        size = 24.dp
+                    )
+                }
+            }
+            IconButton(onClick = { viewModel.setShowExpenseDialog(true) }) {
+                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    FluentIcon(
+                        imageVector = FluentIcons.Wallet,
+                        contentDescription = "Add Expense",
+                        tint = cupertino.accent,
+                        size = 24.dp
+                    )
+                }
+            }
+            IconButton(onClick = { viewModel.setShowQueuesDialog(true) }) {
+                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    FluentIcon(
+                        imageVector = FluentIcons.Queue,
+                        contentDescription = "View Queues",
+                        tint = cupertino.accent,
+                        size = 24.dp
+                    )
+                }
+            }
+            IconButton(onClick = { onNavigateToHistory() }) {
+                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    FluentIcon(
+                        imageVector = FluentIcons.History,
+                        contentDescription = "History",
+                        tint = cupertino.accent,
+                        size = 24.dp
+                    )
+                }
+            }
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -182,7 +184,7 @@ fun DashboardScreen(
             }
             // TOP SECTION: Menu (Takes up available space)
             Box(modifier = Modifier.weight(1f)) {
-                ObsidianAmbientGlows(Modifier.fillMaxSize())
+                AdaptiveAmbientGlows(Modifier.fillMaxSize())
                 Column(modifier = Modifier.fillMaxSize()) {
                 CategorySelector(
                     categories = uiState.categories,
@@ -199,7 +201,7 @@ fun DashboardScreen(
                         .fillMaxSize()
                         .padding(horizontal = 12.dp)
                         .liquidGlassSource(hazeState)
-                        .adaptiveNestedScroll(scrollBehavior)
+                        .collapsingNestedScroll(headerState)
                 ) {
                     items(uiState.menuItems, key = { it.id }) { item ->
                         val itemMappings = uiState.recipeMappings.filter { it.menuItemId == item.id }
@@ -223,16 +225,20 @@ fun DashboardScreen(
             }
 
             // BOTTOM SECTION: Collapsible Checkout Panel
+            val darkTheme = isSystemInDarkTheme()
+            val checkoutBorder = if (darkTheme) {
+                BorderStroke(1.dp, specularBorderBrush())
+            } else {
+                BorderStroke(1.dp, AlabasterPalette.RingBorder)
+            }
             Surface(
                 shadowElevation = 0.dp,
-                color = ObsidianPalette.GlassFill,
+                color = adaptiveGlassFill(darkTheme),
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                border = BorderStroke(1.dp, Brush.linearGradient(
-                    listOf(Color.White.copy(alpha = 0.12f), Color.Transparent)
-                )),
+                border = checkoutBorder,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .animateContentSize()
+                    .animateContentSize(animationSpec = iOSSpringSize)
             ) {
                 Column(
                     modifier = Modifier
@@ -274,8 +280,8 @@ fun DashboardScreen(
 
                     AnimatedVisibility(
                         visible = isCartExpanded,
-                        enter = expandVertically() + fadeIn(),
-                        exit = shrinkVertically() + fadeOut()
+                        enter = expandVertically(animationSpec = iOSSpringSize) + fadeIn(animationSpec = iOSSpringSpec),
+                        exit = shrinkVertically(animationSpec = iOSSpringSize) + fadeOut(animationSpec = iOSSpringSpec)
                     ) {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Spacer(modifier = Modifier.height(8.dp))
@@ -358,20 +364,28 @@ fun DashboardScreen(
 
                             val btnInteractionSource = remember { MutableInteractionSource() }
                             val btnIsPressed by btnInteractionSource.collectIsPressedAsState()
-                            val btnScale by animateFloatAsState(targetValue = if (btnIsPressed) 0.95f else 1f, label = "btnScale")
+                            val btnScale by animateFloatAsState(
+                                targetValue = if (btnIsPressed) 0.96f else 1f,
+                                animationSpec = iOSSpringSpec,
+                                label = "btnScale"
+                            )
 
                             Button(
                                 onClick = { viewModel.setShowPaymentDialog(true) },
                                 interactionSource = btnInteractionSource,
                                 enabled = uiState.activeCart.isNotEmpty(),
                                 modifier = Modifier.fillMaxWidth().scale(btnScale),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text(
                                     "Place Order",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 16.sp,
+                                    color = MaterialTheme.colorScheme.onPrimary,
                                     modifier = Modifier.padding(vertical = 4.dp)
                                 )
                             }
@@ -812,11 +826,23 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                 Button(
                     onClick = { onAddToCart(selectedVariant, selectedFlavor) },
                     enabled = !(item.flavors.isNotEmpty() && selectedFlavor == null),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add to Order", fontWeight = FontWeight.Bold)
+                    Text(
+                        "Add to Order",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
                 }
             }
         }
@@ -832,8 +858,14 @@ private fun VariantOptionRow(
     onSelect: () -> Unit
 ) {
     val priceLabel = formatVariantPriceLabel(variant, item, selectedFlavor)
+    val darkTheme = isSystemInDarkTheme()
+    val labelColor = if (isSelected) {
+        if (darkTheme) Color.White else MaterialTheme.colorScheme.onSurface
+    } else {
+        adaptiveBodyMuted(darkTheme)
+    }
 
-    ObsidianGlassCard(
+    AdaptiveGlassCard(
         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
         selected = isSelected,
         onClick = onSelect
@@ -854,7 +886,7 @@ private fun VariantOptionRow(
                 overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) Color.White else ObsidianPalette.BodyMuted
+                color = labelColor
             )
             Text(
                 text = priceLabel,

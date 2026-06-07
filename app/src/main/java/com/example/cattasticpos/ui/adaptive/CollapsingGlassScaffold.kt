@@ -1,0 +1,251 @@
+package com.example.cattasticpos.ui.adaptive
+
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import dev.chrisbanes.haze.HazeState
+
+@Stable
+class CollapsingHeaderState internal constructor(
+    val nestedScrollConnection: NestedScrollConnection,
+    val collapseProgress: () -> Float
+)
+
+@Composable
+fun rememberCollapsingHeaderState(collapseRange: Dp = 120.dp): CollapsingHeaderState {
+    val density = LocalDensity.current
+    val collapseRangePx = with(density) { collapseRange.toPx() }
+    val scrollOffset = remember { mutableFloatStateOf(0f) }
+
+    val collapseProgress = remember(collapseRangePx) {
+        derivedStateOf {
+            (scrollOffset.floatValue / collapseRangePx).coerceIn(0f, 1f)
+        }
+    }
+
+    val connection = remember(collapseRangePx) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0f && scrollOffset.floatValue > 0f) {
+                    val consumed = available.y.coerceAtMost(scrollOffset.floatValue)
+                    scrollOffset.floatValue -= consumed
+                    return Offset(0f, consumed)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                if (available.y < 0f && scrollOffset.floatValue < collapseRangePx) {
+                    val consumedY = (-available.y).coerceAtMost(collapseRangePx - scrollOffset.floatValue)
+                    scrollOffset.floatValue += consumedY
+                    return Offset(0f, -consumedY)
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
+    return remember(connection, collapseProgress) {
+        CollapsingHeaderState(
+            nestedScrollConnection = connection,
+            collapseProgress = { collapseProgress.value }
+        )
+    }
+}
+
+fun Modifier.collapsingNestedScroll(state: CollapsingHeaderState): Modifier =
+    nestedScroll(state.nestedScrollConnection)
+
+@Composable
+fun CollapsingGlassScaffold(
+    title: String,
+    modifier: Modifier = Modifier,
+    hazeState: HazeState,
+    headerState: CollapsingHeaderState = rememberCollapsingHeaderState(),
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
+    snackbarHost: @Composable () -> Unit = {},
+    contentWindowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    content: @Composable (PaddingValues) -> Unit
+) {
+    val density = LocalDensity.current
+    val largeTitleShiftPx = with(density) { 28.dp.toPx() }
+    val rawProgress = headerState.collapseProgress()
+    val performHaptic = rememberBionicHaptic()
+
+    var previousRawProgress by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(rawProgress) {
+        val crossedClosed = previousRawProgress < 0.95f && rawProgress >= 0.95f
+        val crossedOpen = previousRawProgress > 0.05f && rawProgress <= 0.05f
+        if (crossedClosed || crossedOpen) {
+            performHaptic(BionicHaptic.Snap)
+        }
+        previousRawProgress = rawProgress
+    }
+
+    val collapseProgress by animateFloatAsState(
+        targetValue = rawProgress,
+        animationSpec = iOSSpringSpec,
+        label = "collapseProgress"
+    )
+
+    val largeTitleAlpha by animateFloatAsState(
+        targetValue = 1f - collapseProgress,
+        animationSpec = iOSSpringSpec,
+        label = "largeTitleAlpha"
+    )
+    val inlineTitleAlpha by animateFloatAsState(
+        targetValue = collapseProgress,
+        animationSpec = iOSSpringSpec,
+        label = "inlineTitleAlpha"
+    )
+
+    val barHeight = 56.dp
+    val largeTitleBlockHeight = 48.dp
+    val topContentInset by animateDpAsState(
+        targetValue = barHeight + largeTitleBlockHeight * (1f - collapseProgress),
+        animationSpec = iOSSpringDp,
+        label = "topContentInset"
+    )
+
+    Box(modifier = modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+            snackbarHost = snackbarHost,
+            containerColor = MaterialTheme.colorScheme.background,
+            contentWindowInsets = contentWindowInsets
+        ) { scaffoldPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(scaffoldPadding)
+            ) {
+                content(
+                    PaddingValues(
+                        top = topContentInset,
+                        bottom = scaffoldPadding.calculateBottomPadding()
+                    )
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .zIndex(2f)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(barHeight)
+            ) {
+                if (collapseProgress > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .liquidGlassChild(state = hazeState, intensity = collapseProgress)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier.height(barHeight),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        navigationIcon()
+                    }
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically,
+                        content = actions
+                    )
+                }
+
+                Text(
+                    text = title,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 72.dp)
+                        .graphicsLayer { alpha = inlineTitleAlpha },
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 17.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+            }
+
+            Text(
+                text = title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(largeTitleBlockHeight * (1f - collapseProgress))
+                    .padding(horizontal = 16.dp)
+                    .graphicsLayer {
+                        alpha = largeTitleAlpha
+                        translationY = -collapseProgress * largeTitleShiftPx
+                        clip = true
+                    },
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 34.sp,
+                letterSpacing = (-0.5).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+        }
+    }
+}

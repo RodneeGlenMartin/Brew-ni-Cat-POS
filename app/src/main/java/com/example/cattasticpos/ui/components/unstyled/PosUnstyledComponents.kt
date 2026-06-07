@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,7 +37,14 @@ fun PosPrimaryButton(
         containerColor = containerColor,
         contentColor = contentColor,
         contentPadding = contentPadding,
-        content = content
+        content = {
+            CompositionLocalProvider(
+                LocalContentColor provides contentColor,
+                LocalTextStyle provides MaterialTheme.typography.labelLarge.copy(color = contentColor)
+            ) {
+                content()
+            }
+        }
     )
 }
 

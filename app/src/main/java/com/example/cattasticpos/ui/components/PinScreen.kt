@@ -162,7 +162,11 @@ fun PinScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = pin.length == 4 && !isVerifying
             ) {
-                Text(if (isVerifying) "Verifying..." else "Unlock")
+                Text(
+                    text = if (isVerifying) "Verifying..." else "Unlock",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                )
             }
         }
     }

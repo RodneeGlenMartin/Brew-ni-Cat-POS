@@ -16,7 +16,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.*
-import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -29,14 +28,21 @@ import com.example.cattasticpos.ui.history.HistoryViewModel
 import com.example.cattasticpos.ui.inventory.InventoryScreen
 import com.example.cattasticpos.ui.inventory.InventoryViewModel
 import com.example.cattasticpos.ui.components.PinScreen
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.cattasticpos.ui.adaptive.AdaptiveTheme
+import com.example.cattasticpos.ui.adaptive.BionicHaptic
+import com.example.cattasticpos.ui.adaptive.ParallaxNavHost
+import com.example.cattasticpos.ui.adaptive.isPushNavigation
+import com.example.cattasticpos.ui.adaptive.rememberBionicHaptic
+import com.example.cattasticpos.ui.theme.AdaptiveSystemBarStyle
 
 @Composable
 fun CattasticTheme(
     accent: AppThemeAccent = AppThemeAccent.EMERALD,
-    darkTheme: Boolean = true,
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
+    AdaptiveSystemBarStyle(darkTheme = darkTheme)
     AdaptiveTheme(accent = accent, darkTheme = darkTheme, content = content)
 }
 
@@ -83,38 +89,51 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     var currentScreen by remember { mutableStateOf("dashboard") }
+                    var isPushing by remember { mutableStateOf(true) }
+                    val performHaptic = rememberBionicHaptic()
+
+                    fun navigateTo(target: String) {
+                        isPushing = isPushNavigation(currentScreen, target)
+                        if (isPushing) {
+                            performHaptic(BionicHaptic.Light)
+                        }
+                        currentScreen = target
+                    }
                     
                     val dashboardViewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory)
                     val historyViewModel: HistoryViewModel = viewModel(factory = HistoryViewModel.Factory)
                     val inventoryViewModel: InventoryViewModel = viewModel(factory = InventoryViewModel.Factory)
 
-                    Crossfade(targetState = currentScreen, label = "ScreenTransition") { screen ->
+                    ParallaxNavHost(
+                        targetScreen = currentScreen,
+                        isPushing = isPushing
+                    ) { screen ->
                         when (screen) {
                             "dashboard" -> {
                                 DashboardScreen(
                                     viewModel = dashboardViewModel,
-                                    onNavigateToHistory = { currentScreen = "pin_history" },
-                                    onNavigateToInventory = { currentScreen = "pin_inventory" }
+                                    onNavigateToHistory = { navigateTo("pin_history") },
+                                    onNavigateToInventory = { navigateTo("pin_inventory") }
                                 )
                             }
                             "pin_history", "pin_inventory" -> {
                                 PinScreen(
                                     onPinSuccess = {
-                                        currentScreen = if (screen == "pin_history") "history" else "inventory"
+                                        navigateTo(if (screen == "pin_history") "history" else "inventory")
                                     },
-                                    onCancel = { currentScreen = "dashboard" }
+                                    onCancel = { navigateTo("dashboard") }
                                 )
                             }
                             "history" -> {
                                 HistoryScreen(
                                     viewModel = historyViewModel,
-                                    onNavigateBack = { currentScreen = "dashboard" }
+                                    onNavigateBack = { navigateTo("dashboard") }
                                 )
                             }
                             "inventory" -> {
                                 InventoryScreen(
                                     viewModel = inventoryViewModel,
-                                    onNavigateBack = { currentScreen = "dashboard" }
+                                    onNavigateBack = { navigateTo("dashboard") }
                                 )
                             }
                         }

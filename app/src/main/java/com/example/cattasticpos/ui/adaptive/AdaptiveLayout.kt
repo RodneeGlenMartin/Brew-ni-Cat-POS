@@ -3,10 +3,11 @@
 package com.example.cattasticpos.ui.adaptive
 
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -15,6 +16,7 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.SnackbarData
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -26,8 +28,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
+import com.example.cattasticpos.ui.theme.AlabasterPalette
+import com.example.cattasticpos.ui.theme.AdaptiveGlassCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,7 +137,30 @@ fun Modifier.adaptiveNestedScroll(scrollBehavior: TopAppBarScrollBehavior?): Mod
 
 @Composable
 fun AdaptiveSnackbarHost(hostState: SnackbarHostState) {
-    SnackbarHost(hostState = hostState)
+    SnackbarHost(
+        hostState = hostState,
+        snackbar = { data -> AdaptiveGlassSnackbar(data) }
+    )
+}
+
+@Composable
+private fun AdaptiveGlassSnackbar(data: SnackbarData) {
+    val darkTheme = isSystemInDarkTheme()
+    val textColor = if (darkTheme) Color.White else AlabasterPalette.Heading
+
+    AdaptiveGlassCard(
+        modifier = Modifier
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .fillMaxWidth()
+    ) {
+        Text(
+            text = data.visuals.message,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            color = textColor,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium
+        )
+    }
 }
 
 @Composable

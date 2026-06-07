@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,8 +17,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -26,7 +29,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import com.example.cattasticpos.ui.theme.ObsidianPalette
+import androidx.compose.ui.graphics.SolidColor
+import com.example.cattasticpos.ui.theme.AlabasterPalette
+import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
+import com.example.cattasticpos.ui.theme.alabasterSpecularBorderBrush
+import com.example.cattasticpos.ui.theme.adaptiveGlassFill
+import com.example.cattasticpos.ui.theme.adaptiveGlassRadius
 import com.example.cattasticpos.ui.theme.neonSelectionBrush
 import com.example.cattasticpos.ui.theme.specularBorderBrush
 import androidx.compose.ui.semantics.Role
@@ -44,6 +52,11 @@ fun CupertinoSection(
     content: @Composable ColumnScope.() -> Unit
 ) {
     val cupertino = LocalCupertinoColors.current
+    val darkTheme = isSystemInDarkTheme()
+    val radius = adaptiveGlassRadius(darkTheme)
+    val shape = RoundedCornerShape(radius)
+    val borderBrush = if (darkTheme) specularBorderBrush() else alabasterSpecularBorderBrush()
+
     Column(modifier = modifier.fillMaxWidth()) {
         header?.let {
             Text(
@@ -57,9 +70,9 @@ fun CupertinoSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(ObsidianPalette.GlassRadius))
-                .background(ObsidianPalette.GlassFill)
-                .border(1.dp, specularBorderBrush(), RoundedCornerShape(ObsidianPalette.GlassRadius))
+                .clip(shape)
+                .background(adaptiveGlassFill(darkTheme))
+                .border(1.dp, borderBrush, shape)
         ) {
             content()
         }
@@ -123,7 +136,12 @@ fun AdaptiveButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    val scale = if (pressed) 0.96f else 1f
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.96f else 1f,
+        animationSpec = iOSSpring,
+        label = "adaptiveButtonScale"
+    )
+    val performHaptic = rememberBionicHaptic()
 
     Box(
         modifier = modifier
@@ -135,14 +153,18 @@ fun AdaptiveButton(
                 enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = onClick
+                onClick = {
+                    performHaptic(BionicHaptic.Confirm)
+                    onClick()
+                }
             )
             .padding(contentPadding),
         contentAlignment = Alignment.Center
     ) {
         Box(contentAlignment = Alignment.Center) {
             androidx.compose.runtime.CompositionLocalProvider(
-                androidx.compose.material3.LocalContentColor provides contentColor
+                androidx.compose.material3.LocalContentColor provides contentColor,
+                LocalTextStyle provides MaterialTheme.typography.labelLarge.copy(color = contentColor)
             ) {
                 content()
             }
@@ -158,17 +180,32 @@ fun CupertinoSegmentChip(
     modifier: Modifier = Modifier
 ) {
     val cupertino = LocalCupertinoColors.current
+    val darkTheme = isSystemInDarkTheme()
     val shape = RoundedCornerShape(14.dp)
-    val fill = if (selected) cupertino.accent.copy(alpha = 0.1f) else ObsidianPalette.GlassFill
-    val borderBrush = if (selected) neonSelectionBrush(cupertino.accent) else specularBorderBrush()
-    val fg = if (selected) Color.White else ObsidianPalette.BodyMuted
+    val fill = if (selected) cupertino.accent.copy(alpha = if (darkTheme) 0.1f else 0.12f) else adaptiveGlassFill(darkTheme)
+    val borderBrush = if (selected) {
+        neonSelectionBrush(cupertino.accent)
+    } else if (darkTheme) {
+        specularBorderBrush()
+    } else {
+        alabasterSpecularBorderBrush()
+    }
+    val fg = if (selected) {
+        if (darkTheme) Color.White else MaterialTheme.colorScheme.onSurface
+    } else {
+        adaptiveBodyMuted(darkTheme)
+    }
+    val performHaptic = rememberBionicHaptic()
 
     Box(
         modifier = modifier
             .clip(shape)
             .background(fill)
             .border(1.dp, borderBrush, shape)
-            .clickable(onClick = onClick)
+            .clickable(onClick = {
+                performHaptic(BionicHaptic.Selection)
+                onClick()
+            })
             .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {

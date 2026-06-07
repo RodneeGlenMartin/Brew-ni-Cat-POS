@@ -2,7 +2,6 @@ package com.example.cattasticpos.ui.history
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
@@ -33,14 +32,17 @@ import com.example.cattasticpos.domain.model.AppConfig
 import com.example.cattasticpos.domain.model.AppThemeAccent
 import com.example.cattasticpos.domain.model.Cashier
 import com.example.cattasticpos.domain.model.GcashAccount
-import com.example.cattasticpos.ui.adaptive.AdaptiveScaffold
 import com.example.cattasticpos.ui.adaptive.AdaptiveSnackbarHost
-import com.example.cattasticpos.ui.adaptive.AdaptiveTopAppBar
+import com.example.cattasticpos.ui.adaptive.CollapsingGlassScaffold
 import com.example.cattasticpos.ui.adaptive.CupertinoFormRow
 import com.example.cattasticpos.ui.adaptive.CupertinoSection
 import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
-import com.example.cattasticpos.ui.adaptive.adaptiveNestedScroll
-import com.example.cattasticpos.ui.adaptive.rememberAdaptiveTopBarScrollBehavior
+import com.example.cattasticpos.ui.adaptive.collapsingNestedScroll
+import com.example.cattasticpos.ui.adaptive.iOSSpringSpec
+import com.example.cattasticpos.ui.adaptive.rememberCollapsingHeaderState
+import com.example.cattasticpos.ui.adaptive.rememberLiquidGlassHazeState
+import com.example.cattasticpos.ui.adaptive.liquidGlassSource
+import com.example.cattasticpos.ui.theme.AdaptiveAmbientGlows
 import com.example.cattasticpos.ui.components.ReceiptPreviewDialog
 import com.example.cattasticpos.ui.components.formatReceiptShareText
 import androidx.compose.material3.*
@@ -59,7 +61,6 @@ import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.OrderItem
 import com.example.cattasticpos.ui.components.SleepingCatGraphic
 import com.example.cattasticpos.ui.theme.ObsidianGlassCard
-import com.example.cattasticpos.ui.theme.ObsidianPalette
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -95,52 +96,64 @@ fun HistoryScreen(
         }
     }
 
-    val scrollBehavior = rememberAdaptiveTopBarScrollBehavior()
     val cupertino = LocalCupertinoColors.current
+    val hazeState = rememberLiquidGlassHazeState()
+    val headerState = rememberCollapsingHeaderState()
+    var showConfigDialog by remember { mutableStateOf(false) }
 
-    AdaptiveScaffold(
+    CollapsingGlassScaffold(
+        title = "Order History Log",
+        hazeState = hazeState,
+        headerState = headerState,
         snackbarHost = { AdaptiveSnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            AdaptiveTopAppBar(
-                title = "Order History Log",
-                scrollBehavior = scrollBehavior,
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        FluentIcon(
-                            imageVector = FluentIcons.ArrowLeft,
-                            contentDescription = "Go Back",
-                            tint = cupertino.accent,
-                            size = 24.dp
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { viewModel.setShowDateRangeDialog(true) }) {
-                        FluentIcon(
-                            imageVector = FluentIcons.Calendar,
-                            contentDescription = "Filter by Date",
-                            tint = cupertino.accent,
-                            size = 24.dp
-                        )
-                    }
-                }
-            )
+        modifier = modifier,
+        navigationIcon = {
+            IconButton(onClick = onNavigateBack) {
+                FluentIcon(
+                    imageVector = FluentIcons.ArrowLeft,
+                    contentDescription = "Go Back",
+                    tint = cupertino.accent,
+                    size = 24.dp
+                )
+            }
         },
-        modifier = modifier
+        actions = {
+            IconButton(onClick = { viewModel.setShowDateRangeDialog(true) }) {
+                FluentIcon(
+                    imageVector = FluentIcons.Calendar,
+                    contentDescription = "Filter by Date",
+                    tint = cupertino.accent,
+                    size = 24.dp
+                )
+            }
+            IconButton(onClick = { showConfigDialog = true }) {
+                FluentIcon(
+                    imageVector = FluentIcons.Settings,
+                    contentDescription = "Settings",
+                    tint = cupertino.accent,
+                    size = 24.dp
+                )
+            }
+        }
     ) { innerPadding ->
         val scrollState = rememberScrollState()
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
-                .verticalScroll(scrollState)
-                .adaptiveNestedScroll(scrollBehavior)
-                .padding(16.dp)
         ) {
+            AdaptiveAmbientGlows(Modifier.fillMaxSize())
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .liquidGlassSource(hazeState)
+                    .verticalScroll(scrollState)
+                    .collapsingNestedScroll(headerState)
+                    .padding(16.dp)
+            ) {
             val context = LocalContext.current
             var isZReadingExpanded by remember { mutableStateOf(false) }
-            var showConfigDialog by remember { mutableStateOf(false) }
             var startAnimation by remember { mutableStateOf(false) }
 
             LaunchedEffect(Unit) {
@@ -176,7 +189,11 @@ fun HistoryScreen(
 
             val zReadingInteractionSource = remember { MutableInteractionSource() }
             val zReadingPressed by zReadingInteractionSource.collectIsPressedAsState()
-            val zReadingScale by animateFloatAsState(if (zReadingPressed) 0.98f else 1f, label = "zReadingScale")
+            val zReadingScale by animateFloatAsState(
+                targetValue = if (zReadingPressed) 0.96f else 1f,
+                animationSpec = iOSSpringSpec,
+                label = "zReadingScale"
+            )
 
             ObsidianGlassCard(
                 modifier = Modifier
@@ -255,14 +272,6 @@ fun HistoryScreen(
                             Text("Export", fontSize = 12.sp)
                         }
                         
-                        IconButton(onClick = { showConfigDialog = true }, modifier = Modifier.size(32.dp)) {
-                            FluentIcon(
-                                imageVector = FluentIcons.Settings,
-                                contentDescription = "Settings",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
                         FluentIcon(
                             imageVector = if (isZReadingExpanded) FluentIcons.ChevronUp else FluentIcons.ChevronDown,
                             contentDescription = "Expand/Collapse",
@@ -279,23 +288,23 @@ fun HistoryScreen(
                         ) {
                             val animatedTotalSales by animateFloatAsState(
                                 targetValue = if (startAnimation) totalSales.toFloat() else 0f,
-                                animationSpec = tween(durationMillis = 1000),
+                                animationSpec = iOSSpringSpec,
                                 label = "salesAnim"
                             )
                             val animatedExpenses by animateFloatAsState(
                                 targetValue = if (startAnimation) expenses.toFloat() else 0f,
-                                animationSpec = tween(durationMillis = 1000),
+                                animationSpec = iOSSpringSpec,
                                 label = "expensesAnim"
                             )
                             val animatedProfits by animateFloatAsState(
                                 targetValue = if (startAnimation) profits.toFloat() else 0f,
-                                animationSpec = tween(durationMillis = 1000),
+                                animationSpec = iOSSpringSpec,
                                 label = "profitsAnim"
                             )
                             val targetProgress = if (targetSales > 0) (totalSales / targetSales).toFloat().coerceIn(0f, 1f) else 0f
                             val animatedProgress by animateFloatAsState(
                                 targetValue = if (startAnimation) targetProgress else 0f,
-                                animationSpec = tween(durationMillis = 1000),
+                                animationSpec = iOSSpringSpec,
                                 label = "progressAnim"
                             )
 
@@ -354,8 +363,16 @@ fun HistoryScreen(
                             val totalCollected = totalCash + totalGcash
                             val targetCashWeight = if (totalCollected > 0) (totalCash / totalCollected).toFloat() else 0.5f
                             val targetGcashWeight = if (totalCollected > 0) (totalGcash / totalCollected).toFloat() else 0.5f
-                            val cashWeight by animateFloatAsState(if (startAnimation) targetCashWeight else 0.5f, animationSpec = tween(1000), label = "cashWeight")
-                            val gcashWeight by animateFloatAsState(if (startAnimation) targetGcashWeight else 0.5f, animationSpec = tween(1000), label = "gcashWeight")
+                            val cashWeight by animateFloatAsState(
+                                targetValue = if (startAnimation) targetCashWeight else 0.5f,
+                                animationSpec = iOSSpringSpec,
+                                label = "cashWeight"
+                            )
+                            val gcashWeight by animateFloatAsState(
+                                targetValue = if (startAnimation) targetGcashWeight else 0.5f,
+                                animationSpec = iOSSpringSpec,
+                                label = "gcashWeight"
+                            )
                             
                             Row(
                                 modifier = Modifier
@@ -558,6 +575,7 @@ fun HistoryScreen(
                         receiptPreviewOrder = null
                     }
                 )
+            }
             }
         }
     }
