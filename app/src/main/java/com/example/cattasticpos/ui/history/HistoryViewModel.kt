@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -190,6 +191,26 @@ class HistoryViewModel(
         viewModelScope.launch {
             appConfigRepository.updateConfig(targetSales, startingCashFloat, pinHash)
         }
+    }
+
+    suspend fun saveConfigWithPinVerification(
+        targetSales: Double,
+        startingCashFloat: Double,
+        currentPin: String,
+        newPin: String
+    ): Boolean {
+        val config = appConfigRepository.getAppConfig().first { it != null } ?: return false
+        val normalizedCurrentPin = currentPin.trim()
+        if (!AppConfig.verifyPin(normalizedCurrentPin, config.pinHash)) {
+            return false
+        }
+        val finalPinHash = if (newPin.trim().length == 4) {
+            AppConfig.hashPin(newPin.trim())
+        } else {
+            config.pinHash
+        }
+        appConfigRepository.updateConfig(targetSales, startingCashFloat, finalPinHash)
+        return true
     }
 
     fun addCashier(name: String) {

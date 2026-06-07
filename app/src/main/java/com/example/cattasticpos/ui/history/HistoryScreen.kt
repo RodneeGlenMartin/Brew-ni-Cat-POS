@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Share
 import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
@@ -36,6 +37,7 @@ import com.example.cattasticpos.ui.components.ReceiptPreviewDialog
 import com.example.cattasticpos.ui.components.formatReceiptShareText
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -527,16 +529,14 @@ fun HistoryScreen(
                 EditConfigDialog(
                     initialTarget = appConfig?.targetSales ?: 5000.0,
                     initialFloat = appConfig?.startingCashFloat ?: 500.0,
-                    expectedPinHash = appConfig?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
                     cashiers = appConfig?.cashiers.orEmpty(),
                     activeCashierId = appConfig?.activeCashierId,
                     cashierSalesToday = cashierSalesToday,
                     gcashAccounts = appConfig?.gcashAccounts.orEmpty(),
                     initialThemeAccentId = appConfig?.themeAccentId ?: AppThemeAccent.DEFAULT_ID,
                     onDismiss = { showConfigDialog = false },
-                    onSave = { target, float, pinHash ->
-                        viewModel.updateConfig(target, float, pinHash)
-                        showConfigDialog = false
+                    onSaveWithPin = { target, float, currentPin, newPin ->
+                        viewModel.saveConfigWithPinVerification(target, float, currentPin, newPin)
                     },
                     onThemeAccentChange = { viewModel.updateThemeAccent(it) },
                     onSelectActiveCashier = { viewModel.selectActiveCashier(it) },
@@ -786,14 +786,13 @@ fun VoidOrderDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
 fun EditConfigDialog(
     initialTarget: Double,
     initialFloat: Double,
-    expectedPinHash: String,
     cashiers: List<Cashier>,
     activeCashierId: String?,
     cashierSalesToday: Map<String, Double>,
     gcashAccounts: List<GcashAccount>,
     initialThemeAccentId: String,
     onDismiss: () -> Unit,
-    onSave: (Double, Double, String) -> Unit,
+    onSaveWithPin: suspend (Double, Double, String, String) -> Boolean,
     onThemeAccentChange: (String) -> Unit,
     onSelectActiveCashier: (String) -> Unit,
     onAddCashier: (String) -> Unit,
@@ -811,6 +810,7 @@ fun EditConfigDialog(
     var newCashierName by remember { mutableStateOf("") }
     var newGcashLabel by remember { mutableStateOf("") }
     val selectedAccent = AppThemeAccent.fromId(initialThemeAccentId)
+    val scope = rememberCoroutineScope()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -842,7 +842,10 @@ fun EditConfigDialog(
                 Text("Security Setup", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 OutlinedTextField(
                     value = currentPin,
-                    onValueChange = { currentPin = it },
+                    onValueChange = { value ->
+                        currentPin = value.filter { it.isDigit() }.take(4)
+                        isError = false
+                    },
                     label = { Text("Current PIN (Required to change goals or PIN)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     visualTransformation = PasswordVisualTransformation(),
@@ -854,7 +857,10 @@ fun EditConfigDialog(
                 }
                 OutlinedTextField(
                     value = newPin,
-                    onValueChange = { if (it.length <= 4) newPin = it },
+                    onValueChange = { value ->
+                        newPin = value.filter { it.isDigit() }.take(4)
+                        isError = false
+                    },
                     label = { Text("New PIN (Optional)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     visualTransformation = PasswordVisualTransformation(),
@@ -940,31 +946,32 @@ fun EditConfigDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    val t = targetStr.toDoubleOrNull() ?: initialTarget
-                    val f = floatStr.toDoubleOrNull() ?: initialFloat
-                    val goalsChanged = t != initialTarget || f != initialFloat
-                    val pinChangeRequested = newPin.length == 4
+                    scope.launch {
+                        val t = targetStr.toDoubleOrNull() ?: initialTarget
+                        val f = floatStr.toDoubleOrNull() ?: initialFloat
+                        val goalsChanged = t != initialTarget || f != initialFloat
+                        val pinChangeRequested = newPin.length == 4
 
-                    if (!goalsChanged && !pinChangeRequested) {
-                        onDismiss()
-                        return@TextButton
-                    }
+                        if (!goalsChanged && !pinChangeRequested) {
+                            onDismiss()
+                            return@launch
+                        }
 
-                    if (newPin.isNotEmpty() && newPin.length < 4) {
-                        isError = true
-                        return@TextButton
-                    }
+                        if (newPin.isNotEmpty() && newPin.length < 4) {
+                            isError = true
+                            return@launch
+                        }
 
-                    if (currentPin.isBlank()) {
-                        isError = true
-                        return@TextButton
-                    }
+                        if (currentPin.isBlank()) {
+                            isError = true
+                            return@launch
+                        }
 
-                    if (AppConfig.verifyPin(currentPin, expectedPinHash)) {
-                        val finalPinHash = if (pinChangeRequested) AppConfig.hashPin(newPin) else expectedPinHash
-                        onSave(t, f, finalPinHash)
-                    } else {
-                        isError = true
+                        if (onSaveWithPin(t, f, currentPin, newPin)) {
+                            onDismiss()
+                        } else {
+                            isError = true
+                        }
                     }
                 }
             ) {

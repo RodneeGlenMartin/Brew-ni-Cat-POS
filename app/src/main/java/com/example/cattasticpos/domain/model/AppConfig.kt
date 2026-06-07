@@ -21,38 +21,78 @@ data class AppConfig(
         private const val KEY_LENGTH = 256
 
         fun hashPin(pin: String, salt: ByteArray? = null): String {
-            if (pin.isBlank()) {
+            val normalizedPin = pin.trim()
+            if (normalizedPin.isBlank()) {
                 throw IllegalArgumentException("Cannot hash blank PIN")
             }
             val actualSalt = salt ?: ByteArray(16).apply { SecureRandom().nextBytes(this) }
-            val spec = PBEKeySpec(pin.toCharArray(), actualSalt, ITERATIONS, KEY_LENGTH)
-            val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-            val hash = factory.generateSecret(spec).encoded
-            return Base64.encodeToString(actualSalt, Base64.NO_WRAP) + ":" + Base64.encodeToString(hash, Base64.NO_WRAP)
+            val hashBytes = derivePinHashBytes(normalizedPin, actualSalt)
+            return encodePinHash(actualSalt, hashBytes)
         }
 
         fun verifyPin(pin: String, storedHash: String): Boolean {
-            if (pin.isBlank() || storedHash.isBlank()) {
+            val normalizedPin = pin.trim()
+            val normalizedHash = storedHash.trim()
+            if (normalizedPin.isBlank() || normalizedHash.isBlank()) {
                 return false
             }
-            if (!storedHash.contains(":")) {
-                val oldHash = MessageDigest.getInstance("SHA-256").digest(pin.toByteArray()).joinToString("") { "%02x".format(it) }
-                return oldHash == storedHash
+            if (!normalizedHash.contains(":")) {
+                val oldHash = MessageDigest.getInstance("SHA-256")
+                    .digest(normalizedPin.toByteArray(Charsets.UTF_8))
+                    .joinToString("") { "%02x".format(it) }
+                return oldHash == normalizedHash
             }
-            val parts = storedHash.split(":", limit = 2)
-            if (parts.size != 2 || parts[0].isBlank() || parts[1].isBlank()) {
+
+            val colonIndex = normalizedHash.indexOf(':')
+            if (colonIndex <= 0 || colonIndex >= normalizedHash.lastIndex) {
                 return false
             }
+
+            val saltSegment = normalizedHash.substring(0, colonIndex)
+            val hashSegment = normalizedHash.substring(colonIndex + 1)
+            if (saltSegment.isBlank() || hashSegment.isBlank()) {
+                return false
+            }
+
             val salt = try {
-                Base64.decode(parts[0], Base64.NO_WRAP)
+                Base64.decode(saltSegment, Base64.NO_WRAP)
             } catch (_: IllegalArgumentException) {
                 return false
             }
             if (salt.isEmpty()) {
                 return false
             }
-            val newHash = hashPin(pin, salt)
-            return newHash == storedHash
+
+            val expectedHashBytes = try {
+                Base64.decode(hashSegment, Base64.NO_WRAP)
+            } catch (_: IllegalArgumentException) {
+                return false
+            }
+
+            val derivedHashBytes = try {
+                derivePinHashBytes(normalizedPin, salt)
+            } catch (_: Exception) {
+                return false
+            }
+
+            return expectedHashBytes.contentEquals(derivedHashBytes)
+        }
+
+        private fun derivePinHashBytes(pin: String, salt: ByteArray): ByteArray {
+            val spec = PBEKeySpec(pin.toCharArray(), salt, ITERATIONS, KEY_LENGTH)
+            return try {
+                SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+                    .generateSecret(spec)
+                    .encoded
+            } finally {
+                spec.clearPassword()
+            }
+        }
+
+        private fun encodePinHash(salt: ByteArray, hashBytes: ByteArray): String {
+            return Base64.encodeToString(salt, Base64.NO_WRAP) +
+                ":" +
+                Base64.encodeToString(hashBytes, Base64.NO_WRAP)
         }
     }
 }
