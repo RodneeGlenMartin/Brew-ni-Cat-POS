@@ -12,12 +12,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
-import androidx.compose.foundation.Image
-import androidx.compose.ui.res.painterResource
-import com.example.cattasticpos.R
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -31,7 +26,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Inventory2
+import androidx.compose.material.icons.rounded.Queue
+import kotlinx.coroutines.launch
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -88,28 +95,25 @@ fun DashboardScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Image(
-                            painter = painterResource(id = R.drawable.logo),
-                            contentDescription = "Brew ni Cat Logo",
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Brew-ni-Cat", fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-                    }
+                    Text(
+                        "Brew ni Cat",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        maxLines = 1
+                    )
                 },
                 actions = {
                     IconButton(onClick = onNavigateToInventory) {
-                        Icon(imageVector = Icons.Default.Inventory, contentDescription = "Inventory Management")
+                        Icon(imageVector = Icons.Rounded.Inventory2, contentDescription = "Inventory Management")
                     }
                     IconButton(onClick = { viewModel.setShowExpenseDialog(true) }) {
-                        Icon(imageVector = Icons.Default.AccountBalanceWallet, contentDescription = "Add Expense")
+                        Icon(imageVector = Icons.Rounded.AccountBalanceWallet, contentDescription = "Add Expense")
                     }
                     IconButton(onClick = { viewModel.setShowQueuesDialog(true) }) {
-                        Icon(imageVector = Icons.Default.Queue, contentDescription = "View Queues")
+                        Icon(imageVector = Icons.Rounded.Queue, contentDescription = "View Queues")
                     }
                     IconButton(onClick = { onNavigateToHistory() }) {
-                        Icon(imageVector = Icons.Default.History, contentDescription = "History")
+                        Icon(imageVector = Icons.Rounded.History, contentDescription = "History")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -238,7 +242,7 @@ fun DashboardScreen(
                             ) {
                                 if (uiState.activeCart.isEmpty()) {
                                     Text(
-                                        "No items yet 🐾",
+                                        "No items yet",
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(vertical = 8.dp),
@@ -837,7 +841,17 @@ private fun formatVariantPriceLabel(variant: Variant, item: Item, selectedFlavor
 fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Held Orders Queue 🐾", fontWeight = FontWeight.Bold) },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Rounded.Queue,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Held Orders Queue", fontWeight = FontWeight.Bold)
+            }
+        },
         text = {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
                 if (heldQueues.isEmpty()) {

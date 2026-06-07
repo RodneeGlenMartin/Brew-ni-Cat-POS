@@ -99,7 +99,7 @@ class ReceiptPrinterService(private val context: Context) {
         outputStream.write(initPrinter)
         outputStream.write(alignCenter)
         outputStream.write(boldOn)
-        outputStream.write("Cat-Tastic Bites & Drinks\n".toByteArray())
+        outputStream.write("Brew ni Cat\n".toByteArray())
         outputStream.write(boldOff)
         if (!order.tableLabel.isNullOrBlank()) {
             outputStream.write("Table/Label: ${order.tableLabel}\n".toByteArray())
@@ -146,7 +146,7 @@ class ReceiptPrinterService(private val context: Context) {
         outputStream.write(boldOn)
         outputStream.write("Z-READING REPORT\n".toByteArray())
         outputStream.write(boldOff)
-        outputStream.write("Cat-Tastic POS\n".toByteArray())
+        outputStream.write("Brew ni Cat\n".toByteArray())
         outputStream.write("$timestamp\n".toByteArray())
         outputStream.write("--------------------------------\n".toByteArray())
         outputStream.write(alignLeft)

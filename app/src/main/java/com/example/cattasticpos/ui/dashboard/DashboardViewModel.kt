@@ -231,7 +231,7 @@ class DashboardViewModel(
                 result.getOrNull()?.let { order ->
                     val printerResult = receiptPrinterService.printReceipt(order)
                     val message = buildString {
-                        append("Order placed successfully! 🐾")
+                        append("Order placed successfully!")
                         if (printerResult.isFailure) {
                             append("\nPrinter: ${printerResult.exceptionOrNull()?.message}")
                         }

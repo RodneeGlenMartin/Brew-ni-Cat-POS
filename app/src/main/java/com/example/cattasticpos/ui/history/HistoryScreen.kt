@@ -7,37 +7,47 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import android.content.Context
 import androidx.core.app.ShareCompat
 import com.example.cattasticpos.domain.model.ZReadingSummary
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.ReceiptLong
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import com.example.cattasticpos.domain.model.AppConfig
+import com.example.cattasticpos.domain.model.AppThemeAccent
 import com.example.cattasticpos.domain.model.Cashier
 import com.example.cattasticpos.domain.model.GcashAccount
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Print
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
+import com.example.cattasticpos.ui.components.ReceiptPreviewDialog
+import com.example.cattasticpos.ui.components.formatReceiptShareText
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,6 +81,7 @@ fun HistoryScreen(
     val canLoadMore by viewModel.canLoadMore.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingVoidOrderId by remember { mutableStateOf<String?>(null) }
+    var receiptPreviewOrder by remember { mutableStateOf<Order?>(null) }
     
     LaunchedEffect(exportMessage) {
         exportMessage?.let {
@@ -84,10 +95,18 @@ fun HistoryScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = "📜 Order History Log",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Rounded.History,
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Order History Log",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
@@ -99,7 +118,7 @@ fun HistoryScreen(
                 },
                 actions = {
                     IconButton(onClick = { viewModel.setShowDateRangeDialog(true) }) {
-                        Icon(imageVector = Icons.Default.DateRange, contentDescription = "Filter by Date")
+                        Icon(imageVector = Icons.Rounded.CalendarMonth, contentDescription = "Filter by Date")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -237,11 +256,11 @@ fun HistoryScreen(
                         }
                         
                         IconButton(onClick = { showConfigDialog = true }, modifier = Modifier.size(32.dp)) {
-                            Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(imageVector = Icons.Rounded.Settings, contentDescription = "Settings", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         
                         Icon(
-                            imageVector = if (isZReadingExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            imageVector = if (isZReadingExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                             contentDescription = "Expand/Collapse",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -363,12 +382,24 @@ fun HistoryScreen(
                                         .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
                                         .padding(8.dp)
                                 ) {
-                                    Text(
-                                        text = "🏆 Best Seller: ${topSellingItem!!.first} - ${topSellingItem!!.second} units",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.EmojiEvents,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.secondary
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Best Seller: ${topSellingItem!!.first} - ${topSellingItem!!.second} units",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -431,7 +462,7 @@ fun HistoryScreen(
                     items(orders, key = { "order_${it.id}" }) { order ->
                         OrderHistoryCard(
                             order = order,
-                            onShare = { shareOrderReceipt(context, order) },
+                            onShare = { receiptPreviewOrder = order },
                             onDelete = { pendingVoidOrderId = order.id }
                         )
                     }
@@ -489,11 +520,13 @@ fun HistoryScreen(
                     expectedPinHash = appConfig?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
                     cashiers = appConfig?.cashiers.orEmpty(),
                     gcashAccounts = appConfig?.gcashAccounts.orEmpty(),
+                    initialThemeAccentId = appConfig?.themeAccentId ?: AppThemeAccent.DEFAULT_ID,
                     onDismiss = { showConfigDialog = false },
                     onSave = { target, float, pinHash ->
                         viewModel.updateConfig(target, float, pinHash)
                         showConfigDialog = false
                     },
+                    onThemeAccentChange = { viewModel.updateThemeAccent(it) },
                     onAddCashier = { viewModel.addCashier(it) },
                     onRemoveCashier = { viewModel.removeCashier(it) },
                     onAddGcashAccount = { viewModel.addGcashAccount(it) },
@@ -507,6 +540,17 @@ fun HistoryScreen(
                     onConfirm = { reason ->
                         viewModel.voidOrder(orderId, reason)
                         pendingVoidOrderId = null
+                    }
+                )
+            }
+
+            receiptPreviewOrder?.let { order ->
+                ReceiptPreviewDialog(
+                    order = order,
+                    onDismiss = { receiptPreviewOrder = null },
+                    onShare = {
+                        shareOrderReceipt(context, order)
+                        receiptPreviewOrder = null
                     }
                 )
             }
@@ -625,7 +669,7 @@ fun OrderHistoryCard(
                     ) {
                         val flavorText = if (item.flavor.isNullOrBlank()) "" else " (${item.flavor.substringAfter(": ").trim()})"
                         Text(
-                            text = "🐾 ${item.quantity} x ${item.itemName} (${item.variantName}$flavorText)",
+                            text = "${item.quantity} x ${item.itemName} (${item.variantName}$flavorText)",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.weight(1f)
@@ -683,25 +727,9 @@ fun OrderHistoryCard(
 }
 
 fun shareOrderReceipt(context: android.content.Context, order: com.example.cattasticpos.domain.model.Order) {
-    val itemsText = order.items.joinToString("\n") { item ->
-        "  ${item.quantity}x ${item.itemName}${if (item.variantName != null) " (${item.variantName})" else ""} - Php ${String.format("%.0f", item.unitPrice * item.quantity)}"
-    }
-    
-    val text = """
-        Brew ni Cat Receipt
-        Order ID: ${order.id}
-        Date: ${java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date(order.timestamp))}
-        
-        Items:
-$itemsText
-        
-        Subtotal: Php ${String.format("%.0f", order.subtotal)}
-        Discount: Php ${String.format("%.0f", order.discountDeduction)}
-        Total: Php ${String.format("%.0f", order.total)}
-        Payment: ${order.paymentMethod}
-    """.trimIndent()
+    val text = formatReceiptShareText(order)
 
-    val intent = androidx.core.app.ShareCompat.IntentBuilder(context)
+    val intent = ShareCompat.IntentBuilder(context)
         .setType("text/plain")
         .setText(text)
         .intent
@@ -749,8 +777,10 @@ fun EditConfigDialog(
     expectedPinHash: String,
     cashiers: List<Cashier>,
     gcashAccounts: List<GcashAccount>,
+    initialThemeAccentId: String,
     onDismiss: () -> Unit,
     onSave: (Double, Double, String) -> Unit,
+    onThemeAccentChange: (String) -> Unit,
     onAddCashier: (String) -> Unit,
     onRemoveCashier: (String) -> Unit,
     onAddGcashAccount: (String) -> Unit,
@@ -765,6 +795,7 @@ fun EditConfigDialog(
     var gcashExpanded by remember { mutableStateOf(false) }
     var newCashierName by remember { mutableStateOf("") }
     var newGcashLabel by remember { mutableStateOf("") }
+    val selectedAccent = AppThemeAccent.fromId(initialThemeAccentId)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -817,6 +848,46 @@ fun EditConfigDialog(
                 if (newPin.isNotEmpty() && newPin.length < 4) {
                     Text("PIN must be 4 digits", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Text("System Theme Accent", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    AppThemeAccent.entries.forEach { accent ->
+                        val isSelected = accent.id == initialThemeAccentId
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(accent.swatch)
+                                .then(
+                                    if (isSelected) {
+                                        Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                                .clickable { onThemeAccentChange(accent.id) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isSelected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .clip(CircleShape)
+                                        .background(Color.White.copy(alpha = 0.9f))
+                                )
+                            }
+                        }
+                    }
+                }
+                Text(
+                    text = selectedAccent.label,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                 ConfigListSection(
@@ -895,7 +966,7 @@ private fun ConfigListSection(
     ) {
         Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
         Icon(
-            imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
             contentDescription = null
         )
     }

@@ -18,14 +18,13 @@ import androidx.compose.ui.unit.dp
 
 import com.example.cattasticpos.domain.model.AppConfig
 
-class PawVisualTransformation : VisualTransformation {
+class BulletVisualTransformation : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
-        val paw = "🐾"
-        val pawLength = paw.length
-        val transformedText = paw.repeat(text.length)
+        val mask = "\u2022"
+        val transformedText = mask.repeat(text.length)
         val offsetMapping = object : OffsetMapping {
-            override fun originalToTransformed(offset: Int): Int = offset * pawLength
-            override fun transformedToOriginal(offset: Int): Int = offset / pawLength
+            override fun originalToTransformed(offset: Int): Int = offset
+            override fun transformedToOriginal(offset: Int): Int = offset
         }
         return TransformedText(AnnotatedString(transformedText), offsetMapping)
     }
@@ -74,7 +73,7 @@ fun PinScreen(
                 label = { Text("PIN") },
                 isError = isError,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                visualTransformation = PawVisualTransformation(),
+                visualTransformation = BulletVisualTransformation(),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )

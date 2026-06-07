@@ -233,6 +233,12 @@ class HistoryViewModel(
         }
     }
 
+    fun updateThemeAccent(themeAccentId: String) {
+        viewModelScope.launch {
+            appConfigRepository.updateThemeAccent(themeAccentId)
+        }
+    }
+
     fun voidOrder(orderId: String, reason: String) {
         viewModelScope.launch {
             val result = voidOrderUseCase(orderId, reason, cashierId = null)

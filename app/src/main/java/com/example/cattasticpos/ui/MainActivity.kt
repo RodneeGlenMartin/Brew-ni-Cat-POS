@@ -19,8 +19,9 @@ import androidx.compose.material3.*
 import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.cattasticpos.CattasticPosApp
+import com.example.cattasticpos.domain.model.AppThemeAccent
 import com.example.cattasticpos.ui.dashboard.DashboardScreen
 import com.example.cattasticpos.ui.dashboard.DashboardViewModel
 import com.example.cattasticpos.ui.history.HistoryScreen
@@ -30,59 +31,16 @@ import com.example.cattasticpos.ui.inventory.InventoryViewModel
 import com.example.cattasticpos.ui.components.PinScreen
 import com.example.cattasticpos.ui.config.AppConfigViewModel
 import com.example.cattasticpos.ui.config.AppConfigUiState
-
-private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF3E5C49),       // Forest Green
-    onPrimary = Color(0xFFF5F1E3),     // Warm Cream
-    primaryContainer = Color(0xFFD3A63B), // Golden Mustard
-    onPrimaryContainer = Color(0xFF3B2821), // Espresso Brown
-    secondary = Color(0xFFE08538),     // Cat Orange
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFFD7CCC8),
-    onSecondaryContainer = Color(0xFF3B2821),
-    tertiary = Color(0xFF42A5F5),      // Soft Blue for GCash
-    onTertiary = Color(0xFFFFFFFF),
-    background = Color(0xFFF5F1E3),    // Warm Cream
-    onBackground = Color(0xFF3B2821),  // Espresso Brown
-    surface = Color(0xFFFFFFFF),       // White Cards
-    onSurface = Color(0xFF3B2821),     // Espresso Brown
-    surfaceVariant = Color(0xFFF5EFEA),
-    onSurfaceVariant = Color(0xFF3B2821),
-    outline = Color(0xFF80756C),
-    outlineVariant = Color(0xFFD2C4B9),
-    error = Color(0xFFD32F2F),
-    onError = Color(0xFFFFFFFF)
-)
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF3E5C49),       // Forest Green
-    onPrimary = Color(0xFFF5F1E3),     // Warm Cream
-    primaryContainer = Color(0xFFD3A63B), // Golden Mustard
-    onPrimaryContainer = Color(0xFF3B2821), // Espresso Brown
-    secondary = Color(0xFFE08538),     // Cat Orange
-    onSecondary = Color(0xFFFFFFFF),
-    secondaryContainer = Color(0xFF5D4037),
-    onSecondaryContainer = Color(0xFFD7CCC8),
-    tertiary = Color(0xFF64B5F6),      // Soft Blue for GCash
-    onTertiary = Color(0xFF003258),
-    background = Color(0xFF241E1C),    // Dark, warm brown-gray
-    onBackground = Color(0xFFF5F1E3),  // Warm Cream
-    surface = Color(0xFF302A28),       // Lighter warm gray/brown cards
-    onSurface = Color(0xFFF5F1E3),     // Warm Cream
-    surfaceVariant = Color(0xFF3A3330),
-    onSurfaceVariant = Color(0xFFF5F1E3),
-    outline = Color(0xFF9E9E9E),
-    outlineVariant = Color(0xFF424242),
-    error = Color(0xFFCF6679),
-    onError = Color(0xFF000000)
-)
+import com.example.cattasticpos.ui.theme.darkColorSchemeFor
+import com.example.cattasticpos.ui.theme.lightColorSchemeFor
 
 @Composable
 fun CattasticTheme(
+    accent: AppThemeAccent = AppThemeAccent.EMERALD,
     darkTheme: Boolean = androidx.compose.foundation.isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = if (darkTheme) darkColorSchemeFor(accent) else lightColorSchemeFor(accent)
     MaterialTheme(
         colorScheme = colorScheme,
         content = content
@@ -121,7 +79,12 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            CattasticTheme {
+            val app = application as CattasticPosApp
+            val appConfig by app.container.appConfigRepository.getAppConfig()
+                .collectAsState(initial = null)
+            val accent = AppThemeAccent.fromId(appConfig?.themeAccentId)
+
+            CattasticTheme(accent = accent) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
