@@ -10,12 +10,30 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.cattasticpos.ui.adaptive.BionicHaptic
 import com.example.cattasticpos.ui.adaptive.iOSSpring
 import com.example.cattasticpos.ui.adaptive.rememberBionicHaptic
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
@@ -25,10 +43,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.math.max
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -85,9 +107,18 @@ fun neonSelectionBrush(accent: Color): Brush = Brush.linearGradient(
     )
 )
 
+fun adaptiveGlassBrush(darkTheme: Boolean): Brush =
+    Brush.verticalGradient(
+        colors = if (darkTheme) {
+            listOf(Color.White.copy(alpha = 0.08f), Color.White.copy(alpha = 0.02f))
+        } else {
+            listOf(Color.White.copy(alpha = 0.65f), Color.White.copy(alpha = 0.40f))
+        }
+    )
+
 @Composable
 fun adaptiveGlassFill(darkTheme: Boolean = isAdaptiveDarkTheme()): Color =
-    if (darkTheme) ObsidianPalette.GlassFill else AlabasterPalette.GlassFill
+    if (darkTheme) ObsidianPalette.GlassFill else Color.White.copy(alpha = 0.52f)
 
 @Composable
 fun adaptiveBodyMuted(darkTheme: Boolean = isAdaptiveDarkTheme()): Color =
@@ -154,97 +185,96 @@ fun adaptiveTypography(darkTheme: Boolean = isAdaptiveDarkTheme()): Typography {
 
 
 @Composable
+private fun AmbientGlowBlob(
+    modifier: Modifier = Modifier,
+    color: Color,
+    peakAlpha: Float
+) {
+    Box(
+        modifier = modifier.graphicsLayer { clip = false }
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .drawBehind {
+                    val radius = max(size.width, size.height) * 0.58f
+                    drawRect(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                color.copy(alpha = peakAlpha),
+                                color.copy(alpha = peakAlpha * 0.35f),
+                                Color.Transparent
+                            ),
+                            center = Offset(size.width * 0.5f, size.height * 0.5f),
+                            radius = radius
+                        )
+                    )
+                }
+        )
+    }
+}
+
+@Composable
 fun AdaptiveAmbientGlows(
     modifier: Modifier = Modifier,
-    darkTheme: Boolean = isAdaptiveDarkTheme()
+    darkTheme: Boolean = isAdaptiveDarkTheme(),
+    compactLayout: Boolean = false
 ) {
     val accentPrimary = MaterialTheme.colorScheme.primary
     val accentSecondary = MaterialTheme.colorScheme.secondary
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.graphicsLayer { clip = false }) {
         if (darkTheme) {
-            Box(
+            AmbientGlowBlob(
                 modifier = Modifier
-                    .size(320.dp)
-                    .offset(x = (-80).dp, y = (-40).dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                accentPrimary.copy(alpha = 0.08f),
-                                Color.Transparent
-                            )
-                        )
-                    )
+                    .size(360.dp)
+                    .offset(x = (-120).dp, y = (-80).dp),
+                color = accentPrimary,
+                peakAlpha = 0.08f
             )
-            Box(
-                modifier = Modifier
-                    .size(280.dp)
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 60.dp, y = 120.dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                accentSecondary.copy(alpha = 0.06f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(240.dp)
-                    .align(Alignment.BottomStart)
-                    .offset(x = 40.dp, y = (-60).dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                accentPrimary.copy(alpha = 0.07f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-        } else {
-            Box(
+            if (!compactLayout) {
+                AmbientGlowBlob(
+                    modifier = Modifier
+                        .size(420.dp)
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 140.dp, y = 100.dp),
+                    color = accentSecondary,
+                    peakAlpha = 0.06f
+                )
+            }
+            AmbientGlowBlob(
                 modifier = Modifier
                     .size(300.dp)
-                    .offset(x = (-60).dp, y = (-30).dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                accentPrimary.copy(alpha = 0.12f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(260.dp)
-                    .align(Alignment.CenterEnd)
-                    .offset(x = 50.dp, y = 100.dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                accentSecondary.copy(alpha = 0.10f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
-            Box(
-                modifier = Modifier
-                    .size(220.dp)
                     .align(Alignment.BottomStart)
-                    .offset(x = 30.dp, y = (-50).dp)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(
-                                accentPrimary.copy(alpha = 0.10f),
-                                Color.Transparent
-                            )
-                        )
-                    )
+                    .offset(x = (-40).dp, y = 80.dp),
+                color = accentPrimary,
+                peakAlpha = 0.07f
+            )
+        } else {
+            AmbientGlowBlob(
+                modifier = Modifier
+                    .size(340.dp)
+                    .offset(x = (-100).dp, y = (-60).dp),
+                color = accentPrimary,
+                peakAlpha = 0.12f
+            )
+            if (!compactLayout) {
+                AmbientGlowBlob(
+                    modifier = Modifier
+                        .size(400.dp)
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 120.dp, y = 90.dp),
+                    color = accentSecondary,
+                    peakAlpha = 0.10f
+                )
+            }
+            AmbientGlowBlob(
+                modifier = Modifier
+                    .size(280.dp)
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-50).dp, y = 70.dp),
+                color = accentPrimary,
+                peakAlpha = 0.10f
             )
         }
     }
@@ -272,11 +302,24 @@ fun AdaptiveGlassSurface(
     accent: Color = MaterialTheme.colorScheme.primary,
     darkTheme: Boolean = isAdaptiveDarkTheme(),
     cornerRadius: Dp = adaptiveGlassRadius(darkTheme),
+    dialogMode: Boolean = false,
+    surfaceAlpha: Float? = null,
     onClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
-    val shape = RoundedCornerShape(cornerRadius)
-    val fill = if (selected) accent.copy(alpha = if (darkTheme) 0.1f else 0.12f) else adaptiveGlassFill(darkTheme)
+    val effectiveRadius = if (dialogMode) 24.dp else cornerRadius
+    val shape = RoundedCornerShape(effectiveRadius)
+    val glassBrush = adaptiveGlassBrush(darkTheme)
+    val fillBrush: Brush? = when {
+        selected -> null
+        dialogMode && surfaceAlpha != null -> null
+        else -> glassBrush
+    }
+    val fillColor: Color? = when {
+        selected -> accent.copy(alpha = if (darkTheme) 0.1f else 0.12f)
+        dialogMode && surfaceAlpha != null -> MaterialTheme.colorScheme.surface.copy(alpha = surfaceAlpha)
+        else -> null
+    }
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val pressScale by animateFloatAsState(
@@ -300,24 +343,30 @@ fun AdaptiveGlassSurface(
         Modifier
     }
 
-    val surfaceModifier = if (darkTheme) {
-        Modifier.border(width = 1.dp, brush = if (selected) neonSelectionBrush(accent) else specularBorderBrush(), shape = shape)
-    } else {
+    val surfaceModifier = if (dialogMode) {
         Modifier.border(
             width = 1.dp,
-            brush = if (selected) {
-                neonSelectionBrush(accent)
-            } else {
-                alabasterSpecularBorderBrush()
-            },
+            color = if (darkTheme) Color.White.copy(alpha = 0.08f) else Color.Black.copy(alpha = 0.05f),
             shape = shape
         )
+    } else if (darkTheme) {
+        Modifier.border(width = 1.dp, brush = if (selected) neonSelectionBrush(accent) else specularBorderBrush(), shape = shape)
+    } else if (selected) {
+        Modifier.border(width = 1.dp, brush = neonSelectionBrush(accent), shape = shape)
+    } else {
+        Modifier.border(width = 1.dp, color = Color.Black.copy(alpha = 0.05f), shape = shape)
     }
 
     Box(
         modifier = modifier
             .clip(shape)
-            .background(fill)
+            .then(
+                if (fillBrush != null) {
+                    Modifier.background(fillBrush, shape)
+                } else {
+                    Modifier.background(fillColor!!, shape)
+                }
+            )
             .then(surfaceModifier)
             .then(clickModifier),
         content = content
@@ -328,15 +377,115 @@ fun AdaptiveGlassSurface(
 fun AdaptiveGlassCard(
     modifier: Modifier = Modifier,
     selected: Boolean = false,
+    dialogMode: Boolean = false,
+    surfaceAlpha: Float? = null,
     onClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     AdaptiveGlassSurface(
         modifier = modifier,
         selected = selected,
+        dialogMode = dialogMode,
+        surfaceAlpha = surfaceAlpha,
         onClick = onClick,
         content = content
     )
+}
+
+@Composable
+fun AdaptiveGlassDialog(
+    onDismissRequest: () -> Unit,
+    modifier: Modifier = Modifier,
+    title: (@Composable () -> Unit)? = null,
+    dismissButton: (@Composable () -> Unit)? = null,
+    confirmButton: (@Composable () -> Unit)? = null,
+    surfaceAlpha: Float? = null,
+    fixedFooter: Boolean = false,
+    contentMaxHeight: Dp = 480.dp,
+    contentPadding: Dp = 24.dp,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val textColor = adaptiveGlassContentColor()
+    val hasFooter = confirmButton != null || dismissButton != null
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        AdaptiveGlassCard(
+            modifier = modifier
+                .fillMaxWidth(0.94f)
+                .then(
+                    if (fixedFooter && hasFooter) {
+                        Modifier.fillMaxHeight(0.9f)
+                    } else {
+                        Modifier.wrapContentHeight()
+                    }
+                ),
+            dialogMode = true,
+            surfaceAlpha = surfaceAlpha
+        ) {
+            Column(
+                modifier = Modifier
+                    .then(
+                        if (fixedFooter && hasFooter) {
+                            Modifier.fillMaxSize()
+                        } else {
+                            Modifier.wrapContentHeight()
+                        }
+                    )
+                    .padding(contentPadding)
+            ) {
+                CompositionLocalProvider(
+                    LocalContentColor provides textColor,
+                    LocalTextStyle provides MaterialTheme.typography.bodyMedium.copy(color = textColor)
+                ) {
+                    if (title != null) {
+                        Box(modifier = Modifier.fillMaxWidth()) { title() }
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    if (fixedFooter && hasFooter) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .heightIn(max = contentMaxHeight)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            content()
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            dismissButton?.invoke()
+                            if (dismissButton != null && confirmButton != null) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                            }
+                            confirmButton?.invoke()
+                        }
+                    } else {
+                        content()
+                        if (hasFooter) {
+                            Spacer(modifier = Modifier.height(20.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                dismissButton?.invoke()
+                                if (dismissButton != null && confirmButton != null) {
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
+                                confirmButton?.invoke()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -361,4 +510,4 @@ fun ObsidianGlassCard(
     selected: Boolean = false,
     onClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
-) = AdaptiveGlassCard(modifier, selected, onClick, content)
+) = AdaptiveGlassCard(modifier = modifier, selected = selected, onClick = onClick, content = content)

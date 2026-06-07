@@ -43,6 +43,7 @@ import com.example.cattasticpos.ui.adaptive.rememberCollapsingHeaderState
 import com.example.cattasticpos.ui.adaptive.rememberLiquidGlassHazeState
 import com.example.cattasticpos.ui.adaptive.liquidGlassSource
 import com.example.cattasticpos.ui.theme.AdaptiveAmbientGlows
+import com.example.cattasticpos.ui.theme.AdaptiveGlassDialog
 import com.example.cattasticpos.ui.components.ReceiptPreviewDialog
 import com.example.cattasticpos.ui.components.formatReceiptShareText
 import androidx.compose.material3.*
@@ -400,8 +401,17 @@ fun HistoryScreen(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
-                                        .padding(8.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(
+                                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f),
+                                            RoundedCornerShape(12.dp)
+                                        )
+                                        .border(
+                                            1.dp,
+                                            MaterialTheme.colorScheme.secondary.copy(alpha = 0.25f),
+                                            RoundedCornerShape(12.dp)
+                                        )
+                                        .padding(12.dp)
                                 ) {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -506,12 +516,35 @@ fun HistoryScreen(
                 val pickerStart by viewModel.pickerStartMillis.collectAsState()
                 val pickerEnd by viewModel.pickerEndMillis.collectAsState()
                 key(datePickerEpoch, pickerStart, pickerEnd) {
+                    val todayUtcPickerMillis = DateRangePickerMillis.localTodayStartUtcPicker()
+                    val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
                     val dateRangePickerState = rememberDateRangePickerState(
                         initialSelectedStartDateMillis = pickerStart,
-                        initialSelectedEndDateMillis = pickerEnd
+                        initialSelectedEndDateMillis = pickerEnd,
+                        selectableDates = object : SelectableDates {
+                            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                                return utcTimeMillis <= todayUtcPickerMillis
+                            }
+
+                            override fun isSelectableYear(year: Int): Boolean {
+                                return year <= currentYear
+                            }
+                        }
                     )
-                    DatePickerDialog(
+                    AdaptiveGlassDialog(
                         onDismissRequest = { viewModel.setShowDateRangeDialog(false) },
+                        fixedFooter = true,
+                        contentMaxHeight = 480.dp,
+                        title = { Text("Filter Orders", fontWeight = FontWeight.Bold) },
+                        dismissButton = {
+                            Row {
+                                TextButton(onClick = {
+                                    viewModel.setDateRange(null, null)
+                                    viewModel.setShowDateRangeDialog(false)
+                                }) { Text("Clear Filter") }
+                                TextButton(onClick = { viewModel.setShowDateRangeDialog(false) }) { Text("Cancel") }
+                            }
+                        },
                         confirmButton = {
                             TextButton(onClick = {
                                 viewModel.applyDateRangeFilter(
@@ -521,24 +554,31 @@ fun HistoryScreen(
                                 viewModel.setShowDateRangeDialog(false)
                             }) { Text("Apply") }
                         },
-                        dismissButton = {
-                            Row {
-                                TextButton(onClick = {
-                                    viewModel.setDateRange(null, null)
-                                    viewModel.setShowDateRangeDialog(false)
-                                }) { Text("Clear Filter") }
-                                TextButton(onClick = { viewModel.setShowDateRangeDialog(false) }) { Text("Cancel") }
+                        content = {
+                            Text(
+                                text = "Select Date Range",
+                                modifier = Modifier.padding(bottom = 8.dp),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 480.dp),
+                                color = Color.Transparent,
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp
+                            ) {
+                                DateRangePicker(
+                                    state = dateRangePickerState,
+                                    showModeToggle = false,
+                                    colors = DatePickerDefaults.colors(
+                                        containerColor = Color.Transparent
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
                             }
                         }
-                    ) {
-                        DateRangePicker(
-                            state = dateRangePickerState,
-                            title = { Text(text = "Select Date Range", modifier = Modifier.padding(16.dp)) },
-                            headline = { Text(text = "Filter Orders", modifier = Modifier.padding(horizontal = 16.dp)) },
-                            showModeToggle = false,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                    )
                 }
             }
 
@@ -823,16 +863,57 @@ fun EditConfigDialog(
     val selectedAccent = AppThemeAccent.fromId(initialThemeAccentId)
     val scope = rememberCoroutineScope()
 
-    AlertDialog(
+    AdaptiveGlassDialog(
         onDismissRequest = onDismiss,
-        title = { Text("App Settings") },
-        text = {
+        surfaceAlpha = 0.92f,
+        fixedFooter = true,
+        contentMaxHeight = 520.dp,
+        contentPadding = 24.dp,
+        title = { Text("App Settings", fontWeight = FontWeight.Bold) },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    scope.launch {
+                        val t = targetStr.toDoubleOrNull() ?: initialTarget
+                        val f = floatStr.toDoubleOrNull() ?: initialFloat
+                        val goalsChanged = t != initialTarget || f != initialFloat
+                        val pinChangeRequested = newPin.length == 4
+
+                        if (!goalsChanged && !pinChangeRequested) {
+                            onDismiss()
+                            return@launch
+                        }
+
+                        if (newPin.isNotEmpty() && newPin.length < 4) {
+                            isError = true
+                            return@launch
+                        }
+
+                        if (currentPin.isBlank()) {
+                            isError = true
+                            return@launch
+                        }
+
+                        if (onSaveWithPin(t, f, currentPin, newPin)) {
+                            onDismiss()
+                        } else {
+                            isError = true
+                        }
+                    }
+                }
+            ) {
+                Text("Save Goals")
+            }
+        },
+        content = {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 520.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 CupertinoSection(header = "Business Goals") {
                     CupertinoFormRow(label = "Target Sales") {
@@ -971,46 +1052,6 @@ fun EditConfigDialog(
                     }
                 )
             }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    scope.launch {
-                        val t = targetStr.toDoubleOrNull() ?: initialTarget
-                        val f = floatStr.toDoubleOrNull() ?: initialFloat
-                        val goalsChanged = t != initialTarget || f != initialFloat
-                        val pinChangeRequested = newPin.length == 4
-
-                        if (!goalsChanged && !pinChangeRequested) {
-                            onDismiss()
-                            return@launch
-                        }
-
-                        if (newPin.isNotEmpty() && newPin.length < 4) {
-                            isError = true
-                            return@launch
-                        }
-
-                        if (currentPin.isBlank()) {
-                            isError = true
-                            return@launch
-                        }
-
-                        if (onSaveWithPin(t, f, currentPin, newPin)) {
-                            onDismiss()
-                        } else {
-                            isError = true
-                        }
-                    }
-                }
-            ) {
-                Text("Save Goals")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
         }
     )
 }
@@ -1056,7 +1097,10 @@ private fun CashierRosterSection(
                 ) {
                     RadioButton(
                         selected = isActive,
-                        onClick = { onSelect(cashier.id) }
+                        onClick = { onSelect(cashier.id) },
+                        colors = RadioButtonDefaults.colors(
+                            selectedColor = MaterialTheme.colorScheme.secondary
+                        )
                     )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -1064,7 +1108,7 @@ private fun CashierRosterSection(
                             fontSize = 13.sp,
                             fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                             color = if (isActive) {
-                                MaterialTheme.colorScheme.primary
+                                MaterialTheme.colorScheme.secondary
                             } else {
                                 MaterialTheme.colorScheme.onSurface
                             }
@@ -1082,7 +1126,7 @@ private fun CashierRosterSection(
                             imageVector = FluentIcons.CheckmarkCircle,
                             contentDescription = "Active cashier",
                             size = 18.dp,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.secondary
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                     }

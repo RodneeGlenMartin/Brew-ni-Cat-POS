@@ -14,6 +14,7 @@ import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
 import com.example.cattasticpos.ui.adaptive.adaptiveNestedScroll
 import com.example.cattasticpos.ui.adaptive.rememberAdaptiveTopBarScrollBehavior
 import com.example.cattasticpos.ui.components.unstyled.PosPrimaryButton
+import com.example.cattasticpos.ui.theme.AdaptiveGlassDialog
 import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
 import androidx.compose.material3.*
@@ -355,17 +356,10 @@ fun AddRawMaterialDialog(
     var stockStr by remember { mutableStateOf("") }
     var threshStr by remember { mutableStateOf("") }
 
-    AlertDialog(
+    AdaptiveGlassDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New Raw Material") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Item Name") }, singleLine = true)
-                OutlinedTextField(value = unit, onValueChange = { unit = it }, label = { Text("Unit (e.g. pcs, grams)") }, singleLine = true)
-                OutlinedTextField(value = stockStr, onValueChange = { stockStr = it }, label = { Text("Starting Stock") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
-                OutlinedTextField(value = threshStr, onValueChange = { threshStr = it }, label = { Text("Reorder Threshold") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true)
-            }
-        },
+        title = { Text("New Raw Material", fontWeight = FontWeight.Bold) },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
         confirmButton = {
             Button(onClick = {
                 val stock = stockStr.toDoubleOrNull() ?: 0.0
@@ -377,7 +371,14 @@ fun AddRawMaterialDialog(
                 Text("Save")
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        content = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Item Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = unit, onValueChange = { unit = it }, label = { Text("Unit (e.g. pcs, grams)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = stockStr, onValueChange = { stockStr = it }, label = { Text("Starting Stock") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = threshStr, onValueChange = { threshStr = it }, label = { Text("Reorder Threshold") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
+            }
+        }
     )
 }
 

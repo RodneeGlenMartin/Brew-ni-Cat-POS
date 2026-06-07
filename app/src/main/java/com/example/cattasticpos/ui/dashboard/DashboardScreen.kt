@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import com.example.cattasticpos.ui.adaptive.AdaptiveSnackbarHost
 import com.example.cattasticpos.ui.adaptive.BrewNiCatBrandIcon
 import com.example.cattasticpos.ui.adaptive.CollapsingGlassScaffold
+import com.example.cattasticpos.ui.adaptive.CollapsingHeaderState
 import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
 import com.example.cattasticpos.ui.adaptive.collapsingNestedScroll
 import com.example.cattasticpos.ui.adaptive.iOSSpringSpec
@@ -49,6 +50,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -56,10 +58,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.cattasticpos.domain.model.CartItem
 import com.example.cattasticpos.domain.model.Item
+import dev.chrisbanes.haze.HazeState
 import com.example.cattasticpos.domain.model.Variant
 import com.example.cattasticpos.domain.strategy.DiscountStrategy
 import com.example.cattasticpos.domain.strategy.FreeOrderDiscountStrategy
@@ -72,6 +76,7 @@ import com.example.cattasticpos.ui.theme.AlabasterPalette
 import com.example.cattasticpos.ui.components.unstyled.PosButtonIconLabel
 import com.example.cattasticpos.ui.components.unstyled.PosPrimaryButton
 import com.example.cattasticpos.ui.theme.AdaptiveAmbientGlows
+import com.example.cattasticpos.ui.theme.AdaptiveGlassDialog
 import com.example.cattasticpos.ui.theme.AdaptiveGlassCard
 import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassContentColor
@@ -183,222 +188,73 @@ fun DashboardScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-            // TOP SECTION: Menu (Takes up available space)
-            Box(modifier = Modifier.weight(1f)) {
-                AdaptiveAmbientGlows(Modifier.fillMaxSize())
-                Column(modifier = Modifier.fillMaxSize()) {
-                CategorySelector(
-                    categories = uiState.categories,
-                    selectedCategoryId = uiState.selectedCategoryId,
-                    onCategorySelected = { viewModel.selectCategory(it) },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
-                )
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 12.dp)
-                        .liquidGlassSource(hazeState)
-                        .collapsingNestedScroll(headerState)
-                ) {
-                    items(uiState.menuItems, key = { it.id }) { item ->
-                        val itemMappings = uiState.recipeMappings.filter { it.menuItemId == item.id }
-                        val isLowStock = if (itemMappings.isEmpty()) {
-                            false
-                        } else {
-                            itemMappings.any { mapping ->
-                                val invItem = uiState.inventory.find { it.id == mapping.inventoryItemId }
-                                invItem != null && invItem.currentStock <= invItem.reorderThreshold
-                            }
-                        }
-
-                        ItemCard(
-                            item = item,
-                            isLowStock = isLowStock,
-                            onClick = { viewModel.showConfigurationSheet(item) }
-                        )
-                    }
-                }
-                }
-            }
-
-            // BOTTOM SECTION: Collapsible Checkout Panel
+            val isTablet = LocalConfiguration.current.screenWidthDp >= 600
             val darkTheme = isSystemInDarkTheme()
             val checkoutBorder = if (darkTheme) {
                 BorderStroke(1.dp, specularBorderBrush())
             } else {
                 BorderStroke(1.dp, AlabasterPalette.RingBorder)
             }
-            Surface(
-                shadowElevation = 0.dp,
-                color = adaptiveGlassFill(darkTheme),
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                border = checkoutBorder,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .animateContentSize(animationSpec = iOSSpringSize)
-            ) {
-                Column(
+
+            if (isTablet) {
+                Row(
                     modifier = Modifier
+                        .weight(1f)
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
                 ) {
-                    Row(
+                    StorefrontCatalogPane(
+                        modifier = Modifier.weight(1f),
+                        uiState = uiState,
+                        hazeState = hazeState,
+                        headerState = headerState,
+                        onCategorySelected = { viewModel.selectCategory(it) },
+                        onItemClick = { viewModel.showConfigurationSheet(it) },
+                        compactGlows = false
+                    )
+                    DashboardCheckoutPanel(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { isCartExpanded = !isCartExpanded },
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                "Current Order ($cartItemCount)",
-                                fontWeight = FontWeight.Bold,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            TextButton(
-                                onClick = { viewModel.setShowHoldOrderDialog(true) },
-                                enabled = uiState.activeCart.isNotEmpty(),
-                                modifier = Modifier.height(32.dp)
-                            ) {
-                                FluentIcon(
-                                    imageVector = FluentIcons.Pause,
-                                    contentDescription = null,
-                                    size = 14.dp,
-                                    useGlassGradient = false
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Hold", fontSize = 12.sp)
-                            }
-                            IconButton(onClick = { isCartExpanded = !isCartExpanded }) {
-                                FluentIcon(
-                                    imageVector = if (isCartExpanded) FluentIcons.ChevronDown else FluentIcons.ChevronUp,
-                                    contentDescription = if (isCartExpanded) "Collapse order panel" else "Expand order panel",
-                                    useGlassGradient = false
-                                )
-                            }
-                        }
-                    }
-
-                    AnimatedVisibility(
-                        visible = isCartExpanded,
-                        enter = expandVertically(animationSpec = iOSSpringSize) + fadeIn(animationSpec = iOSSpringSpec),
-                        exit = shrinkVertically(animationSpec = iOSSpringSize) + fadeOut(animationSpec = iOSSpringSpec)
-                    ) {
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 150.dp)
-                                    .verticalScroll(rememberScrollState()),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                if (uiState.activeCart.isEmpty()) {
-                                    Text(
-                                        "No items yet",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(vertical = 8.dp),
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        textAlign = TextAlign.Center
-                                    )
-                                } else {
-                                    uiState.activeCart.forEach { cartItem ->
-                                        CartItemRow(
-                                            cartItem = cartItem,
-                                            onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) }
-                                        )
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        "Subtotal: ₱${String.format("%.0f", uiState.subtotal)}",
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    if (uiState.discountDeduction > 0) {
-                                        Text(
-                                            "Disc (${uiState.discountLabel}): -₱${String.format("%.0f", uiState.discountDeduction)}",
-                                            fontSize = 11.sp,
-                                            color = MaterialTheme.colorScheme.error,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                    }
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text("Total: ", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                    Text(
-                                        "₱${String.format("%.0f", uiState.total)}",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 20.sp,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                DiscountButton("None", uiState.selectedDiscountStrategy is NoDiscountStrategy, { viewModel.selectDiscount(NoDiscountStrategy()) }, Modifier.weight(1f))
-                                DiscountButton("5%", uiState.selectedDiscountStrategy is FivePercentDiscountStrategy, { viewModel.selectDiscount(FivePercentDiscountStrategy()) }, Modifier.weight(1f))
-                                DiscountButton("10%", uiState.selectedDiscountStrategy is PercentageDiscountStrategy && (uiState.selectedDiscountStrategy as PercentageDiscountStrategy).pct == 10.0, { viewModel.selectDiscount(PercentageDiscountStrategy(10.0)) }, Modifier.weight(1f))
-                                DiscountButton("20%", uiState.selectedDiscountStrategy is PercentageDiscountStrategy && (uiState.selectedDiscountStrategy as PercentageDiscountStrategy).pct == 20.0, { viewModel.selectDiscount(PercentageDiscountStrategy(20.0)) }, Modifier.weight(1f))
-                                DiscountButton("Free", uiState.selectedDiscountStrategy is FreeOrderDiscountStrategy, { viewModel.selectDiscount(FreeOrderDiscountStrategy()) }, Modifier.weight(1.2f))
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            val btnInteractionSource = remember { MutableInteractionSource() }
-                            val btnIsPressed by btnInteractionSource.collectIsPressedAsState()
-                            val btnScale by animateFloatAsState(
-                                targetValue = if (btnIsPressed) 0.96f else 1f,
-                                animationSpec = iOSSpringSpec,
-                                label = "btnScale"
-                            )
-
-                            Button(
-                                onClick = { viewModel.setShowPaymentDialog(true) },
-                                interactionSource = btnInteractionSource,
-                                enabled = uiState.activeCart.isNotEmpty(),
-                                modifier = Modifier.fillMaxWidth().scale(btnScale),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary
-                                ),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Text(
-                                    text = "Place Order",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 16.sp,
-                                    color = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
-                            }
-                        }
-                    }
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.05f)),
+                        uiState = uiState,
+                        cartItemCount = cartItemCount,
+                        isCartExpanded = true,
+                        onCartExpandedChange = { isCartExpanded = it },
+                        checkoutBorder = checkoutBorder,
+                        darkTheme = darkTheme,
+                        onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
+                        onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
+                        onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
+                        onSelectDiscount = { viewModel.selectDiscount(it) },
+                        forceExpanded = true,
+                        useBottomSheetStyle = false
+                    )
                 }
+            } else {
+                StorefrontCatalogPane(
+                    modifier = Modifier.weight(1f),
+                    uiState = uiState,
+                    hazeState = hazeState,
+                    headerState = headerState,
+                    onCategorySelected = { viewModel.selectCategory(it) },
+                    onItemClick = { viewModel.showConfigurationSheet(it) },
+                    compactGlows = true
+                )
+                DashboardCheckoutPanel(
+                    modifier = Modifier.fillMaxWidth(),
+                    uiState = uiState,
+                    cartItemCount = cartItemCount,
+                    isCartExpanded = isCartExpanded,
+                    onCartExpandedChange = { isCartExpanded = it },
+                    checkoutBorder = checkoutBorder,
+                    darkTheme = darkTheme,
+                    onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
+                    onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
+                    onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
+                    onSelectDiscount = { viewModel.selectDiscount(it) },
+                    forceExpanded = false,
+                    useBottomSheetStyle = true
+                )
             }
         }
 
@@ -439,6 +295,301 @@ fun DashboardScreen(
                 onDismiss = { viewModel.setShowExpenseDialog(false) }
             )
         }
+    }
+}
+
+@Composable
+private fun StorefrontCatalogPane(
+    uiState: DashboardUiState,
+    hazeState: HazeState,
+    headerState: CollapsingHeaderState,
+    onCategorySelected: (String) -> Unit,
+    onItemClick: (Item) -> Unit,
+    modifier: Modifier = Modifier,
+    compactGlows: Boolean = false
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .liquidGlassSource(hazeState)
+    ) {
+        AdaptiveAmbientGlows(
+            modifier = Modifier.fillMaxSize(),
+            compactLayout = compactGlows
+        )
+        Column(modifier = Modifier.fillMaxSize()) {
+            CategorySelector(
+                categories = uiState.categories,
+                selectedCategoryId = uiState.selectedCategoryId,
+                onCategorySelected = onCategorySelected,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
+            )
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp)
+                    .collapsingNestedScroll(headerState)
+            ) {
+                items(uiState.menuItems, key = { it.id }) { item ->
+                    val itemMappings = uiState.recipeMappings.filter { it.menuItemId == item.id }
+                    val isLowStock = if (itemMappings.isEmpty()) {
+                        false
+                    } else {
+                        itemMappings.any { mapping ->
+                            val invItem = uiState.inventory.find { it.id == mapping.inventoryItemId }
+                            invItem != null && invItem.currentStock <= invItem.reorderThreshold
+                        }
+                    }
+                    ItemCard(
+                        item = item,
+                        isLowStock = isLowStock,
+                        onClick = { onItemClick(item) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardCheckoutPanel(
+    uiState: DashboardUiState,
+    cartItemCount: Int,
+    isCartExpanded: Boolean,
+    onCartExpandedChange: (Boolean) -> Unit,
+    checkoutBorder: BorderStroke,
+    darkTheme: Boolean,
+    onHoldOrder: () -> Unit,
+    onPlaceOrder: () -> Unit,
+    onQuantityChange: (String, Int) -> Unit,
+    onSelectDiscount: (DiscountStrategy) -> Unit,
+    modifier: Modifier = Modifier,
+    forceExpanded: Boolean = false,
+    useBottomSheetStyle: Boolean = true
+) {
+    val showCartBody = forceExpanded || isCartExpanded
+
+    if (useBottomSheetStyle) {
+        Surface(
+            shadowElevation = 0.dp,
+            color = adaptiveGlassFill(darkTheme),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            border = checkoutBorder,
+            modifier = modifier.animateContentSize(animationSpec = iOSSpringSize)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onCartExpandedChange(!isCartExpanded) },
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Current Order ($cartItemCount)",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(
+                            onClick = onHoldOrder,
+                            enabled = uiState.activeCart.isNotEmpty(),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            FluentIcon(
+                                imageVector = FluentIcons.Pause,
+                                contentDescription = null,
+                                size = 14.dp,
+                                useGlassGradient = false
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Hold", fontSize = 12.sp)
+                        }
+                        IconButton(onClick = { onCartExpandedChange(!isCartExpanded) }) {
+                            FluentIcon(
+                                imageVector = if (isCartExpanded) FluentIcons.ChevronDown else FluentIcons.ChevronUp,
+                                contentDescription = if (isCartExpanded) "Collapse order panel" else "Expand order panel",
+                                useGlassGradient = false
+                            )
+                        }
+                    }
+                }
+                AnimatedVisibility(
+                    visible = showCartBody,
+                    enter = expandVertically(animationSpec = iOSSpringSize) + fadeIn(animationSpec = iOSSpringSpec),
+                    exit = shrinkVertically(animationSpec = iOSSpringSize) + fadeOut(animationSpec = iOSSpringSpec)
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        DashboardCheckoutBody(
+                            uiState = uiState,
+                            onQuantityChange = onQuantityChange,
+                            onSelectDiscount = onSelectDiscount,
+                            onPlaceOrder = onPlaceOrder
+                        )
+                    }
+                }
+            }
+        }
+    } else {
+        Column(
+            modifier = modifier
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Current Order ($cartItemCount)",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                TextButton(
+                    onClick = onHoldOrder,
+                    enabled = uiState.activeCart.isNotEmpty(),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    FluentIcon(
+                        imageVector = FluentIcons.Pause,
+                        contentDescription = null,
+                        size = 14.dp,
+                        useGlassGradient = false
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Hold", fontSize = 12.sp)
+                }
+            }
+            DashboardCheckoutBody(
+                uiState = uiState,
+                onQuantityChange = onQuantityChange,
+                onSelectDiscount = onSelectDiscount,
+                onPlaceOrder = onPlaceOrder,
+                listMaxHeight = null
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardCheckoutBody(
+    uiState: DashboardUiState,
+    onQuantityChange: (String, Int) -> Unit,
+    onSelectDiscount: (DiscountStrategy) -> Unit,
+    onPlaceOrder: () -> Unit,
+    listMaxHeight: Dp? = 150.dp
+) {
+    Spacer(modifier = Modifier.height(8.dp))
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (listMaxHeight != null) {
+                    Modifier.heightIn(max = listMaxHeight).verticalScroll(rememberScrollState())
+                } else {
+                    Modifier
+                }
+            ),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        if (uiState.activeCart.isEmpty()) {
+            Text(
+                "No items yet",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            )
+        } else {
+            uiState.activeCart.forEach { cartItem ->
+                CartItemRow(
+                    cartItem = cartItem,
+                    onQuantityChange = onQuantityChange
+                )
+            }
+        }
+    }
+    Spacer(modifier = Modifier.height(12.dp))
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    Spacer(modifier = Modifier.height(12.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                "Subtotal: ₱${String.format("%.0f", uiState.subtotal)}",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (uiState.discountDeduction > 0) {
+                Text(
+                    "Disc (${uiState.discountLabel}): -₱${String.format("%.0f", uiState.discountDeduction)}",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Total: ", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(
+                "₱${String.format("%.0f", uiState.total)}",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(12.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        DiscountButton("None", uiState.selectedDiscountStrategy is NoDiscountStrategy, { onSelectDiscount(NoDiscountStrategy()) }, Modifier.weight(1f))
+        DiscountButton("5%", uiState.selectedDiscountStrategy is FivePercentDiscountStrategy, { onSelectDiscount(FivePercentDiscountStrategy()) }, Modifier.weight(1f))
+        DiscountButton("10%", uiState.selectedDiscountStrategy is PercentageDiscountStrategy && (uiState.selectedDiscountStrategy as PercentageDiscountStrategy).pct == 10.0, { onSelectDiscount(PercentageDiscountStrategy(10.0)) }, Modifier.weight(1f))
+        DiscountButton("20%", uiState.selectedDiscountStrategy is PercentageDiscountStrategy && (uiState.selectedDiscountStrategy as PercentageDiscountStrategy).pct == 20.0, { onSelectDiscount(PercentageDiscountStrategy(20.0)) }, Modifier.weight(1f))
+        DiscountButton("Free", uiState.selectedDiscountStrategy is FreeOrderDiscountStrategy, { onSelectDiscount(FreeOrderDiscountStrategy()) }, Modifier.weight(1.2f))
+    }
+    Spacer(modifier = Modifier.height(12.dp))
+    val btnInteractionSource = remember { MutableInteractionSource() }
+    val btnIsPressed by btnInteractionSource.collectIsPressedAsState()
+    val btnScale by animateFloatAsState(
+        targetValue = if (btnIsPressed) 0.96f else 1f,
+        animationSpec = iOSSpringSpec,
+        label = "btnScale"
+    )
+    Button(
+        onClick = onPlaceOrder,
+        interactionSource = btnInteractionSource,
+        enabled = uiState.activeCart.isNotEmpty(),
+        modifier = Modifier.fillMaxWidth().scale(btnScale),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text(
+            text = "Place Order",
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.padding(vertical = 4.dp)
+        )
     }
 }
 
@@ -570,26 +721,57 @@ fun PaymentCheckoutDialog(
     val isCash = paymentState.selectedTabIndex == 0
     val isReady = if (isCash) amountTendered >= finalTotal else paymentState.receivingAccount.isNotBlank()
 
-    AlertDialog(
+    AdaptiveGlassDialog(
         onDismissRequest = onDismiss,
         title = { Text("Payment Checkout", fontWeight = FontWeight.Bold) },
-        text = {
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (isCash) {
+                        onConfirmPayment("CASH", null)
+                    } else {
+                        val ref = buildString {
+                            append("account=${paymentState.receivingAccount}")
+                            if (paymentState.gcashReference.isNotBlank()) {
+                                append("|ref=${paymentState.gcashReference.trim()}")
+                            }
+                        }
+                        onConfirmPayment("GCASH", ref)
+                    }
+                },
+                enabled = isReady
+            ) { Text("Confirm & Pay") }
+        },
+        content = {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Total Due:", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("₱${String.format("%.0f", finalTotal)}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
                 }
-                TabRow(selectedTabIndex = paymentState.selectedTabIndex) {
-                    Tab(
-                        selected = paymentState.selectedTabIndex == 0,
-                        onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 0)) },
-                        text = { Text("Cash") }
-                    )
-                    Tab(
-                        selected = paymentState.selectedTabIndex == 1,
-                        onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 1)) },
-                        text = { Text("GCash") }
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.05f))
+                ) {
+                    TabRow(
+                        selectedTabIndex = paymentState.selectedTabIndex,
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                        divider = {}
+                    ) {
+                        Tab(
+                            selected = paymentState.selectedTabIndex == 0,
+                            onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 0)) },
+                            text = { Text("Cash") }
+                        )
+                        Tab(
+                            selected = paymentState.selectedTabIndex == 1,
+                            onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 1)) },
+                            text = { Text("GCash") }
+                        )
+                    }
                 }
                 if (isCash) {
                     OutlinedTextField(
@@ -636,26 +818,7 @@ fun PaymentCheckoutDialog(
                     )
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (isCash) {
-                        onConfirmPayment("CASH", null)
-                    } else {
-                        val ref = buildString {
-                            append("account=${paymentState.receivingAccount}")
-                            if (paymentState.gcashReference.isNotBlank()) {
-                                append("|ref=${paymentState.gcashReference.trim()}")
-                            }
-                        }
-                        onConfirmPayment("GCASH", ref)
-                    }
-                },
-                enabled = isReady
-            ) { Text("Confirm & Pay") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        }
     )
 }
 
@@ -921,7 +1084,7 @@ private fun formatVariantPriceLabel(variant: Variant, item: Item, selectedFlavor
 fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDismiss: () -> Unit) {
     val panelTextColor = adaptiveGlassContentColor()
     val mutedTextColor = adaptiveBodyMuted()
-    AlertDialog(
+    AdaptiveGlassDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -934,7 +1097,8 @@ fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDism
                 Text("Held Orders Queue", fontWeight = FontWeight.Bold)
             }
         },
-        text = {
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        content = {
             Column(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
                 if (heldQueues.isEmpty()) {
                     Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -988,8 +1152,7 @@ fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDism
                     }
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+        }
     )
 }
 
@@ -1030,18 +1193,23 @@ fun AddExpenseDialog(onSave: (String, Double, String) -> Unit, onDismiss: () -> 
     val amount = amountStr.toDoubleOrNull()
     val isReady = description.isNotBlank() && amount != null && amount > 0 && recordedBy.isNotBlank()
 
-    AlertDialog(
+    AdaptiveGlassDialog(
         onDismissRequest = onDismiss,
         title = { Text("Record Expense (from Cash Drawer)", fontWeight = FontWeight.Bold) },
-        text = {
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            Button(
+                onClick = { if (isReady) onSave(description, amount!!, recordedBy) },
+                enabled = isReady
+            ) { Text("Save Expense") }
+        },
+        content = {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Description (e.g. Supplies: Ice)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = amountStr, onValueChange = { amountStr = it }, label = { Text("Amount (₱)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(value = recordedBy, onValueChange = { recordedBy = it }, label = { Text("Recorded By (Name)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             }
-        },
-        confirmButton = { Button(onClick = { if (isReady) onSave(description, amount!!, recordedBy) }, enabled = isReady) { Text("Save Expense") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        }
     )
 }
 

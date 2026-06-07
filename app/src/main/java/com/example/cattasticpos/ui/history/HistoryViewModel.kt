@@ -97,8 +97,8 @@ class HistoryViewModel(
 
         _startDate.value = todayStart
         _endDate.value = todayEnd
-        _pickerStartMillis.value = todayStart
-        _pickerEndMillis.value = startOfDayMillis(todayEnd)
+        _pickerStartMillis.value = DateRangePickerMillis.localStartOfDayToUtcPicker(todayStart)
+        _pickerEndMillis.value = DateRangePickerMillis.localStartOfDayToUtcPicker(startOfDayMillis(todayEnd))
 
         viewModelScope.launch {
             combine(_startDate, _endDate) { _, _ -> }
@@ -138,8 +138,8 @@ class HistoryViewModel(
         if (start == null && end == null) {
             _startDate.value = allTimeStart
             _endDate.value = allTimeEnd
-            _pickerStartMillis.value = todayStart
-            _pickerEndMillis.value = startOfDayMillis(todayEnd)
+            _pickerStartMillis.value = DateRangePickerMillis.localStartOfDayToUtcPicker(todayStart)
+            _pickerEndMillis.value = DateRangePickerMillis.localStartOfDayToUtcPicker(startOfDayMillis(todayEnd))
             _datePickerEpoch.value = _datePickerEpoch.value + 1
             return
         }
@@ -150,8 +150,8 @@ class HistoryViewModel(
         val presentBounds = presentDayBounds()
         var wasClamped = false
 
-        var startDay = startMillis?.let { startOfDayMillis(it) }
-        var endDay = endMillis?.let { startOfDayMillis(it) }
+        var startDay = startMillis?.let { DateRangePickerMillis.utcPickerToLocalStartOfDay(it) }
+        var endDay = endMillis?.let { DateRangePickerMillis.utcPickerToLocalStartOfDay(it) }
 
         if (startDay == null && endDay == null) {
             startDay = presentBounds.first
@@ -185,31 +185,33 @@ class HistoryViewModel(
 
         _startDate.value = normalizedStart
         _endDate.value = normalizedEnd
-        _pickerStartMillis.value = normalizedStart
-        _pickerEndMillis.value = startDay
+        _pickerStartMillis.value = DateRangePickerMillis.localStartOfDayToUtcPicker(normalizedStart)
+        _pickerEndMillis.value = DateRangePickerMillis.localStartOfDayToUtcPicker(startDay)
         _datePickerEpoch.value = _datePickerEpoch.value + 1
 
         return DateRangeApplyResult(
             startMillis = normalizedStart,
             endMillis = normalizedEnd,
-            pickerStartMillis = normalizedStart,
-            pickerEndMillis = startDay,
+            pickerStartMillis = _pickerStartMillis.value,
+            pickerEndMillis = _pickerEndMillis.value,
             wasClamped = wasClamped
         )
     }
 
     fun setShowDateRangeDialog(show: Boolean) {
         if (show) {
-            _pickerStartMillis.value = if (_startDate.value == allTimeStart) {
+            val localPickerStart = if (_startDate.value == allTimeStart) {
                 todayStart
             } else {
                 startOfDayMillis(_startDate.value)
             }
-            _pickerEndMillis.value = if (_endDate.value == allTimeEnd) {
+            val localPickerEnd = if (_endDate.value == allTimeEnd) {
                 startOfDayMillis(todayEnd)
             } else {
                 startOfDayMillis(_endDate.value)
             }
+            _pickerStartMillis.value = DateRangePickerMillis.localStartOfDayToUtcPicker(localPickerStart)
+            _pickerEndMillis.value = DateRangePickerMillis.localStartOfDayToUtcPicker(localPickerEnd)
             _datePickerEpoch.value = _datePickerEpoch.value + 1
         }
         _showDateRangeDialog.value = show

@@ -3,6 +3,7 @@ package com.example.cattasticpos.ui.adaptive
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -254,11 +256,12 @@ fun CollapsingGlassScaffold(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(largeTitleBlockHeight * (1f - collapseProgress))
+                        .background(Color.Transparent)
                         .padding(horizontal = 16.dp)
                         .graphicsLayer {
                             alpha = largeTitleAlpha
                             translationY = -collapseProgress * largeTitleShiftPx
-                            clip = true
+                            clip = false
                         }
                 )
             } else {
@@ -267,11 +270,12 @@ fun CollapsingGlassScaffold(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(largeTitleBlockHeight * (1f - collapseProgress))
+                        .background(Color.Transparent)
                         .padding(horizontal = 16.dp)
                         .graphicsLayer {
                             alpha = largeTitleAlpha
                             translationY = -collapseProgress * largeTitleShiftPx
-                            clip = true
+                            clip = false
                         },
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 34.sp,
