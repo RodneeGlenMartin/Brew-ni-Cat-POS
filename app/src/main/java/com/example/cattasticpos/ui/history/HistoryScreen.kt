@@ -828,7 +828,7 @@ fun EditConfigDialog(
                 OutlinedTextField(
                     value = currentPin,
                     onValueChange = { currentPin = it },
-                    label = { Text("Current PIN (Required to Save)") },
+                    label = { Text("Current PIN (Required to change goals or PIN)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                     visualTransformation = PasswordVisualTransformation(),
                     isError = isError,
@@ -924,10 +924,28 @@ fun EditConfigDialog(
         confirmButton = {
             TextButton(
                 onClick = {
+                    val t = targetStr.toDoubleOrNull() ?: initialTarget
+                    val f = floatStr.toDoubleOrNull() ?: initialFloat
+                    val goalsChanged = t != initialTarget || f != initialFloat
+                    val pinChangeRequested = newPin.length == 4
+
+                    if (!goalsChanged && !pinChangeRequested) {
+                        onDismiss()
+                        return@TextButton
+                    }
+
+                    if (newPin.isNotEmpty() && newPin.length < 4) {
+                        isError = true
+                        return@TextButton
+                    }
+
+                    if (currentPin.isBlank()) {
+                        isError = true
+                        return@TextButton
+                    }
+
                     if (AppConfig.verifyPin(currentPin, expectedPinHash)) {
-                        val t = targetStr.toDoubleOrNull() ?: initialTarget
-                        val f = floatStr.toDoubleOrNull() ?: initialFloat
-                        val finalPinHash = if (newPin.length == 4) AppConfig.hashPin(newPin) else expectedPinHash
+                        val finalPinHash = if (pinChangeRequested) AppConfig.hashPin(newPin) else expectedPinHash
                         onSave(t, f, finalPinHash)
                     } else {
                         isError = true

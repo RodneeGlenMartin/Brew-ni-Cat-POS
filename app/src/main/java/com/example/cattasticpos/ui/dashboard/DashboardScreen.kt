@@ -661,15 +661,23 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                     "Select Size/Option",
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
+                val hasComboDescriptions = item.variants.any { !it.description.isNullOrBlank() }
+                val variantListModifier = if (hasComboDescriptions && item.variants.size > 4) {
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 280.dp)
+                } else {
+                    Modifier.fillMaxWidth()
+                }
+
                 LazyColumn(
                     state = variantListState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(280.dp),
+                    modifier = variantListModifier,
+                    userScrollEnabled = hasComboDescriptions && item.variants.size > 4,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(item.variants, key = { it.id }) { variant ->
@@ -683,7 +691,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                     }
                 }
 
-                if (item.variants.any { !it.description.isNullOrBlank() }) {
+                if (hasComboDescriptions) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Box(
                         modifier = Modifier
@@ -767,12 +775,12 @@ private fun VariantOptionRow(
 ) {
     val priceLabel = formatVariantPriceLabel(variant, item, selectedFlavor)
     val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.secondaryContainer
+        MaterialTheme.colorScheme.primaryContainer
     } else {
         MaterialTheme.colorScheme.surface
     }
     val contentColor = if (isSelected) {
-        MaterialTheme.colorScheme.onSecondaryContainer
+        MaterialTheme.colorScheme.onPrimaryContainer
     } else {
         MaterialTheme.colorScheme.onSurface
     }
@@ -784,17 +792,19 @@ private fun VariantOptionRow(
         border = BorderStroke(
             width = if (isSelected) 2.dp else 1.dp,
             color = if (isSelected) {
-                MaterialTheme.colorScheme.secondary
+                MaterialTheme.colorScheme.primary
             } else {
                 MaterialTheme.colorScheme.outlineVariant
             }
         ),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -815,11 +825,7 @@ private fun VariantOptionRow(
                 overflow = TextOverflow.Clip,
                 fontWeight = FontWeight.Bold,
                 fontSize = 13.sp,
-                color = if (isSelected) {
-                    MaterialTheme.colorScheme.secondary
-                } else {
-                    MaterialTheme.colorScheme.primary
-                }
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }

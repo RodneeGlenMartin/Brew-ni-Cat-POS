@@ -20,6 +20,9 @@ data class AppConfig(
         private const val KEY_LENGTH = 256
 
         fun hashPin(pin: String, salt: ByteArray? = null): String {
+            if (pin.isBlank()) {
+                throw IllegalArgumentException("Cannot hash blank PIN")
+            }
             val actualSalt = salt ?: ByteArray(16).apply { SecureRandom().nextBytes(this) }
             val spec = PBEKeySpec(pin.toCharArray(), actualSalt, ITERATIONS, KEY_LENGTH)
             val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
@@ -28,12 +31,25 @@ data class AppConfig(
         }
 
         fun verifyPin(pin: String, storedHash: String): Boolean {
+            if (pin.isBlank() || storedHash.isBlank()) {
+                return false
+            }
             if (!storedHash.contains(":")) {
                 val oldHash = MessageDigest.getInstance("SHA-256").digest(pin.toByteArray()).joinToString("") { "%02x".format(it) }
                 return oldHash == storedHash
             }
-            val parts = storedHash.split(":")
-            val salt = Base64.decode(parts[0], Base64.NO_WRAP)
+            val parts = storedHash.split(":", limit = 2)
+            if (parts.size != 2 || parts[0].isBlank() || parts[1].isBlank()) {
+                return false
+            }
+            val salt = try {
+                Base64.decode(parts[0], Base64.NO_WRAP)
+            } catch (_: IllegalArgumentException) {
+                return false
+            }
+            if (salt.isEmpty()) {
+                return false
+            }
             val newHash = hashPin(pin, salt)
             return newHash == storedHash
         }
