@@ -25,7 +25,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -573,38 +572,40 @@ fun PaymentCheckoutDialog(
 @Composable
 fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Variant, String?) -> Unit) {
     val sheetState = rememberModalBottomSheetState()
-    val listState = rememberLazyListState()
+    val sheetScrollState = rememberScrollState()
+    val descriptionScrollState = rememberScrollState()
     var selectedVariant by remember(item.id) {
         mutableStateOf(item.variants.firstOrNull() ?: Variant("", "", 0.0))
     }
     var selectedFlavor by remember(item.id) { mutableStateOf<String?>(null) }
+    val chipColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.secondary,
+        selectedLabelColor = MaterialTheme.colorScheme.onSecondary
+    )
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
-        LazyColumn(
-            state = listState,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .padding(bottom = 36.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(bottom = 36.dp)
+                .verticalScroll(sheetScrollState)
         ) {
-            item(key = "sheet_title") {
-                Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            }
+            Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (item.flavors.isNotEmpty()) {
-                item(key = "flavor_header") {
-                    Text(
-                        "Select Flavor",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
+                Text(
+                    "Select Flavor",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 if (item.id == "drink_coffee") {
                     val grouped = item.flavors.groupBy { if (it.contains(":")) it.substringBefore(":").trim() else "Flavors" }
-                    grouped.forEach { (group, flavorsInGroup) ->
-                        item(key = "flavor_group_$group") {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        grouped.forEach { (group, flavorsInGroup) ->
                             Text(
                                 group,
                                 fontSize = 12.sp,
@@ -612,78 +613,92 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(vertical = 2.dp)
                             )
-                        }
-                        items(flavorsInGroup, key = { it }) { flavor ->
-                            FilterChip(
-                                selected = selectedFlavor == flavor,
-                                onClick = { selectedFlavor = flavor },
-                                label = { Text(flavor.substringAfter(": ").trim()) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.secondary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onSecondary
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                flavorsInGroup.forEach { flavor ->
+                                    key(flavor) {
+                                        FilterChip(
+                                            selected = selectedFlavor == flavor,
+                                            onClick = { selectedFlavor = flavor },
+                                            label = { Text(flavor.substringAfter(": ").trim(), fontSize = 12.sp) },
+                                            colors = chipColors,
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 } else {
-                    items(item.flavors, key = { it }) { flavor ->
-                        FilterChip(
-                            selected = selectedFlavor == flavor,
-                            onClick = { selectedFlavor = flavor },
-                            label = { Text(flavor) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = MaterialTheme.colorScheme.secondary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onSecondary
-                            ),
-                            shape = RoundedCornerShape(8.dp)
-                        )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        item.flavors.forEach { flavor ->
+                            key(flavor) {
+                                FilterChip(
+                                    selected = selectedFlavor == flavor,
+                                    onClick = { selectedFlavor = flavor },
+                                    label = { Text(flavor, fontSize = 12.sp) },
+                                    colors = chipColors,
+                                    shape = RoundedCornerShape(8.dp)
+                                )
+                            }
+                        }
                     }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
             }
 
             if (item.variants.isNotEmpty()) {
-                item(key = "variant_header") {
-                    Text(
-                        "Select Size/Option",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(top = if (item.flavors.isNotEmpty()) 8.dp else 0.dp)
-                    )
-                }
-                items(item.variants, key = { it.id }) { variant ->
-                    val priceToAdd = if (selectedFlavor == null && variant.basePrice == 0.0) {
-                        0.0
-                    } else {
-                        try {
-                            variant.getPrice(selectedFlavor)
-                        } catch (_: Exception) {
-                            0.0
-                        }
+                Text(
+                    "Select Size/Option",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(196.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(item.variants, key = { it.id }) { variant ->
+                        VariantOptionChip(
+                            variant = variant,
+                            item = item,
+                            selectedFlavor = selectedFlavor,
+                            isSelected = selectedVariant.id == variant.id,
+                            onSelect = { selectedVariant = variant },
+                            colors = chipColors
+                        )
                     }
-                    val priceString = if (item.flavors.isNotEmpty() && selectedFlavor == null && variant.priceByFlavor.isNotEmpty()) {
-                        " (Select flavor)"
-                    } else if (priceToAdd > 0) {
-                        " (+₱${String.format("%.0f", priceToAdd)})"
-                    } else {
-                        ""
-                    }
-                    FilterChip(
-                        selected = selectedVariant.id == variant.id,
-                        onClick = { selectedVariant = variant },
-                        label = { Text("${variant.name}$priceString") },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.secondary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onSecondary
-                        ),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
                 }
-                item(key = "variant_description") {
-                    selectedVariant.description?.let { description ->
-                        Column(modifier = Modifier.padding(top = 4.dp)) {
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                if (item.variants.any { !it.description.isNullOrBlank() }) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(104.dp)
+                            .background(
+                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 10.dp, vertical = 8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(descriptionScrollState)
+                        ) {
                             Text(
                                 "Included in this combo:",
                                 fontWeight = FontWeight.Bold,
@@ -692,55 +707,97 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                description,
+                                text = selectedVariant.description ?: "Select an option to view combo details.",
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurface,
                                 lineHeight = 16.sp
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
 
-            item(key = "price_footer") {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("Price Summary", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
-                        val displayPrice = if (selectedFlavor == null && selectedVariant.basePrice == 0.0) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("Price Summary", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+                    val displayPrice = if (selectedFlavor == null && selectedVariant.basePrice == 0.0) {
+                        0.0
+                    } else {
+                        try {
+                            selectedVariant.getPrice(selectedFlavor)
+                        } catch (_: Exception) {
                             0.0
-                        } else {
-                            try {
-                                selectedVariant.getPrice(selectedFlavor)
-                            } catch (_: Exception) {
-                                0.0
-                            }
                         }
-                        Text(
-                            "₱${String.format("%.0f", displayPrice)}",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
                     }
-                    Button(
-                        onClick = { onAddToCart(selectedVariant, selectedFlavor) },
-                        enabled = !(item.flavors.isNotEmpty() && selectedFlavor == null),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Add to Order", fontWeight = FontWeight.Bold)
-                    }
+                    Text(
+                        "₱${String.format("%.0f", displayPrice)}",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Button(
+                    onClick = { onAddToCart(selectedVariant, selectedFlavor) },
+                    enabled = !(item.flavors.isNotEmpty() && selectedFlavor == null),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Add to Order", fontWeight = FontWeight.Bold)
                 }
             }
         }
     }
+}
+
+@Composable
+private fun VariantOptionChip(
+    variant: Variant,
+    item: Item,
+    selectedFlavor: String?,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+    colors: SelectableChipColors
+) {
+    val priceToAdd = if (selectedFlavor == null && variant.basePrice == 0.0) {
+        0.0
+    } else {
+        try {
+            variant.getPrice(selectedFlavor)
+        } catch (_: Exception) {
+            0.0
+        }
+    }
+    val priceString = if (item.flavors.isNotEmpty() && selectedFlavor == null && variant.priceByFlavor.isNotEmpty()) {
+        " (Select flavor)"
+    } else if (priceToAdd > 0) {
+        " (+₱${String.format("%.0f", priceToAdd)})"
+    } else {
+        ""
+    }
+    FilterChip(
+        selected = isSelected,
+        onClick = onSelect,
+        label = {
+            Text(
+                text = "${variant.name}$priceString",
+                fontSize = 11.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        colors = colors,
+        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable
