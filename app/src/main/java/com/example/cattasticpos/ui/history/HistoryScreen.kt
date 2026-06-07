@@ -383,18 +383,54 @@ fun HistoryScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 if (cashWeight > 0f) {
-                                    Box(modifier = Modifier.weight(cashWeight).fillMaxHeight().background(androidx.compose.ui.graphics.Color(0xFF4CAF50), RoundedCornerShape(topStart = 8.dp, bottomStart = 8.dp, topEnd = if(gcashWeight == 0f) 8.dp else 0.dp, bottomEnd = if(gcashWeight == 0f) 8.dp else 0.dp)))
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(cashWeight)
+                                            .fillMaxHeight()
+                                            .background(
+                                                MaterialTheme.colorScheme.primary,
+                                                RoundedCornerShape(
+                                                    topStart = 8.dp,
+                                                    bottomStart = 8.dp,
+                                                    topEnd = if (gcashWeight == 0f) 8.dp else 0.dp,
+                                                    bottomEnd = if (gcashWeight == 0f) 8.dp else 0.dp
+                                                )
+                                            )
+                                    )
                                 }
                                 if (gcashWeight > 0f) {
-                                    Box(modifier = Modifier.weight(gcashWeight).fillMaxHeight().background(MaterialTheme.colorScheme.tertiary, RoundedCornerShape(topEnd = 8.dp, bottomEnd = 8.dp, topStart = if(cashWeight == 0f) 8.dp else 0.dp, bottomStart = if(cashWeight == 0f) 8.dp else 0.dp)))
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(gcashWeight)
+                                            .fillMaxHeight()
+                                            .background(
+                                                MaterialTheme.colorScheme.secondary,
+                                                RoundedCornerShape(
+                                                    topEnd = 8.dp,
+                                                    bottomEnd = 8.dp,
+                                                    topStart = if (cashWeight == 0f) 8.dp else 0.dp,
+                                                    bottomStart = if (cashWeight == 0f) 8.dp else 0.dp
+                                                )
+                                            )
+                                    )
                                 }
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("CASH: ₱${String.format("%.0f", totalCash)} (${(cashWeight * 100).toInt()}%)", fontSize = 10.sp, color = androidx.compose.ui.graphics.Color(0xFF4CAF50), fontWeight = FontWeight.Bold)
-                                Text("GCASH: ₱${String.format("%.0f", totalGcash)} (${(gcashWeight * 100).toInt()}%)", fontSize = 10.sp, color = MaterialTheme.colorScheme.tertiary, fontWeight = FontWeight.Bold)
+                                Text(
+                                    "CASH: ₱${String.format("%.0f", totalCash)} (${(cashWeight * 100).toInt()}%)",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    "GCASH: ₱${String.format("%.0f", totalGcash)} (${(gcashWeight * 100).toInt()}%)",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
 
                             if (topSellingItem != null) {
