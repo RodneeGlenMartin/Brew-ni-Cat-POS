@@ -45,10 +45,6 @@ import com.example.cattasticpos.ui.adaptive.liquidGlassChild
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
-import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
-import com.example.cattasticpos.ui.adaptive.rememberLiquidGlassHazeState
-import com.example.cattasticpos.ui.adaptive.liquidGlassSource
-import com.example.cattasticpos.ui.adaptive.liquidGlassChild
 import com.example.cattasticpos.ui.adaptive.CupertinoSection
 import com.example.cattasticpos.ui.adaptive.CupertinoSegmentChip
 import com.example.cattasticpos.ui.components.unstyled.PosFilterChip
@@ -61,6 +57,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -77,6 +74,10 @@ import com.example.cattasticpos.domain.strategy.NoDiscountStrategy
 import com.example.cattasticpos.domain.strategy.PercentageDiscountStrategy
 import com.example.cattasticpos.domain.strategy.FivePercentDiscountStrategy
 import com.example.cattasticpos.ui.components.SleepingCatGraphic
+import com.example.cattasticpos.ui.theme.ObsidianAmbientGlows
+import com.example.cattasticpos.ui.theme.ObsidianGlassCard
+import com.example.cattasticpos.ui.theme.ObsidianPalette
+import com.example.cattasticpos.ui.theme.ObsidianSheetHandle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,7 +181,9 @@ fun DashboardScreen(
                 )
             }
             // TOP SECTION: Menu (Takes up available space)
-            Column(modifier = Modifier.weight(1f)) {
+            Box(modifier = Modifier.weight(1f)) {
+                ObsidianAmbientGlows(Modifier.fillMaxSize())
+                Column(modifier = Modifier.fillMaxSize()) {
                 CategorySelector(
                     categories = uiState.categories,
                     selectedCategoryId = uiState.selectedCategoryId,
@@ -190,8 +193,8 @@ fun DashboardScreen(
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 12.dp)
@@ -216,13 +219,17 @@ fun DashboardScreen(
                         )
                     }
                 }
+                }
             }
 
             // BOTTOM SECTION: Collapsible Checkout Panel
             Surface(
-                shadowElevation = 16.dp,
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                shadowElevation = 0.dp,
+                color = ObsidianPalette.GlassFill,
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                border = BorderStroke(1.dp, Brush.linearGradient(
+                    listOf(Color.White.copy(alpha = 0.12f), Color.Transparent)
+                )),
                 modifier = Modifier
                     .fillMaxWidth()
                     .animateContentSize()
@@ -419,7 +426,7 @@ fun DashboardScreen(
 // ─────────────────────────────────────────────────────────────
 @Composable
 fun CategorySelector(categories: List<com.example.cattasticpos.domain.model.Category>, selectedCategoryId: String, onCategorySelected: (String) -> Unit, modifier: Modifier = Modifier) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = modifier) {
         items(categories) { category ->
             PosFilterChip(
                 selected = category.id == selectedCategoryId,
@@ -430,45 +437,55 @@ fun CategorySelector(categories: List<com.example.cattasticpos.domain.model.Cate
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ItemCard(item: Item, isLowStock: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(targetValue = if (isPressed) 0.95f else 1f, label = "cardScale")
-
-    Card(
-        onClick = onClick,
-        interactionSource = interactionSource,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        shape = RoundedCornerShape(16.dp),
-        modifier = modifier.fillMaxWidth().height(120.dp).scale(scale)
+    ObsidianGlassCard(
+        modifier = modifier.fillMaxWidth().height(128.dp),
+        onClick = onClick
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(modifier = Modifier.fillMaxSize().padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
                 Box(
-                    modifier = Modifier.size(32.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
                     FluentIcon(
                         imageVector = if (item.categoryId == "cat_drinks") FluentIcons.DrinkCoffee else FluentIcons.Food,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        size = 18.dp
+                        size = 20.dp
                     )
                 }
                 Column {
-                    Text(item.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 16.sp)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text("₱${String.format("%.0f", item.startingPrice)}", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Medium)
+                    Text(
+                        item.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 18.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        "₱${String.format("%.0f", item.startingPrice)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
             if (isLowStock) {
                 Box(
-                    modifier = Modifier.align(Alignment.TopEnd).background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(bottomStart = 8.dp)).padding(horizontal = 6.dp, vertical = 2.dp)
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .background(Color(0xFFFF6B6B).copy(alpha = 0.2f), RoundedCornerShape(bottomStart = 12.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
                 ) {
-                    Text("Low Stock", color = MaterialTheme.colorScheme.onErrorContainer, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("Low Stock", color = Color(0xFFFF8A8A), fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -649,13 +666,19 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 16.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .liquidGlassChild(state = hazeState, accent = cupertino.accent)
-                    .padding(vertical = 12.dp)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                ObsidianSheetHandle(modifier = Modifier.padding(top = 8.dp, bottom = 12.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .liquidGlassChild(state = hazeState)
+                        .padding(vertical = 12.dp)
+                ) {
+                    Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                }
             }
             Column(
                 modifier = Modifier
@@ -772,7 +795,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .liquidGlassChild(state = hazeState, accent = cupertino.accent)
+                    .liquidGlassChild(state = hazeState)
                     .padding(top = 12.dp, bottom = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -809,32 +832,11 @@ private fun VariantOptionRow(
     onSelect: () -> Unit
 ) {
     val priceLabel = formatVariantPriceLabel(variant, item, selectedFlavor)
-    val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surface
-    }
-    val contentColor = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.onSurface
-    }
 
-    Surface(
-        onClick = onSelect,
-        shape = RoundedCornerShape(10.dp),
-        color = containerColor,
-        border = BorderStroke(
-            width = if (isSelected) 2.dp else 1.dp,
-            color = if (isSelected) {
-                MaterialTheme.colorScheme.primary
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            }
-        ),
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 48.dp)
+    ObsidianGlassCard(
+        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+        selected = isSelected,
+        onClick = onSelect
     ) {
         Row(
             modifier = Modifier
@@ -850,9 +852,9 @@ private fun VariantOptionRow(
                     .padding(end = 12.dp),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                fontSize = 14.sp,
-                color = contentColor
+                color = if (isSelected) Color.White else ObsidianPalette.BodyMuted
             )
             Text(
                 text = priceLabel,

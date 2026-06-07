@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import com.example.cattasticpos.domain.model.AppThemeAccent
 import com.example.cattasticpos.ui.theme.darkColorSchemeFor
 import com.example.cattasticpos.ui.theme.lightColorSchemeFor
+import com.example.cattasticpos.ui.theme.obsidianTypography
 
 data class CupertinoColors(
     val accent: Color,
@@ -42,15 +43,15 @@ fun cupertinoColorsFor(accent: AppThemeAccent, darkTheme: Boolean): CupertinoCol
     val material = if (darkTheme) darkColorSchemeFor(accent) else lightColorSchemeFor(accent)
     return CupertinoColors(
         accent = material.primary,
-        onAccent = material.onPrimary,
-        label = material.onBackground,
-        secondaryLabel = material.onSurfaceVariant.copy(alpha = 0.72f),
-        tertiaryLabel = material.onSurfaceVariant.copy(alpha = 0.45f),
+        onAccent = Color.White,
+        label = Color.White,
+        secondaryLabel = com.example.cattasticpos.ui.theme.ObsidianPalette.BodyMuted,
+        tertiaryLabel = Color.White.copy(alpha = 0.45f),
         systemBackground = material.background,
         secondarySystemBackground = material.surface,
-        groupedBackground = material.surfaceVariant.copy(alpha = if (darkTheme) 0.55f else 1f),
-        separator = material.outlineVariant,
-        fill = material.outline.copy(alpha = 0.25f)
+        groupedBackground = com.example.cattasticpos.ui.theme.ObsidianPalette.GlassFill,
+        separator = Color.White.copy(alpha = 0.1f),
+        fill = Color.White.copy(alpha = 0.06f)
     )
 }
 
@@ -79,7 +80,10 @@ fun AdaptiveTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) darkColorSchemeFor(accent) else lightColorSchemeFor(accent)
-    MaterialTheme(colorScheme = colorScheme) {
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = obsidianTypography()
+    ) {
         CupertinoTheme(accent = accent, darkTheme = darkTheme) {
             content()
         }

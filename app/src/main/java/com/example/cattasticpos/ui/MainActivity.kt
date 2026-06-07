@@ -34,7 +34,7 @@ import com.example.cattasticpos.ui.adaptive.AdaptiveTheme
 @Composable
 fun CattasticTheme(
     accent: AppThemeAccent = AppThemeAccent.EMERALD,
-    darkTheme: Boolean = androidx.compose.foundation.isSystemInDarkTheme(),
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     AdaptiveTheme(accent = accent, darkTheme = darkTheme, content = content)

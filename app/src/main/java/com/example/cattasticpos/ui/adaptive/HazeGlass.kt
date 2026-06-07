@@ -16,11 +16,11 @@ import dev.chrisbanes.haze.hazeChild
 fun rememberLiquidGlassHazeState(): HazeState = remember { HazeState() }
 
 @Composable
-fun liquidGlassHazeStyle(accent: Color = LocalCupertinoColors.current.accent): HazeStyle {
+fun liquidGlassHazeStyle(): HazeStyle {
     return HazeStyle(
-        blurRadius = 22.dp,
-        tint = HazeTint(accent.copy(alpha = 0.2f)),
-        noiseFactor = 0.1f
+        blurRadius = 24.dp,
+        tint = HazeTint(Color.Black.copy(alpha = 0.2f)),
+        noiseFactor = 0.12f
     )
 }
 
@@ -28,11 +28,10 @@ fun Modifier.liquidGlassSource(state: HazeState): Modifier = haze(state = state)
 
 @Composable
 fun Modifier.liquidGlassChild(
-    state: HazeState,
-    accent: Color = LocalCupertinoColors.current.accent
-): Modifier = hazeChild(state = state, style = liquidGlassHazeStyle(accent)) {
+    state: HazeState
+): Modifier = hazeChild(state = state, style = liquidGlassHazeStyle()) {
     progressive = HazeProgressive.verticalGradient(
         startIntensity = 1f,
-        endIntensity = 0.4f
+        endIntensity = 0.35f
     )
 }

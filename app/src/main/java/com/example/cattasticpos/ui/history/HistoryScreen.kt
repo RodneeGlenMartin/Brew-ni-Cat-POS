@@ -58,6 +58,8 @@ import androidx.compose.ui.unit.sp
 import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.OrderItem
 import com.example.cattasticpos.ui.components.SleepingCatGraphic
+import com.example.cattasticpos.ui.theme.ObsidianGlassCard
+import com.example.cattasticpos.ui.theme.ObsidianPalette
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -176,20 +178,12 @@ fun HistoryScreen(
             val zReadingPressed by zReadingInteractionSource.collectIsPressedAsState()
             val zReadingScale by animateFloatAsState(if (zReadingPressed) 0.98f else 1f, label = "zReadingScale")
 
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                shape = RoundedCornerShape(16.dp),
+            ObsidianGlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
-                    .scale(zReadingScale)
-                    .clickable(
-                        interactionSource = zReadingInteractionSource,
-                        indication = androidx.compose.foundation.LocalIndication.current
-                    ) { isZReadingExpanded = !isZReadingExpanded }
+                    .scale(zReadingScale),
+                onClick = { isZReadingExpanded = !isZReadingExpanded }
             ) {
                 Column(
                     modifier = Modifier
@@ -583,14 +577,7 @@ fun OrderHistoryCard(
         dateFormatter.format(Date(order.timestamp))
     }
 
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
+    ObsidianGlassCard(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

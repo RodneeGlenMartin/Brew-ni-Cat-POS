@@ -63,8 +63,7 @@ fun AdaptiveTopAppBar(
 ) {
     val cupertino = LocalCupertinoColors.current
     val glassModifier = if (hazeState != null) {
-        Modifier.liquidGlassChild(state = hazeState, accent = cupertino.accent)
-            .then(modifier)
+        Modifier.liquidGlassChild(state = hazeState).then(modifier)
     } else {
         modifier
     }

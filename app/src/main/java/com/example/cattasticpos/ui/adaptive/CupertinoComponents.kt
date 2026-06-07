@@ -1,6 +1,7 @@
 package com.example.cattasticpos.ui.adaptive
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -25,6 +26,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import com.example.cattasticpos.ui.theme.ObsidianPalette
+import com.example.cattasticpos.ui.theme.neonSelectionBrush
+import com.example.cattasticpos.ui.theme.specularBorderBrush
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -53,8 +57,9 @@ fun CupertinoSection(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(cupertino.groupedBackground)
+                .clip(RoundedCornerShape(ObsidianPalette.GlassRadius))
+                .background(ObsidianPalette.GlassFill)
+                .border(1.dp, specularBorderBrush(), RoundedCornerShape(ObsidianPalette.GlassRadius))
         ) {
             content()
         }
@@ -153,16 +158,25 @@ fun CupertinoSegmentChip(
     modifier: Modifier = Modifier
 ) {
     val cupertino = LocalCupertinoColors.current
-    val bg = if (selected) cupertino.accent else cupertino.fill
-    val fg = if (selected) cupertino.onAccent else cupertino.label
+    val shape = RoundedCornerShape(14.dp)
+    val fill = if (selected) cupertino.accent.copy(alpha = 0.1f) else ObsidianPalette.GlassFill
+    val borderBrush = if (selected) neonSelectionBrush(cupertino.accent) else specularBorderBrush()
+    val fg = if (selected) Color.White else ObsidianPalette.BodyMuted
 
-    AdaptiveButton(
-        onClick = onClick,
-        modifier = modifier,
-        containerColor = bg,
-        contentColor = fg,
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(fill)
+            .border(1.dp, borderBrush, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Text(label, fontSize = 13.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
+        Text(
+            label,
+            fontSize = 13.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = fg
+        )
     }
 }
