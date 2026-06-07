@@ -318,23 +318,9 @@ class HistoryViewModel(
         }
     }
 
-    suspend fun saveConfigWithPinVerification(
-        targetSales: Double,
-        startingCashFloat: Double,
-        currentPin: String,
-        newPin: String
-    ): Boolean {
+    suspend fun saveGoals(targetSales: Double, startingCashFloat: Double): Boolean {
         val config = appConfigRepository.getAppConfig().first { it != null } ?: return false
-        val normalizedCurrentPin = currentPin.trim()
-        if (!AppConfig.verifyPin(normalizedCurrentPin, config.pinHash)) {
-            return false
-        }
-        val finalPinHash = if (newPin.trim().length == 4) {
-            AppConfig.hashPin(newPin.trim())
-        } else {
-            config.pinHash
-        }
-        appConfigRepository.updateConfig(targetSales, startingCashFloat, finalPinHash)
+        appConfigRepository.updateConfig(targetSales, startingCashFloat, config.pinHash)
         return true
     }
 

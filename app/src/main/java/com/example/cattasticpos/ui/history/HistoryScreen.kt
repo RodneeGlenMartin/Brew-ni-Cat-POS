@@ -26,7 +26,6 @@ import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import com.example.cattasticpos.domain.model.AppConfig
 import com.example.cattasticpos.domain.model.AppThemeAccent
@@ -635,8 +634,8 @@ fun HistoryScreen(
                     gcashAccounts = appConfig?.gcashAccounts.orEmpty(),
                     initialThemeAccentId = appConfig?.themeAccentId ?: AppThemeAccent.DEFAULT_ID,
                     onDismiss = { showConfigDialog = false },
-                    onSaveWithPin = { target, float, currentPin, newPin ->
-                        viewModel.saveConfigWithPinVerification(target, float, currentPin, newPin)
+                    onSaveGoals = { target, float ->
+                        viewModel.saveGoals(target, float)
                     },
                     onThemeAccentChange = { viewModel.updateThemeAccent(it) },
                     onSelectActiveCashier = { viewModel.selectActiveCashier(it) },
@@ -936,7 +935,7 @@ fun EditConfigDialog(
     gcashAccounts: List<GcashAccount>,
     initialThemeAccentId: String,
     onDismiss: () -> Unit,
-    onSaveWithPin: suspend (Double, Double, String, String) -> Boolean,
+    onSaveGoals: suspend (Double, Double) -> Boolean,
     onThemeAccentChange: (String) -> Unit,
     onSelectActiveCashier: (String) -> Unit,
     onAddCashier: (String) -> Unit,
@@ -946,8 +945,6 @@ fun EditConfigDialog(
 ) {
     var targetStr by remember { mutableStateOf(if (initialTarget % 1.0 == 0.0) initialTarget.toInt().toString() else initialTarget.toString()) }
     var floatStr by remember { mutableStateOf(if (initialFloat % 1.0 == 0.0) initialFloat.toInt().toString() else initialFloat.toString()) }
-    var currentPin by remember { mutableStateOf("") }
-    var newPin by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
     var cashiersExpanded by remember { mutableStateOf(false) }
     var gcashExpanded by remember { mutableStateOf(false) }
@@ -974,25 +971,11 @@ fun EditConfigDialog(
                     scope.launch {
                         val t = targetStr.toDoubleOrNull() ?: initialTarget
                         val f = floatStr.toDoubleOrNull() ?: initialFloat
-                        val goalsChanged = t != initialTarget || f != initialFloat
-                        val pinChangeRequested = newPin.length == 4
-
-                        if (!goalsChanged && !pinChangeRequested) {
+                        if (t == initialTarget && f == initialFloat) {
                             onDismiss()
                             return@launch
                         }
-
-                        if (newPin.isNotEmpty() && newPin.length < 4) {
-                            isError = true
-                            return@launch
-                        }
-
-                        if (currentPin.isBlank()) {
-                            isError = true
-                            return@launch
-                        }
-
-                        if (onSaveWithPin(t, f, currentPin, newPin)) {
+                        if (onSaveGoals(t, f)) {
                             onDismiss()
                         } else {
                             isError = true
@@ -1031,43 +1014,8 @@ fun EditConfigDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
-                CupertinoSection(header = "Security Setup") {
-                    CupertinoFormRow(label = "Current PIN") {
-                        OutlinedTextField(
-                            value = currentPin,
-                            onValueChange = { value ->
-                                currentPin = value.filter { it.isDigit() }.take(4)
-                                isError = false
-                            },
-                            label = { Text("Required") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                            visualTransformation = PasswordVisualTransformation(),
-                            isError = isError,
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                    }
-                    CupertinoFormRow(label = "New PIN", showDivider = false) {
-                        OutlinedTextField(
-                            value = newPin,
-                            onValueChange = { value ->
-                                newPin = value.filter { it.isDigit() }.take(4)
-                                isError = false
-                            },
-                            label = { Text("Optional") },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                    }
-                }
                 if (isError) {
-                    Text("Incorrect PIN", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
-                }
-                if (newPin.isNotEmpty() && newPin.length < 4) {
-                    Text("PIN must be 4 digits", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    Text("Could not save goals", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))

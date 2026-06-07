@@ -235,27 +235,24 @@ fun CollapsingGlassScaffold(
                     ) {
                         navigationIcon()
                     }
+                    Text(
+                        text = title,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp)
+                            .graphicsLayer { alpha = inlineTitleAlpha },
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 17.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
                     Row(
-                        modifier = Modifier.weight(1f),
                         horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically,
                         content = actions
                     )
                 }
-
-                Text(
-                    text = title,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(horizontal = 72.dp)
-                        .graphicsLayer { alpha = inlineTitleAlpha },
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 17.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
             }
 
             if (showBrandWordmark) {

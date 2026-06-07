@@ -279,7 +279,8 @@ fun DashboardScreen(
                     onSearchExpandedChange = { isSearchExpanded = it },
                     onCategorySelected = { viewModel.selectCategory(it) },
                     onItemClick = { viewModel.showConfigurationSheet(it) },
-                    compactGlows = true
+                    compactGlows = true,
+                    bottomContentPadding = 110.dp
                 )
                 DashboardCheckoutPanel(
                     modifier = Modifier.fillMaxWidth(),
@@ -351,7 +352,8 @@ private fun StorefrontCatalogPane(
     onCategorySelected: (String) -> Unit,
     onItemClick: (Item) -> Unit,
     modifier: Modifier = Modifier,
-    compactGlows: Boolean = false
+    compactGlows: Boolean = false,
+    bottomContentPadding: Dp = 0.dp
 ) {
     Box(
         modifier = modifier
@@ -428,6 +430,7 @@ private fun StorefrontCatalogPane(
 
             LazyColumn(
                 modifier = catalogListModifier,
+                contentPadding = PaddingValues(bottom = bottomContentPadding),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (isSearching) {
