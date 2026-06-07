@@ -22,6 +22,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,12 +58,19 @@ fun AdaptiveTopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     scrollBehavior: TopAppBarScrollBehavior? = null,
-    largeTitle: Boolean = true
+    largeTitle: Boolean = true,
+    hazeState: dev.chrisbanes.haze.HazeState? = null
 ) {
     val cupertino = LocalCupertinoColors.current
+    val glassModifier = if (hazeState != null) {
+        Modifier.liquidGlassChild(state = hazeState, accent = cupertino.accent)
+            .then(modifier)
+    } else {
+        modifier
+    }
     val colors = TopAppBarDefaults.largeTopAppBarColors(
-        containerColor = MaterialTheme.colorScheme.background,
-        scrolledContainerColor = MaterialTheme.colorScheme.surface,
+        containerColor = if (hazeState != null) Color.Transparent else MaterialTheme.colorScheme.background,
+        scrolledContainerColor = if (hazeState != null) Color.Transparent else MaterialTheme.colorScheme.surface,
         navigationIconContentColor = cupertino.accent,
         titleContentColor = MaterialTheme.colorScheme.onBackground,
         actionIconContentColor = cupertino.accent
@@ -83,7 +91,7 @@ fun AdaptiveTopAppBar(
             actions = actions,
             scrollBehavior = scrollBehavior,
             colors = colors,
-            modifier = modifier
+            modifier = glassModifier
         )
     } else {
         androidx.compose.material3.TopAppBar(
@@ -98,12 +106,12 @@ fun AdaptiveTopAppBar(
             navigationIcon = navigationIcon,
             actions = actions,
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = if (hazeState != null) Color.Transparent else MaterialTheme.colorScheme.background,
                 titleContentColor = MaterialTheme.colorScheme.onBackground,
                 navigationIconContentColor = cupertino.accent,
                 actionIconContentColor = cupertino.accent
             ),
-            modifier = modifier
+            modifier = glassModifier
         )
     }
 }

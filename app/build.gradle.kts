@@ -72,6 +72,9 @@ dependencies {
     // WorkManager
     implementation(libs.work.runtime.ktx)
 
+    // Haze liquid glass blur
+    implementation(libs.haze)
+
     // Compose Unstyled (requires Kotlin 2.3+ KSP — wrappers in ui/components/unstyled until toolchain catches up)
     // implementation(libs.compose.unstyled.theming)
     // implementation(libs.compose.unstyled.button)

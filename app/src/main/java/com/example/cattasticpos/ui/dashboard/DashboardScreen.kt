@@ -39,9 +39,16 @@ import com.example.cattasticpos.ui.adaptive.AdaptiveTopAppBar
 import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
 import com.example.cattasticpos.ui.adaptive.adaptiveNestedScroll
 import com.example.cattasticpos.ui.adaptive.rememberAdaptiveTopBarScrollBehavior
+import com.example.cattasticpos.ui.adaptive.rememberLiquidGlassHazeState
+import com.example.cattasticpos.ui.adaptive.liquidGlassSource
+import com.example.cattasticpos.ui.adaptive.liquidGlassChild
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
+import com.example.cattasticpos.ui.adaptive.rememberLiquidGlassHazeState
+import com.example.cattasticpos.ui.adaptive.liquidGlassSource
+import com.example.cattasticpos.ui.adaptive.liquidGlassChild
 import com.example.cattasticpos.ui.adaptive.CupertinoSection
 import com.example.cattasticpos.ui.adaptive.CupertinoSegmentChip
 import com.example.cattasticpos.ui.components.unstyled.PosFilterChip
@@ -102,12 +109,14 @@ fun DashboardScreen(
 
     val scrollBehavior = rememberAdaptiveTopBarScrollBehavior()
     val cupertino = LocalCupertinoColors.current
+    val hazeState = rememberLiquidGlassHazeState()
 
     AdaptiveScaffold(
         topBar = {
             AdaptiveTopAppBar(
                 title = "Brew ni Cat",
                 scrollBehavior = scrollBehavior,
+                hazeState = hazeState,
                 actions = {
                     IconButton(onClick = onNavigateToInventory) {
                         Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
@@ -186,6 +195,7 @@ fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 12.dp)
+                        .liquidGlassSource(hazeState)
                         .adaptiveNestedScroll(scrollBehavior)
                 ) {
                     items(uiState.menuItems, key = { it.id }) { item ->
@@ -610,6 +620,8 @@ fun PaymentCheckoutDialog(
 fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Variant, String?) -> Unit) {
     val sheetState = rememberModalBottomSheetState()
     val contentScrollState = rememberScrollState()
+    val hazeState = rememberLiquidGlassHazeState()
+    val cupertino = LocalCupertinoColors.current
     var selectedVariant by remember(item.id) {
         mutableStateOf(item.variants.firstOrNull() ?: Variant("", "", 0.0))
     }
@@ -637,13 +649,21 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 16.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .liquidGlassChild(state = hazeState, accent = cupertino.accent)
+                    .padding(vertical = 12.dp)
+            ) {
+                Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            }
             Column(
                 modifier = Modifier
                     .weight(1f)
+                    .liquidGlassSource(hazeState)
                     .verticalScroll(contentScrollState)
             ) {
-                Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 if (item.flavors.isNotEmpty()) {
                     CupertinoSection(header = "Select Flavor") {
@@ -752,6 +772,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .liquidGlassChild(state = hazeState, accent = cupertino.accent)
                     .padding(top = 12.dp, bottom = 24.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically

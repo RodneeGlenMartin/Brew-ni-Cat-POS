@@ -8,6 +8,7 @@ work = "2.9.1"
 coroutines = "1.9.0"
 composeUnstyled = "2.0.0"
 composeCupertino = "0.1.0-alpha04"
+haze = "1.1.1"
 coreKtx = "1.12.0"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
@@ -51,6 +52,9 @@ compose-unstyled-platformtheme = { group = "com.composables", name = "composeuns
 compose-cupertino = { group = "io.github.alexzhirkevich", name = "cupertino", version.ref = "composeCupertino" }
 compose-cupertino-adaptive = { group = "io.github.alexzhirkevich", name = "cupertino-adaptive", version.ref = "composeCupertino" }
 compose-cupertino-native = { group = "io.github.alexzhirkevich", name = "cupertino-native", version.ref = "composeCupertino" }
+
+# Haze — progressive background blur (liquid glass)
+haze = { group = "dev.chrisbanes.haze", name = "haze", version.ref = "haze" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
