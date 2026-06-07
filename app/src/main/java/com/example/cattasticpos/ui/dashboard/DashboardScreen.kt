@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import com.example.cattasticpos.ui.adaptive.AdaptiveSnackbarHost
+import com.example.cattasticpos.ui.adaptive.BrewNiCatBrandIcon
 import com.example.cattasticpos.ui.adaptive.CollapsingGlassScaffold
 import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
 import com.example.cattasticpos.ui.adaptive.collapsingNestedScroll
@@ -68,13 +69,13 @@ import com.example.cattasticpos.domain.strategy.FivePercentDiscountStrategy
 import com.example.cattasticpos.ui.components.SleepingCatGraphic
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.cattasticpos.ui.theme.AlabasterPalette
+import com.example.cattasticpos.ui.components.unstyled.PosButtonIconLabel
 import com.example.cattasticpos.ui.components.unstyled.PosPrimaryButton
 import com.example.cattasticpos.ui.theme.AdaptiveAmbientGlows
 import com.example.cattasticpos.ui.theme.AdaptiveGlassCard
 import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassContentColor
 import com.example.cattasticpos.ui.theme.ObsidianGlassCard
-import com.example.cattasticpos.ui.theme.ObsidianSheetHandle
 import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassFill
 import com.example.cattasticpos.ui.theme.specularBorderBrush
@@ -119,6 +120,11 @@ fun DashboardScreen(
         showBrandWordmark = true,
         snackbarHost = { AdaptiveSnackbarHost(snackbarHostState) },
         modifier = modifier,
+        navigationIcon = {
+            BrewNiCatBrandIcon(
+                modifier = Modifier.padding(start = 12.dp)
+            )
+        },
         actions = {
             IconButton(onClick = onNavigateToInventory) {
                 Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
@@ -678,6 +684,8 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
+        dragHandle = null,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         containerColor = MaterialTheme.colorScheme.background
     ) {
         Column(
@@ -687,20 +695,14 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 16.dp)
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                ObsidianSheetHandle(modifier = Modifier.padding(top = 8.dp, bottom = 12.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .liquidGlassChild(state = hazeState)
-                        .padding(vertical = 12.dp)
-                ) {
-                    Text(item.name, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                }
-            }
+            Text(
+                text = item.name,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp, bottom = 12.dp),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -794,7 +796,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                     "Included in this combo:",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.primary
+                                    color = panelTextColor
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
@@ -834,17 +836,17 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                     enabled = !(item.flavors.isNotEmpty() && selectedFlavor == null),
                     modifier = Modifier.defaultMinSize(minWidth = 0.dp)
                 ) {
-                    FluentIcon(
-                        imageVector = FluentIcons.Add,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        size = 24.dp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Add to Order",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimary
+                    PosButtonIconLabel(
+                        icon = {
+                            FluentIcon(
+                                imageVector = FluentIcons.Add,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                size = 24.dp
+                            )
+                        },
+                        label = "Add to Order",
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }

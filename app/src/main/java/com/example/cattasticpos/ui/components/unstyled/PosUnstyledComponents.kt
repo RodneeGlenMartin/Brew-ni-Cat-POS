@@ -3,8 +3,11 @@ package com.example.cattasticpos.ui.components.unstyled
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -23,6 +26,27 @@ import com.example.cattasticpos.ui.adaptive.CupertinoSegmentChip
 /**
  * Unstyled foundation wrappers routed through adaptive Cupertino primitives.
  */
+@Composable
+fun PosButtonIconLabel(
+    icon: @Composable () -> Unit,
+    label: String,
+    contentColor: Color = MaterialTheme.colorScheme.onPrimary,
+    iconSpacing: androidx.compose.ui.unit.Dp = 8.dp
+) {
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        icon()
+        Spacer(modifier = Modifier.width(iconSpacing))
+        Text(
+            text = label,
+            color = contentColor,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
 @Composable
 fun PosPrimaryButton(
     onClick: () -> Unit,
@@ -84,8 +108,18 @@ fun PosFloatingActionButton(
         contentColor = MaterialTheme.colorScheme.onPrimary,
         contentPadding = PaddingValues(16.dp)
     ) {
-        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onPrimary) {
-            content()
+        CompositionLocalProvider(
+            LocalContentColor provides MaterialTheme.colorScheme.onPrimary,
+            LocalTextStyle provides MaterialTheme.typography.labelLarge.copy(
+                color = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                content()
+            }
         }
     }
 }

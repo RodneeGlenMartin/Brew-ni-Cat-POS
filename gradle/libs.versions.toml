@@ -11,12 +11,14 @@ composeCupertino = "0.1.0-alpha04"
 haze = "1.1.1"
 iconsLucide = "1.0.0"
 coreKtx = "1.12.0"
+coreSplashscreen = "1.0.1"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 
 [libraries]
 # AndroidX Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 
 # Compose BOM

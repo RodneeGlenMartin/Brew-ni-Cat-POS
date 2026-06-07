@@ -29,6 +29,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
+data class DateRangeApplyResult(
+    val startMillis: Long,
+    val endMillis: Long,
+    val pickerStartMillis: Long,
+    val pickerEndMillis: Long,
+    val wasClamped: Boolean
+)
+
 class HistoryViewModel(
     private val orderRepository: OrderRepository,
     private val expenseRepository: ExpenseRepository,
@@ -48,9 +56,15 @@ class HistoryViewModel(
     private val _extraOrderPages = MutableStateFlow<List<Order>>(emptyList())
     private val _showDateRangeDialog = MutableStateFlow(false)
     private val _canLoadMore = MutableStateFlow(false)
+    private val _datePickerEpoch = MutableStateFlow(0)
+    private val _pickerStartMillis = MutableStateFlow(0L)
+    private val _pickerEndMillis = MutableStateFlow(0L)
 
     val showDateRangeDialog: StateFlow<Boolean> = _showDateRangeDialog.asStateFlow()
     val canLoadMore: StateFlow<Boolean> = _canLoadMore.asStateFlow()
+    val datePickerEpoch: StateFlow<Int> = _datePickerEpoch.asStateFlow()
+    val pickerStartMillis: StateFlow<Long> = _pickerStartMillis.asStateFlow()
+    val pickerEndMillis: StateFlow<Long> = _pickerEndMillis.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val firstPageOrders = combine(_startDate, _endDate) { start, end -> start to end }
@@ -83,6 +97,8 @@ class HistoryViewModel(
 
         _startDate.value = todayStart
         _endDate.value = todayEnd
+        _pickerStartMillis.value = todayStart
+        _pickerEndMillis.value = startOfDayMillis(todayEnd)
 
         viewModelScope.launch {
             combine(_startDate, _endDate) { _, _ -> }
@@ -122,14 +138,105 @@ class HistoryViewModel(
         if (start == null && end == null) {
             _startDate.value = allTimeStart
             _endDate.value = allTimeEnd
-        } else {
-            _startDate.value = start ?: todayStart
-            _endDate.value = end ?: todayEnd
+            _pickerStartMillis.value = todayStart
+            _pickerEndMillis.value = startOfDayMillis(todayEnd)
+            _datePickerEpoch.value = _datePickerEpoch.value + 1
+            return
         }
+        applyDateRangeFilter(start, end)
+    }
+
+    fun applyDateRangeFilter(startMillis: Long?, endMillis: Long?): DateRangeApplyResult {
+        val presentBounds = presentDayBounds()
+        var wasClamped = false
+
+        var startDay = startMillis?.let { startOfDayMillis(it) }
+        var endDay = endMillis?.let { startOfDayMillis(it) }
+
+        if (startDay == null && endDay == null) {
+            startDay = presentBounds.first
+            endDay = presentBounds.first
+            wasClamped = true
+        } else if (startDay == null || endDay == null || startDay < 0L || endDay < 0L) {
+            startDay = presentBounds.first
+            endDay = presentBounds.first
+            wasClamped = true
+        }
+
+        if (startDay > presentBounds.first) {
+            startDay = presentBounds.first
+            wasClamped = true
+        }
+        if (endDay > presentBounds.first) {
+            endDay = presentBounds.first
+            wasClamped = true
+        }
+
+        if (endDay < startDay) {
+            val earlier = minOf(startDay, endDay)
+            val later = maxOf(startDay, endDay)
+            startDay = earlier
+            endDay = later
+            wasClamped = true
+        }
+
+        val normalizedStart = startDay
+        val normalizedEnd = endOfDayMillis(endDay)
+
+        _startDate.value = normalizedStart
+        _endDate.value = normalizedEnd
+        _pickerStartMillis.value = normalizedStart
+        _pickerEndMillis.value = startDay
+        _datePickerEpoch.value = _datePickerEpoch.value + 1
+
+        return DateRangeApplyResult(
+            startMillis = normalizedStart,
+            endMillis = normalizedEnd,
+            pickerStartMillis = normalizedStart,
+            pickerEndMillis = startDay,
+            wasClamped = wasClamped
+        )
     }
 
     fun setShowDateRangeDialog(show: Boolean) {
+        if (show) {
+            _pickerStartMillis.value = if (_startDate.value == allTimeStart) {
+                todayStart
+            } else {
+                startOfDayMillis(_startDate.value)
+            }
+            _pickerEndMillis.value = if (_endDate.value == allTimeEnd) {
+                startOfDayMillis(todayEnd)
+            } else {
+                startOfDayMillis(_endDate.value)
+            }
+            _datePickerEpoch.value = _datePickerEpoch.value + 1
+        }
         _showDateRangeDialog.value = show
+    }
+
+    private fun presentDayBounds(): Pair<Long, Long> {
+        val start = startOfDayMillis(System.currentTimeMillis())
+        val end = endOfDayMillis(start)
+        return start to end
+    }
+
+    private fun startOfDayMillis(millis: Long): Long {
+        val calendar = Calendar.getInstance().apply { timeInMillis = millis }
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        return calendar.timeInMillis
+    }
+
+    private fun endOfDayMillis(dayStartMillis: Long): Long {
+        val calendar = Calendar.getInstance().apply { timeInMillis = dayStartMillis }
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        return calendar.timeInMillis
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)

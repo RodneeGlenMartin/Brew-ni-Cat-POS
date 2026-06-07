@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun GlassWordmark(
-    text: String = "Cattastic",
+    text: String = "Brew ni Cat",
     modifier: Modifier = Modifier,
     fontSize: TextUnit = 34.sp,
     letterSpacing: TextUnit = (-0.5).sp

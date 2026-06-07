@@ -502,35 +502,43 @@ fun HistoryScreen(
             }
 
             if (showDateRangeDialog) {
-                val dateRangePickerState = rememberDateRangePickerState()
-                DatePickerDialog(
-                    onDismissRequest = { viewModel.setShowDateRangeDialog(false) },
-                    confirmButton = {
-                        TextButton(onClick = {
-                            viewModel.setDateRange(
-                                start = dateRangePickerState.selectedStartDateMillis,
-                                end = dateRangePickerState.selectedEndDateMillis?.plus(86399999)
-                            )
-                            viewModel.setShowDateRangeDialog(false)
-                        }) { Text("Apply") }
-                    },
-                    dismissButton = {
-                        Row {
-                            TextButton(onClick = {
-                                viewModel.setDateRange(null, null)
-                                viewModel.setShowDateRangeDialog(false)
-                            }) { Text("Clear Filter") }
-                            TextButton(onClick = { viewModel.setShowDateRangeDialog(false) }) { Text("Cancel") }
-                        }
-                    }
-                ) {
-                    DateRangePicker(
-                        state = dateRangePickerState,
-                        title = { Text(text = "Select Date Range", modifier = Modifier.padding(16.dp)) },
-                        headline = { Text(text = "Filter Orders", modifier = Modifier.padding(horizontal = 16.dp)) },
-                        showModeToggle = false,
-                        modifier = Modifier.weight(1f)
+                val datePickerEpoch by viewModel.datePickerEpoch.collectAsState()
+                val pickerStart by viewModel.pickerStartMillis.collectAsState()
+                val pickerEnd by viewModel.pickerEndMillis.collectAsState()
+                key(datePickerEpoch, pickerStart, pickerEnd) {
+                    val dateRangePickerState = rememberDateRangePickerState(
+                        initialSelectedStartDateMillis = pickerStart,
+                        initialSelectedEndDateMillis = pickerEnd
                     )
+                    DatePickerDialog(
+                        onDismissRequest = { viewModel.setShowDateRangeDialog(false) },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                viewModel.applyDateRangeFilter(
+                                    startMillis = dateRangePickerState.selectedStartDateMillis,
+                                    endMillis = dateRangePickerState.selectedEndDateMillis
+                                )
+                                viewModel.setShowDateRangeDialog(false)
+                            }) { Text("Apply") }
+                        },
+                        dismissButton = {
+                            Row {
+                                TextButton(onClick = {
+                                    viewModel.setDateRange(null, null)
+                                    viewModel.setShowDateRangeDialog(false)
+                                }) { Text("Clear Filter") }
+                                TextButton(onClick = { viewModel.setShowDateRangeDialog(false) }) { Text("Cancel") }
+                            }
+                        }
+                    ) {
+                        DateRangePicker(
+                            state = dateRangePickerState,
+                            title = { Text(text = "Select Date Range", modifier = Modifier.padding(16.dp)) },
+                            headline = { Text(text = "Filter Orders", modifier = Modifier.padding(horizontal = 16.dp)) },
+                            showModeToggle = false,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
 

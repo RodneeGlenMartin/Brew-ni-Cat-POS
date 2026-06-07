@@ -2,6 +2,7 @@ package com.example.cattasticpos.ui.adaptive
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -28,10 +30,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.example.cattasticpos.R
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -98,6 +105,18 @@ fun rememberCollapsingHeaderState(collapseRange: Dp = 120.dp): CollapsingHeaderS
 
 fun Modifier.collapsingNestedScroll(state: CollapsingHeaderState): Modifier =
     nestedScroll(state.nestedScrollConnection)
+
+@Composable
+fun BrewNiCatBrandIcon(modifier: Modifier = Modifier) {
+    Image(
+        painter = painterResource(id = R.drawable.logo),
+        contentDescription = "Brew ni Cat Brand Icon",
+        contentScale = ContentScale.Fit,
+        modifier = modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(8.dp))
+    )
+}
 
 @Composable
 fun CollapsingGlassScaffold(
@@ -231,6 +250,7 @@ fun CollapsingGlassScaffold(
 
             if (showBrandWordmark) {
                 GlassWordmark(
+                    text = title,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(largeTitleBlockHeight * (1f - collapseProgress))

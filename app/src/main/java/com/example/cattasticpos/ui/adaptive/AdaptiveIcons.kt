@@ -10,6 +10,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+
+fun Modifier.glassIconGradient(brush: Brush): Modifier = this
+    .graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)
+    .drawWithCache {
+        onDrawWithContent {
+            drawContent()
+            drawRect(
+                brush = brush,
+                blendMode = BlendMode.SrcIn
+            )
+        }
+    }
 
 @Composable
 fun Modifier.glassIconGradient(): Modifier {
@@ -30,10 +44,5 @@ fun Modifier.glassIconGradient(): Modifier {
             )
         }
     }
-    return drawWithCache {
-        onDrawWithContent {
-            drawContent()
-            drawRect(gradientBrush, blendMode = BlendMode.SrcIn)
-        }
-    }
+    return glassIconGradient(gradientBrush)
 }

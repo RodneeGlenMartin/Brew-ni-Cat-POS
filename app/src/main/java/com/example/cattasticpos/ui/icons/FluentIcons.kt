@@ -17,7 +17,7 @@ import com.composables.icons.lucide.CircleCheck
 import com.composables.icons.lucide.Coffee
 import com.composables.icons.lucide.Cookie
 import com.composables.icons.lucide.Download
-import com.composables.icons.lucide.Gift
+import com.composables.icons.lucide.Utensils
 import com.composables.icons.lucide.History
 import com.composables.icons.lucide.Layers
 import com.composables.icons.lucide.LayoutGrid
@@ -70,8 +70,8 @@ object FluentIcons {
     /** Cat-Tastic Bites — pastry / snack silhouette. */
     val FoodBites: ImageVector = Lucide.Cookie
 
-    /** Combos & Packages — grouped package. */
-    val ComboPackage: ImageVector = Lucide.Gift
+    /** Combos & Packages — food and beverage combination. */
+    val ComboPackage: ImageVector = Lucide.Utensils
 
     /** @deprecated Use [FoodBites] or [categoryIcon]. */
     val Food: ImageVector = FoodBites
