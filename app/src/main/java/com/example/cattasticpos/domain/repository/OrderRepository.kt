@@ -4,7 +4,7 @@ import com.example.cattasticpos.domain.model.Order
 import kotlinx.coroutines.flow.Flow
 
 interface OrderRepository {
-    fun getOrdersWithItems(startDate: Long = 0, endDate: Long = Long.MAX_VALUE, limit: Int = 50, offset: Int = 0): Flow<List<Order>>
+    fun observeOrdersPage(startDate: Long, endDate: Long, beforeTimestamp: Long, limit: Int): Flow<List<Order>>
     suspend fun getOrdersPage(startDate: Long, endDate: Long, beforeTimestamp: Long, limit: Int): List<Order>
     suspend fun getOrderById(orderId: String): Order?
     suspend fun saveOrder(order: Order)

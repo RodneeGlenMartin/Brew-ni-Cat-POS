@@ -11,6 +11,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import android.content.Context
@@ -25,6 +27,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import com.example.cattasticpos.domain.model.AppConfig
+import com.example.cattasticpos.domain.model.Cashier
+import com.example.cattasticpos.domain.model.GcashAccount
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Print
@@ -483,11 +487,17 @@ fun HistoryScreen(
                     initialTarget = appConfig?.targetSales ?: 5000.0,
                     initialFloat = appConfig?.startingCashFloat ?: 500.0,
                     expectedPinHash = appConfig?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
+                    cashiers = appConfig?.cashiers.orEmpty(),
+                    gcashAccounts = appConfig?.gcashAccounts.orEmpty(),
                     onDismiss = { showConfigDialog = false },
                     onSave = { target, float, pinHash ->
                         viewModel.updateConfig(target, float, pinHash)
                         showConfigDialog = false
-                    }
+                    },
+                    onAddCashier = { viewModel.addCashier(it) },
+                    onRemoveCashier = { viewModel.removeCashier(it) },
+                    onAddGcashAccount = { viewModel.addGcashAccount(it) },
+                    onRemoveGcashAccount = { viewModel.removeGcashAccount(it) }
                 )
             }
 
@@ -737,20 +747,37 @@ fun EditConfigDialog(
     initialTarget: Double,
     initialFloat: Double,
     expectedPinHash: String,
+    cashiers: List<Cashier>,
+    gcashAccounts: List<GcashAccount>,
     onDismiss: () -> Unit,
-    onSave: (Double, Double, String) -> Unit
+    onSave: (Double, Double, String) -> Unit,
+    onAddCashier: (String) -> Unit,
+    onRemoveCashier: (String) -> Unit,
+    onAddGcashAccount: (String) -> Unit,
+    onRemoveGcashAccount: (String) -> Unit
 ) {
     var targetStr by remember { mutableStateOf(if (initialTarget % 1.0 == 0.0) initialTarget.toInt().toString() else initialTarget.toString()) }
     var floatStr by remember { mutableStateOf(if (initialFloat % 1.0 == 0.0) initialFloat.toInt().toString() else initialFloat.toString()) }
     var currentPin by remember { mutableStateOf("") }
     var newPin by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
+    var cashiersExpanded by remember { mutableStateOf(false) }
+    var gcashExpanded by remember { mutableStateOf(false) }
+    var newCashierName by remember { mutableStateOf("") }
+    var newGcashLabel by remember { mutableStateOf("") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Business Goals") },
+        title = { Text("App Settings") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 520.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Business Goals", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 OutlinedTextField(
                     value = targetStr,
                     onValueChange = { targetStr = it },
@@ -790,6 +817,37 @@ fun EditConfigDialog(
                 if (newPin.isNotEmpty() && newPin.length < 4) {
                     Text("PIN must be 4 digits", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                ConfigListSection(
+                    title = "Cashiers",
+                    expanded = cashiersExpanded,
+                    onToggle = { cashiersExpanded = !cashiersExpanded },
+                    items = cashiers.map { it.name },
+                    onRemove = { index -> onRemoveCashier(cashiers[index].id) },
+                    newValue = newCashierName,
+                    onNewValueChange = { newCashierName = it },
+                    addLabel = "Cashier Name",
+                    onAdd = {
+                        onAddCashier(newCashierName)
+                        newCashierName = ""
+                    }
+                )
+
+                ConfigListSection(
+                    title = "GCash SIM Accounts",
+                    expanded = gcashExpanded,
+                    onToggle = { gcashExpanded = !gcashExpanded },
+                    items = gcashAccounts.map { it.label },
+                    onRemove = { index -> onRemoveGcashAccount(gcashAccounts[index].id) },
+                    newValue = newGcashLabel,
+                    onNewValueChange = { newGcashLabel = it },
+                    addLabel = "Account Label (e.g. Main GCash 0917...)",
+                    onAdd = {
+                        onAddGcashAccount(newGcashLabel)
+                        newGcashLabel = ""
+                    }
+                )
             }
         },
         confirmButton = {
@@ -805,15 +863,79 @@ fun EditConfigDialog(
                     }
                 }
             ) {
-                Text("Save")
+                Text("Save Goals")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Close")
             }
         }
     )
+}
+
+@Composable
+private fun ConfigListSection(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    items: List<String>,
+    onRemove: (Int) -> Unit,
+    newValue: String,
+    onNewValueChange: (String) -> Unit,
+    addLabel: String,
+    onAdd: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Icon(
+            imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = null
+        )
+    }
+
+    AnimatedVisibility(visible = expanded) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            items.forEachIndexed { index, label ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(label, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    TextButton(onClick = { onRemove(index) }) {
+                        Text("Remove", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = newValue,
+                    onValueChange = onNewValueChange,
+                    label = { Text(addLabel) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                Button(
+                    onClick = onAdd,
+                    enabled = newValue.isNotBlank(),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text("Add")
+                }
+            }
+        }
+    }
 }
 
 

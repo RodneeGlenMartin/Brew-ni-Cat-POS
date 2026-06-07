@@ -10,7 +10,6 @@ import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.OrderItem
 import com.example.cattasticpos.domain.repository.OrderRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 class OrderRepositoryImpl(
@@ -19,10 +18,14 @@ class OrderRepositoryImpl(
 
     private val orderDao: OrderDao = database.orderDao()
 
-    override fun getOrdersWithItems(startDate: Long, endDate: Long, limit: Int, offset: Int): Flow<List<Order>> {
-        return flow {
-            emit(getOrdersPage(startDate, endDate, Long.MAX_VALUE, limit))
-        }
+    override fun observeOrdersPage(
+        startDate: Long,
+        endDate: Long,
+        beforeTimestamp: Long,
+        limit: Int
+    ): Flow<List<Order>> {
+        return orderDao.observeOrdersPage(startDate, endDate, beforeTimestamp, limit)
+            .map { page -> page.map { it.toDomain() } }
     }
 
     override suspend fun getOrdersPage(

@@ -315,6 +315,7 @@ fun DashboardScreen(
             PaymentCheckoutDialog(
                 finalTotal = uiState.total,
                 paymentState = uiState.paymentDialogState,
+                gcashAccounts = uiState.gcashAccounts,
                 onPaymentStateChange = { viewModel.setPaymentDialogState(it) },
                 onConfirmPayment = { method, ref ->
                     viewModel.confirmCheckout(method, ref)
@@ -434,12 +435,13 @@ fun DiscountButton(label: String, isSelected: Boolean, onClick: () -> Unit, modi
 fun PaymentCheckoutDialog(
     finalTotal: Double,
     paymentState: PaymentDialogState,
+    gcashAccounts: List<com.example.cattasticpos.domain.model.GcashAccount>,
     onPaymentStateChange: (PaymentDialogState) -> Unit,
     onConfirmPayment: (String, String?) -> Unit,
     onDismiss: () -> Unit
 ) {
     var simDropdownExpanded by remember { mutableStateOf(false) }
-    val simOptions = listOf("Main GCash (0917...)", "Store GCash (0999...)", "Personal GCash")
+    val simOptions = gcashAccounts.map { it.label }
 
     val amountTendered = paymentState.amountTenderedStr.toDoubleOrNull() ?: 0.0
     val changeDue = amountTendered - finalTotal

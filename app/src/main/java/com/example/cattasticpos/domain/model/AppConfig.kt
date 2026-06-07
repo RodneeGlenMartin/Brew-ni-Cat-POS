@@ -10,7 +10,8 @@ data class AppConfig(
     val targetSales: Double,
     val startingCashFloat: Double,
     val pinHash: String,
-    val cashiers: List<Cashier> = Cashier.defaultCashiers()
+    val cashiers: List<Cashier> = Cashier.defaultCashiers(),
+    val gcashAccounts: List<GcashAccount> = GcashAccount.defaultAccounts()
 ) {
     companion object {
         const val DEFAULT_PIN_HASH = "otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0="

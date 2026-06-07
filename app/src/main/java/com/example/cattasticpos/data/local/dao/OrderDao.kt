@@ -48,6 +48,18 @@ interface OrderDao {
         LIMIT :limit
         """
     )
+    fun observeOrdersPage(startDate: Long, endDate: Long, beforeTimestamp: Long, limit: Int): Flow<List<OrderWithItems>>
+
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM orders
+        WHERE timestamp >= :startDate AND timestamp <= :endDate
+        AND timestamp < :beforeTimestamp
+        ORDER BY timestamp DESC
+        LIMIT :limit
+        """
+    )
     suspend fun getOrdersPage(startDate: Long, endDate: Long, beforeTimestamp: Long, limit: Int): List<OrderWithItems>
 
     @Transaction

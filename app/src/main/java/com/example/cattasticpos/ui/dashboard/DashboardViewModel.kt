@@ -76,17 +76,34 @@ class DashboardViewModel(
         viewModelScope.launch {
             appConfigRepository.getAppConfig().collect { config ->
                 val cashiers = config?.cashiers.orEmpty()
+                val gcashAccounts = config?.gcashAccounts.orEmpty()
                 _uiState.update { state ->
                     val selected = state.selectedCashierId.ifBlank {
                         cashiers.firstOrNull()?.id ?: "cashier_default"
                     }
+                    val defaultGcash = gcashAccounts.firstOrNull()?.label.orEmpty()
+                    val paymentState = if (state.showPaymentDialog) {
+                        val currentAccount = state.paymentDialogState.receivingAccount
+                        val validAccount = gcashAccounts.any { it.label == currentAccount }
+                        state.paymentDialogState.copy(
+                            receivingAccount = when {
+                                currentAccount.isNotBlank() && validAccount -> currentAccount
+                                defaultGcash.isNotBlank() -> defaultGcash
+                                else -> currentAccount
+                            }
+                        )
+                    } else {
+                        state.paymentDialogState
+                    }
                     state.copy(
                         cashiers = cashiers,
+                        gcashAccounts = gcashAccounts,
                         selectedCashierId = if (cashiers.any { it.id == selected }) {
                             selected
                         } else {
                             cashiers.firstOrNull()?.id ?: "cashier_default"
-                        }
+                        },
+                        paymentDialogState = paymentState
                     )
                 }
             }
@@ -314,9 +331,21 @@ class DashboardViewModel(
 
     fun setShowPaymentDialog(show: Boolean) {
         _uiState.update { state ->
+            val defaultAccount = state.gcashAccounts.firstOrNull()?.label.orEmpty()
             state.copy(
                 showPaymentDialog = show,
-                paymentDialogState = if (show) state.paymentDialogState else PaymentDialogState()
+                paymentDialogState = if (show) {
+                    val currentAccount = state.paymentDialogState.receivingAccount
+                    state.paymentDialogState.copy(
+                        receivingAccount = when {
+                            currentAccount.isNotBlank() && state.gcashAccounts.any { it.label == currentAccount } -> currentAccount
+                            defaultAccount.isNotBlank() -> defaultAccount
+                            else -> currentAccount
+                        }
+                    )
+                } else {
+                    PaymentDialogState()
+                }
             )
         }
     }

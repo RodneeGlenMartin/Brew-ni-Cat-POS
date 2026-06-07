@@ -5,24 +5,26 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.cattasticpos.CattasticPosApp
-import com.example.cattasticpos.domain.model.Order
-import com.example.cattasticpos.domain.repository.OrderRepository
-import com.example.cattasticpos.domain.repository.ExpenseRepository
+import com.example.cattasticpos.domain.model.AppConfig
+import com.example.cattasticpos.domain.model.Cashier
 import com.example.cattasticpos.domain.model.Expense
+import com.example.cattasticpos.domain.model.GcashAccount
+import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.ZReadingSummary
+import com.example.cattasticpos.domain.repository.AppConfigRepository
+import com.example.cattasticpos.domain.repository.ExpenseRepository
+import com.example.cattasticpos.domain.repository.OrderRepository
 import com.example.cattasticpos.domain.service.ReceiptPrinterService
 import com.example.cattasticpos.domain.usecase.ExportDataUseCase
 import com.example.cattasticpos.domain.usecase.VoidOrderUseCase
-import com.example.cattasticpos.domain.repository.AppConfigRepository
-import com.example.cattasticpos.domain.model.AppConfig
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -40,9 +42,9 @@ class HistoryViewModel(
     private val allTimeStart: Long = 0L
     private val allTimeEnd: Long = Long.MAX_VALUE
 
-    private val _startDate: MutableStateFlow<Long>
-    private val _endDate: MutableStateFlow<Long>
-    private val _orders = MutableStateFlow<List<Order>>(emptyList())
+    private val _startDate = MutableStateFlow(0L)
+    private val _endDate = MutableStateFlow(0L)
+    private val _extraOrderPages = MutableStateFlow<List<Order>>(emptyList())
     private val _showDateRangeDialog = MutableStateFlow(false)
     private val _canLoadMore = MutableStateFlow(false)
 
@@ -56,29 +58,50 @@ class HistoryViewModel(
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
         todayStart = calendar.timeInMillis
-        
+
         calendar.set(Calendar.HOUR_OF_DAY, 23)
         calendar.set(Calendar.MINUTE, 59)
         calendar.set(Calendar.SECOND, 59)
         calendar.set(Calendar.MILLISECOND, 999)
         todayEnd = calendar.timeInMillis
 
-        _startDate = MutableStateFlow(todayStart)
-        _endDate = MutableStateFlow(todayEnd)
+        _startDate.value = todayStart
+        _endDate.value = todayEnd
 
         viewModelScope.launch {
-            combine(_startDate, _endDate) { start, end -> start to end }.collect {
-                refreshOrders()
+            combine(_startDate, _endDate) { _, _ -> }
+                .collect { _extraOrderPages.value = emptyList() }
+        }
+
+        viewModelScope.launch {
+            firstPageOrders.collect { firstPage ->
+                if (_extraOrderPages.value.isEmpty()) {
+                    _canLoadMore.value = firstPage.size == PAGE_SIZE
+                }
             }
         }
     }
 
-    val ordersState: StateFlow<List<Order>> = _orders.asStateFlow()
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val firstPageOrders = combine(_startDate, _endDate) { start, end -> start to end }
+        .flatMapLatest { (start, end) ->
+            orderRepository.observeOrdersPage(
+                startDate = start,
+                endDate = end,
+                beforeTimestamp = Long.MAX_VALUE,
+                limit = PAGE_SIZE
+            )
+        }
+
+    val ordersState: StateFlow<List<Order>> = combine(firstPageOrders, _extraOrderPages) { first, extra ->
+        first + extra
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun loadMoreOrders() {
         if (!_canLoadMore.value) return
         viewModelScope.launch {
-            val beforeTimestamp = _orders.value.minOfOrNull { it.timestamp } ?: return@launch
+            val currentOrders = ordersState.value
+            val beforeTimestamp = currentOrders.minOfOrNull { it.timestamp } ?: return@launch
             val nextPage = orderRepository.getOrdersPage(
                 startDate = _startDate.value,
                 endDate = _endDate.value,
@@ -88,22 +111,10 @@ class HistoryViewModel(
             if (nextPage.isEmpty()) {
                 _canLoadMore.value = false
             } else {
-                _orders.value = _orders.value + nextPage
+                _extraOrderPages.value = _extraOrderPages.value + nextPage
                 _canLoadMore.value = nextPage.size == PAGE_SIZE
             }
         }
-    }
-
-    private suspend fun refreshOrders() {
-        _canLoadMore.value = false
-        val firstPage = orderRepository.getOrdersPage(
-            startDate = _startDate.value,
-            endDate = _endDate.value,
-            beforeTimestamp = Long.MAX_VALUE,
-            limit = PAGE_SIZE
-        )
-        _orders.value = firstPage
-        _canLoadMore.value = firstPage.size == PAGE_SIZE
     }
 
     fun setDateRange(start: Long?, end: Long?) {
@@ -177,13 +188,56 @@ class HistoryViewModel(
         }
     }
 
+    fun addCashier(name: String) {
+        val trimmed = name.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            val config = appConfigState.value ?: return@launch
+            val updated = config.cashiers + Cashier(
+                id = Cashier.newId(),
+                name = trimmed,
+                pinHash = AppConfig.DEFAULT_PIN_HASH
+            )
+            appConfigRepository.updatePaymentConfig(updated, config.gcashAccounts)
+        }
+    }
+
+    fun removeCashier(cashierId: String) {
+        viewModelScope.launch {
+            val config = appConfigState.value ?: return@launch
+            val updated = config.cashiers.filterNot { it.id == cashierId }
+            if (updated.isEmpty()) return@launch
+            appConfigRepository.updatePaymentConfig(updated, config.gcashAccounts)
+        }
+    }
+
+    fun addGcashAccount(label: String) {
+        val trimmed = label.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch {
+            val config = appConfigState.value ?: return@launch
+            val updated = config.gcashAccounts + GcashAccount(
+                id = GcashAccount.newId(),
+                label = trimmed
+            )
+            appConfigRepository.updatePaymentConfig(config.cashiers, updated)
+        }
+    }
+
+    fun removeGcashAccount(accountId: String) {
+        viewModelScope.launch {
+            val config = appConfigState.value ?: return@launch
+            val updated = config.gcashAccounts.filterNot { it.id == accountId }
+            if (updated.isEmpty()) return@launch
+            appConfigRepository.updatePaymentConfig(config.cashiers, updated)
+        }
+    }
+
     fun voidOrder(orderId: String, reason: String) {
         viewModelScope.launch {
             val result = voidOrderUseCase(orderId, reason, cashierId = null)
             if (result.isFailure) {
                 _exportMessage.value = "Void failed: ${result.exceptionOrNull()?.message}"
-            } else {
-                refreshOrders()
             }
         }
     }
@@ -214,7 +268,7 @@ class HistoryViewModel(
             }
         }
     }
-    
+
     fun clearExportMessage() {
         _exportMessage.value = null
     }

@@ -2,6 +2,7 @@ package com.example.cattasticpos.ui.dashboard
 
 import com.example.cattasticpos.domain.model.CartItem
 import com.example.cattasticpos.domain.model.Cashier
+import com.example.cattasticpos.domain.model.GcashAccount
 import com.example.cattasticpos.domain.model.Category
 import com.example.cattasticpos.domain.model.Item
 import com.example.cattasticpos.domain.strategy.DiscountStrategy
@@ -20,7 +21,7 @@ data class PaymentDialogState(
     val selectedTabIndex: Int = 0,
     val amountTenderedStr: String = "",
     val gcashReference: String = "",
-    val receivingAccount: String = "Main GCash (0917...)"
+    val receivingAccount: String = ""
 )
 
 data class DashboardUiState(
@@ -42,6 +43,7 @@ data class DashboardUiState(
     val currentQueueId: String? = null,
     val activeTableLabel: String? = null,
     val cashiers: List<Cashier> = emptyList(),
+    val gcashAccounts: List<GcashAccount> = emptyList(),
     val selectedCashierId: String = "cashier_default",
     val showPaymentDialog: Boolean = false,
     val paymentDialogState: PaymentDialogState = PaymentDialogState(),

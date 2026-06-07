@@ -2,6 +2,7 @@ package com.example.cattasticpos.domain.model
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 data class Cashier(
     val id: String,
@@ -19,8 +20,16 @@ data class Cashier(
 
         fun fromJson(json: String): List<Cashier> {
             if (json.isBlank()) return defaultCashiers()
+            val trimmed = json.trim()
+            if (trimmed.startsWith("{")) {
+                return PaymentConfigJson.fromStoredJson(trimmed).cashiers
+            }
+            return fromJsonArray(JSONArray(trimmed))
+        }
+
+        fun fromJsonArray(array: JSONArray?): List<Cashier> {
+            if (array == null || array.length() == 0) return defaultCashiers()
             return try {
-                val array = JSONArray(json)
                 buildList {
                     for (i in 0 until array.length()) {
                         val obj = array.getJSONObject(i)
@@ -38,7 +47,7 @@ data class Cashier(
             }
         }
 
-        fun toJson(cashiers: List<Cashier>): String {
+        fun toJsonArray(cashiers: List<Cashier>): JSONArray {
             val array = JSONArray()
             cashiers.forEach { cashier ->
                 array.put(
@@ -48,7 +57,11 @@ data class Cashier(
                         .put("pinHash", cashier.pinHash)
                 )
             }
-            return array.toString()
+            return array
         }
+
+        fun toJson(cashiers: List<Cashier>): String = toJsonArray(cashiers).toString()
+
+        fun newId(): String = "cashier_${UUID.randomUUID().toString().substring(0, 8)}"
     }
 }
