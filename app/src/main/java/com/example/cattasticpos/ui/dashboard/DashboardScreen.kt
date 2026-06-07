@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -33,6 +34,7 @@ import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
 import com.example.cattasticpos.ui.adaptive.collapsingNestedScroll
 import com.example.cattasticpos.ui.adaptive.iOSSpringSpec
 import com.example.cattasticpos.ui.adaptive.iOSSpringSize
+import com.example.cattasticpos.ui.adaptive.iOSSpringDp
 import com.example.cattasticpos.ui.adaptive.rememberCollapsingHeaderState
 import com.example.cattasticpos.ui.adaptive.rememberLiquidGlassHazeState
 import com.example.cattasticpos.ui.adaptive.liquidGlassSource
@@ -87,7 +89,6 @@ import com.example.cattasticpos.ui.theme.adaptiveGlassBrush
 import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassContentColor
 import com.example.cattasticpos.ui.theme.ObsidianGlassCard
-import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassFill
 import com.example.cattasticpos.ui.theme.specularBorderBrush
 
@@ -125,6 +126,7 @@ fun DashboardScreen(
     val headerState = rememberCollapsingHeaderState()
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
+    var isMoreMenuExpanded by remember { mutableStateOf(false) }
     val isCatalogSearchActive = isSearchExpanded || searchQuery.isNotEmpty()
 
     LaunchedEffect(isCatalogSearchActive) {
@@ -174,33 +176,66 @@ fun DashboardScreen(
                     )
                 }
             }
-            IconButton(onClick = { viewModel.setShowExpenseDialog(true) }) {
-                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                    FluentIcon(
-                        imageVector = FluentIcons.Wallet,
-                        contentDescription = "Add Expense",
-                        tint = cupertino.accent,
-                        size = 24.dp
-                    )
+            Box {
+                IconButton(onClick = { isMoreMenuExpanded = true }) {
+                    Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                        FluentIcon(
+                            imageVector = FluentIcons.List,
+                            contentDescription = "More options",
+                            tint = cupertino.accent,
+                            size = 24.dp
+                        )
+                    }
                 }
-            }
-            IconButton(onClick = { viewModel.setShowQueuesDialog(true) }) {
-                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                    FluentIcon(
-                        imageVector = FluentIcons.Queue,
-                        contentDescription = "View Queues",
-                        tint = cupertino.accent,
-                        size = 24.dp
+                DropdownMenu(
+                    expanded = isMoreMenuExpanded,
+                    onDismissRequest = { isMoreMenuExpanded = false },
+                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Add Expense") },
+                        onClick = {
+                            isMoreMenuExpanded = false
+                            viewModel.setShowExpenseDialog(true)
+                        },
+                        leadingIcon = {
+                            FluentIcon(
+                                imageVector = FluentIcons.Wallet,
+                                contentDescription = null,
+                                size = 20.dp,
+                                useGlassGradient = false
+                            )
+                        }
                     )
-                }
-            }
-            IconButton(onClick = { onNavigateToHistory() }) {
-                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                    FluentIcon(
-                        imageVector = FluentIcons.History,
-                        contentDescription = "History",
-                        tint = cupertino.accent,
-                        size = 24.dp
+                    DropdownMenuItem(
+                        text = { Text("View Queues") },
+                        onClick = {
+                            isMoreMenuExpanded = false
+                            viewModel.setShowQueuesDialog(true)
+                        },
+                        leadingIcon = {
+                            FluentIcon(
+                                imageVector = FluentIcons.Queue,
+                                contentDescription = null,
+                                size = 20.dp,
+                                useGlassGradient = false
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("History") },
+                        onClick = {
+                            isMoreMenuExpanded = false
+                            onNavigateToHistory()
+                        },
+                        leadingIcon = {
+                            FluentIcon(
+                                imageVector = FluentIcons.History,
+                                contentDescription = null,
+                                size = 20.dp,
+                                useGlassGradient = false
+                            )
+                        }
                     )
                 }
             }
@@ -268,35 +303,44 @@ fun DashboardScreen(
                     )
                 }
             } else {
-                StorefrontCatalogPane(
-                    modifier = Modifier.weight(1f),
-                    uiState = uiState,
-                    hazeState = hazeState,
-                    headerState = headerState,
-                    searchQuery = searchQuery,
-                    isSearchExpanded = isSearchExpanded,
-                    onSearchQueryChange = { searchQuery = it },
-                    onSearchExpandedChange = { isSearchExpanded = it },
-                    onCategorySelected = { viewModel.selectCategory(it) },
-                    onItemClick = { viewModel.showConfigurationSheet(it) },
-                    compactGlows = true,
-                    bottomContentPadding = 110.dp
-                )
-                DashboardCheckoutPanel(
-                    modifier = Modifier.fillMaxWidth(),
-                    uiState = uiState,
-                    cartItemCount = cartItemCount,
-                    isCartExpanded = isCartExpanded,
-                    onCartExpandedChange = { isCartExpanded = it },
-                    checkoutBorder = checkoutBorder,
-                    darkTheme = darkTheme,
-                    onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
-                    onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
-                    onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
-                    onSelectDiscount = { viewModel.selectDiscount(it) },
-                    forceExpanded = false,
-                    useBottomSheetStyle = true
-                )
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    val bottomPadding by animateDpAsState(
+                        targetValue = if (isCartExpanded) 380.dp else 120.dp,
+                        animationSpec = iOSSpringDp,
+                        label = "cartPadding"
+                    )
+                    StorefrontCatalogPane(
+                        modifier = Modifier.fillMaxSize(),
+                        uiState = uiState,
+                        hazeState = hazeState,
+                        headerState = headerState,
+                        searchQuery = searchQuery,
+                        isSearchExpanded = isSearchExpanded,
+                        onSearchQueryChange = { searchQuery = it },
+                        onSearchExpandedChange = { isSearchExpanded = it },
+                        onCategorySelected = { viewModel.selectCategory(it) },
+                        onItemClick = { viewModel.showConfigurationSheet(it) },
+                        compactGlows = true,
+                        bottomContentPadding = bottomPadding
+                    )
+                    DashboardCheckoutPanel(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .align(Alignment.BottomCenter),
+                        uiState = uiState,
+                        cartItemCount = cartItemCount,
+                        isCartExpanded = isCartExpanded,
+                        onCartExpandedChange = { isCartExpanded = it },
+                        checkoutBorder = checkoutBorder,
+                        darkTheme = darkTheme,
+                        onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
+                        onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
+                        onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
+                        onSelectDiscount = { viewModel.selectDiscount(it) },
+                        forceExpanded = false,
+                        useBottomSheetStyle = true
+                    )
+                }
             }
         }
 
