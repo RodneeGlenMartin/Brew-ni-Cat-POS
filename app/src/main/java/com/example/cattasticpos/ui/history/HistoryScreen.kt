@@ -840,10 +840,21 @@ fun VoidOrderDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
     val reasons = listOf("Wrong order", "Customer cancelled", "Duplicate entry", "Other")
     var selectedReason by remember { mutableStateOf(reasons.first()) }
 
-    AlertDialog(
+    AdaptiveGlassDialog(
         onDismissRequest = onDismiss,
+        surfaceAlpha = 0.92f,
         title = { Text("Void Order", fontWeight = FontWeight.Bold) },
-        text = {
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(selectedReason) }) {
+                Text("Void & Restock")
+            }
+        },
+        content = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Select a reason. Inventory will be restored.", fontSize = 13.sp)
                 reasons.forEach { reason ->
@@ -854,18 +865,15 @@ fun VoidOrderDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                             .padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        RadioButton(selected = selectedReason == reason, onClick = { selectedReason = reason })
+                        RadioButton(
+                            selected = selectedReason == reason,
+                            onClick = { selectedReason = reason }
+                        )
                         Text(reason)
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(selectedReason) }) {
-                Text("Void & Restock")
-            }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        }
     )
 }
 
