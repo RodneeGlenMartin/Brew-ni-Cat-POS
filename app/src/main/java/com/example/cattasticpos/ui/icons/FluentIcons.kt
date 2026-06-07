@@ -26,6 +26,7 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.Minus
 import com.composables.icons.lucide.Package
 import com.composables.icons.lucide.Pause
+import com.composables.icons.lucide.Pencil
 import com.composables.icons.lucide.Plus
 import com.composables.icons.lucide.Printer
 import com.composables.icons.lucide.ReceiptText
@@ -54,6 +55,7 @@ object FluentIcons {
     val Print: ImageVector = Lucide.Printer
     val ArrowDownload: ImageVector = Lucide.Download
     val Share: ImageVector = Lucide.Share2
+    val Edit: ImageVector = Lucide.Pencil
     val Delete: ImageVector = Lucide.Trash2
     val ChevronUp: ImageVector = Lucide.ChevronUp
     val ChevronDown: ImageVector = Lucide.ChevronDown

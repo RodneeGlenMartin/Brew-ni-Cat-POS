@@ -2,6 +2,10 @@ package com.example.cattasticpos.ui.history
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
@@ -15,7 +19,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import android.content.Context
 import androidx.core.app.ShareCompat
 import com.example.cattasticpos.domain.model.ZReadingSummary
@@ -535,7 +543,8 @@ fun HistoryScreen(
                     items(orders, key = { "order_${it.id}" }) { order ->
                         OrderHistoryCard(
                             order = order,
-                            onShare = { receiptPreviewOrder = order },
+                            onShare = { shareOrderReceipt(context, order) },
+                            onEdit = { receiptPreviewOrder = order },
                             onDelete = { pendingVoidOrderId = order.id }
                         )
                     }
@@ -635,7 +644,7 @@ fun HistoryScreen(
                     initialThemeAccentId = appConfig?.themeAccentId ?: AppThemeAccent.DEFAULT_ID,
                     onDismiss = { showConfigDialog = false },
                     onSaveGoals = { target, float ->
-                        viewModel.saveGoals(target, float)
+                        viewModel.saveBusinessGoals(target, float)
                     },
                     onThemeAccentChange = { viewModel.updateThemeAccent(it) },
                     onSelectActiveCashier = { viewModel.selectActiveCashier(it) },
@@ -679,7 +688,128 @@ fun HistoryScreen(
 fun OrderHistoryCard(
     order: Order,
     onShare: () -> Unit,
+    onEdit: () -> Unit,
     onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    val actionWidth = 156.dp
+    val actionWidthPx = with(density) { actionWidth.toPx() }
+    val cardShape = RoundedCornerShape(22.dp)
+    val swipeSnapSpec = remember { spring<Float>(dampingRatio = 0.92f, stiffness = 720f) }
+    val offsetAnim = remember(order.id) { Animatable(0f) }
+    var dragOffset by remember(order.id) { mutableFloatStateOf(0f) }
+    var isDragging by remember(order.id) { mutableStateOf(false) }
+    val displayOffset = if (isDragging) dragOffset else offsetAnim.value
+
+    fun closeReveal() {
+        scope.launch { offsetAnim.animateTo(0f, swipeSnapSpec) }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(cardShape)
+    ) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .width(actionWidth)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f))
+                .padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            OrderSwipeActionIcon(
+                icon = FluentIcons.Share,
+                contentDescription = "Share receipt",
+                onClick = {
+                    closeReveal()
+                    onShare()
+                }
+            )
+            OrderSwipeActionIcon(
+                icon = FluentIcons.Edit,
+                contentDescription = "Edit receipt",
+                onClick = {
+                    closeReveal()
+                    onEdit()
+                }
+            )
+            OrderSwipeActionIcon(
+                icon = FluentIcons.Delete,
+                contentDescription = "Delete order",
+                tint = MaterialTheme.colorScheme.error,
+                onClick = {
+                    closeReveal()
+                    onDelete()
+                }
+            )
+        }
+
+        OrderHistoryCardContent(
+            order = order,
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(displayOffset.coerceIn(0f, actionWidthPx).roundToInt(), 0) }
+                .pointerInput(order.id, actionWidthPx) {
+                    detectHorizontalDragGestures(
+                        onDragStart = {
+                            isDragging = true
+                            dragOffset = offsetAnim.value
+                        },
+                        onDragCancel = {
+                            isDragging = false
+                            scope.launch {
+                                val target = if (dragOffset >= actionWidthPx * 0.35f) actionWidthPx else 0f
+                                offsetAnim.snapTo(dragOffset)
+                                offsetAnim.animateTo(target, swipeSnapSpec)
+                            }
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            dragOffset = (dragOffset + dragAmount).coerceIn(0f, actionWidthPx)
+                        },
+                        onDragEnd = {
+                            isDragging = false
+                            scope.launch {
+                                val target = if (dragOffset >= actionWidthPx * 0.35f) actionWidthPx else 0f
+                                offsetAnim.snapTo(dragOffset)
+                                offsetAnim.animateTo(target, swipeSnapSpec)
+                            }
+                        }
+                    )
+                }
+        )
+    }
+}
+
+@Composable
+private fun OrderSwipeActionIcon(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    tint: androidx.compose.ui.graphics.Color? = null
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(44.dp)
+    ) {
+        FluentIcon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            size = 20.dp,
+            tint = tint,
+            useGlassGradient = tint == null
+        )
+    }
+}
+
+@Composable
+private fun OrderHistoryCardContent(
+    order: Order,
     modifier: Modifier = Modifier
 ) {
     var isExpanded by remember(order.id) { mutableStateOf(false) }
@@ -690,10 +820,11 @@ fun OrderHistoryCard(
         dateFormatter.format(Date(order.timestamp))
     }
 
-    ObsidianGlassCard(modifier = modifier.fillMaxWidth()) {
+    ObsidianGlassCard(modifier = modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -742,36 +873,19 @@ fun OrderHistoryCard(
                     } else {
                         MaterialTheme.colorScheme.primary
                     }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .background(badgeColor, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                        ) {
-                            Text(
-                                text = order.paymentMethod,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        IconButton(onClick = onShare, modifier = Modifier.size(24.dp)) {
-                            FluentIcon(
-                                imageVector = FluentIcons.Share,
-                                contentDescription = "Share Receipt",
-                                size = 16.dp
-                            )
-                        }
-                        IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
-                            FluentIcon(
-                                imageVector = FluentIcons.Delete,
-                                contentDescription = "Delete Order",
-                                size = 16.dp,
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
+                    Box(
+                        modifier = Modifier
+                            .background(badgeColor, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = order.paymentMethod,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "₱${String.format("%.0f", order.total)}",
                         fontWeight = FontWeight.Bold,
@@ -945,7 +1059,6 @@ fun EditConfigDialog(
 ) {
     var targetStr by remember { mutableStateOf(if (initialTarget % 1.0 == 0.0) initialTarget.toInt().toString() else initialTarget.toString()) }
     var floatStr by remember { mutableStateOf(if (initialFloat % 1.0 == 0.0) initialFloat.toInt().toString() else initialFloat.toString()) }
-    var isError by remember { mutableStateOf(false) }
     var cashiersExpanded by remember { mutableStateOf(false) }
     var gcashExpanded by remember { mutableStateOf(false) }
     var newCashierName by remember { mutableStateOf("") }
@@ -977,8 +1090,6 @@ fun EditConfigDialog(
                         }
                         if (onSaveGoals(t, f)) {
                             onDismiss()
-                        } else {
-                            isError = true
                         }
                     }
                 }
@@ -1012,10 +1123,6 @@ fun EditConfigDialog(
                             singleLine = true
                         )
                     }
-                }
-
-                if (isError) {
-                    Text("Could not save goals", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))

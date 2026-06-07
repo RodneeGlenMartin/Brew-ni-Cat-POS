@@ -3,14 +3,16 @@ package com.example.cattasticpos.ui.dashboard
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
@@ -34,7 +36,7 @@ import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
 import com.example.cattasticpos.ui.adaptive.collapsingNestedScroll
 import com.example.cattasticpos.ui.adaptive.iOSSpringSpec
 import com.example.cattasticpos.ui.adaptive.iOSSpringSize
-import com.example.cattasticpos.ui.adaptive.iOSSpringDp
+import com.example.cattasticpos.ui.adaptive.liquidSwipeTransition
 import com.example.cattasticpos.ui.adaptive.rememberCollapsingHeaderState
 import com.example.cattasticpos.ui.adaptive.rememberLiquidGlassHazeState
 import com.example.cattasticpos.ui.adaptive.liquidGlassSource
@@ -56,7 +58,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -89,6 +93,7 @@ import com.example.cattasticpos.ui.theme.adaptiveGlassBrush
 import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassContentColor
 import com.example.cattasticpos.ui.theme.ObsidianGlassCard
+import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassFill
 import com.example.cattasticpos.ui.theme.specularBorderBrush
 
@@ -102,16 +107,13 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var isCartExpanded by rememberSaveable { mutableStateOf(false) }
+    var isCartExpanded by remember { mutableStateOf(false) }
     val cartItemCount = uiState.activeCart.sumOf { it.quantity }
-    var lastCartItemCount by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(cartItemCount) {
-        when {
-            cartItemCount == 0 -> isCartExpanded = false
-            lastCartItemCount == 0 && cartItemCount > 0 -> isCartExpanded = true
+        if (cartItemCount == 0) {
+            isCartExpanded = false
         }
-        lastCartItemCount = cartItemCount
     }
 
     LaunchedEffect(uiState.snackbarMessage) {
@@ -126,7 +128,6 @@ fun DashboardScreen(
     val headerState = rememberCollapsingHeaderState()
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
-    var isMoreMenuExpanded by remember { mutableStateOf(false) }
     val isCatalogSearchActive = isSearchExpanded || searchQuery.isNotEmpty()
 
     LaunchedEffect(isCatalogSearchActive) {
@@ -144,101 +145,48 @@ fun DashboardScreen(
         modifier = modifier,
         navigationIcon = {
             BrewNiCatBrandIcon(
-                modifier = Modifier.padding(start = 12.dp)
+                modifier = Modifier.padding(start = 8.dp)
             )
         },
         actions = {
-            IconButton(onClick = {
-                if (isSearchExpanded) {
-                    isSearchExpanded = false
-                    searchQuery = ""
-                } else {
-                    headerState.resetCollapse()
-                    isSearchExpanded = true
-                }
-            }) {
-                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                    FluentIcon(
-                        imageVector = FluentIcons.Search,
-                        contentDescription = "Search menu",
-                        tint = cupertino.accent,
-                        size = 24.dp
-                    )
-                }
-            }
-            IconButton(onClick = onNavigateToInventory) {
-                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                    FluentIcon(
-                        imageVector = FluentIcons.Box,
-                        contentDescription = "Inventory Management",
-                        tint = cupertino.accent,
-                        size = 24.dp
-                    )
-                }
-            }
-            Box {
-                IconButton(onClick = { isMoreMenuExpanded = true }) {
-                    Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                        FluentIcon(
-                            imageVector = FluentIcons.List,
-                            contentDescription = "More options",
-                            tint = cupertino.accent,
-                            size = 24.dp
-                        )
+            DashboardHeaderIconButton(
+                onClick = {
+                    if (isSearchExpanded) {
+                        isSearchExpanded = false
+                        searchQuery = ""
+                    } else {
+                        headerState.resetCollapse()
+                        isSearchExpanded = true
                     }
-                }
-                DropdownMenu(
-                    expanded = isMoreMenuExpanded,
-                    onDismissRequest = { isMoreMenuExpanded = false },
-                    modifier = Modifier.background(MaterialTheme.colorScheme.surface)
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Add Expense") },
-                        onClick = {
-                            isMoreMenuExpanded = false
-                            viewModel.setShowExpenseDialog(true)
-                        },
-                        leadingIcon = {
-                            FluentIcon(
-                                imageVector = FluentIcons.Wallet,
-                                contentDescription = null,
-                                size = 20.dp,
-                                useGlassGradient = false
-                            )
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("View Queues") },
-                        onClick = {
-                            isMoreMenuExpanded = false
-                            viewModel.setShowQueuesDialog(true)
-                        },
-                        leadingIcon = {
-                            FluentIcon(
-                                imageVector = FluentIcons.Queue,
-                                contentDescription = null,
-                                size = 20.dp,
-                                useGlassGradient = false
-                            )
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("History") },
-                        onClick = {
-                            isMoreMenuExpanded = false
-                            onNavigateToHistory()
-                        },
-                        leadingIcon = {
-                            FluentIcon(
-                                imageVector = FluentIcons.History,
-                                contentDescription = null,
-                                size = 20.dp,
-                                useGlassGradient = false
-                            )
-                        }
-                    )
-                }
-            }
+                },
+                icon = FluentIcons.Search,
+                contentDescription = "Search menu",
+                tint = cupertino.accent
+            )
+            DashboardHeaderIconButton(
+                onClick = onNavigateToInventory,
+                icon = FluentIcons.Box,
+                contentDescription = "Inventory Management",
+                tint = cupertino.accent
+            )
+            DashboardHeaderIconButton(
+                onClick = { viewModel.setShowExpenseDialog(true) },
+                icon = FluentIcons.Wallet,
+                contentDescription = "Add Expense",
+                tint = cupertino.accent
+            )
+            DashboardHeaderIconButton(
+                onClick = { viewModel.setShowQueuesDialog(true) },
+                icon = FluentIcons.Queue,
+                contentDescription = "View Queues",
+                tint = cupertino.accent
+            )
+            DashboardHeaderIconButton(
+                onClick = onNavigateToHistory,
+                icon = FluentIcons.History,
+                contentDescription = "History",
+                tint = cupertino.accent
+            )
         }
     ) { innerPadding ->
         Column(
@@ -303,14 +251,9 @@ fun DashboardScreen(
                     )
                 }
             } else {
-                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    val bottomPadding by animateDpAsState(
-                        targetValue = if (isCartExpanded) 380.dp else 120.dp,
-                        animationSpec = iOSSpringDp,
-                        label = "cartPadding"
-                    )
+                Column(modifier = Modifier.weight(1f)) {
                     StorefrontCatalogPane(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.weight(1f),
                         uiState = uiState,
                         hazeState = hazeState,
                         headerState = headerState,
@@ -320,13 +263,10 @@ fun DashboardScreen(
                         onSearchExpandedChange = { isSearchExpanded = it },
                         onCategorySelected = { viewModel.selectCategory(it) },
                         onItemClick = { viewModel.showConfigurationSheet(it) },
-                        compactGlows = true,
-                        bottomContentPadding = bottomPadding
+                        compactGlows = true
                     )
                     DashboardCheckoutPanel(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .align(Alignment.BottomCenter),
+                        modifier = Modifier.fillMaxWidth(),
                         uiState = uiState,
                         cartItemCount = cartItemCount,
                         isCartExpanded = isCartExpanded,
@@ -381,6 +321,26 @@ fun DashboardScreen(
                 onDismiss = { viewModel.setShowExpenseDialog(false) }
             )
         }
+    }
+}
+
+@Composable
+private fun DashboardHeaderIconButton(
+    onClick: () -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    tint: Color
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(36.dp)
+    ) {
+        FluentIcon(
+            imageVector = icon,
+            contentDescription = contentDescription,
+            tint = tint,
+            size = 20.dp
+        )
     }
 }
 
@@ -474,8 +434,8 @@ private fun StorefrontCatalogPane(
 
             LazyColumn(
                 modifier = catalogListModifier,
-                contentPadding = PaddingValues(bottom = bottomContentPadding),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = bottomContentPadding)
             ) {
                 if (isSearching) {
                     if (searchResults.isEmpty()) {
@@ -662,64 +622,66 @@ private fun DashboardCheckoutPanel(
             color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
             tonalElevation = 2.dp,
-            modifier = modifier.animateContentSize(animationSpec = iOSSpringSize)
+            modifier = modifier
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clickable { onCartExpandedChange(true) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onCartExpandedChange(!isCartExpanded) },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         "Current Order ($cartItemCount)",
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(
-                            onClick = onHoldOrder,
-                            enabled = uiState.activeCart.isNotEmpty(),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            FluentIcon(
-                                imageVector = FluentIcons.Pause,
-                                contentDescription = null,
-                                size = 14.dp,
-                                useGlassGradient = false
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Hold", fontSize = 12.sp)
-                        }
-                        IconButton(onClick = { onCartExpandedChange(!isCartExpanded) }) {
-                            FluentIcon(
-                                imageVector = if (isCartExpanded) FluentIcons.ChevronDown else FluentIcons.ChevronUp,
-                                contentDescription = if (isCartExpanded) "Collapse order panel" else "Expand order panel",
-                                useGlassGradient = false
-                            )
-                        }
+                    if (cartItemCount > 0) {
+                        Text(
+                            "Total: ₱${String.format("%.0f", uiState.total)}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
                 }
-                AnimatedVisibility(
-                    visible = showCartBody,
-                    enter = expandVertically(animationSpec = iOSSpringSize) + fadeIn(animationSpec = iOSSpringSpec),
-                    exit = shrinkVertically(animationSpec = iOSSpringSize) + fadeOut(animationSpec = iOSSpringSpec)
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        DashboardCheckoutBody(
-                            uiState = uiState,
-                            onQuantityChange = onQuantityChange,
-                            onSelectDiscount = onSelectDiscount,
-                            onPlaceOrder = onPlaceOrder
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = onHoldOrder,
+                        enabled = uiState.activeCart.isNotEmpty(),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        FluentIcon(
+                            imageVector = FluentIcons.Pause,
+                            contentDescription = null,
+                            size = 14.dp,
+                            useGlassGradient = false
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Hold", fontSize = 12.sp)
+                    }
+                    IconButton(onClick = { onCartExpandedChange(true) }) {
+                        FluentIcon(
+                            imageVector = FluentIcons.ChevronUp,
+                            contentDescription = "Open order details",
+                            useGlassGradient = false
                         )
                     }
                 }
             }
+        }
+        if (isCartExpanded) {
+            OrderCheckoutModalSheet(
+                uiState = uiState,
+                cartItemCount = cartItemCount,
+                onDismiss = { onCartExpandedChange(false) },
+                onHoldOrder = onHoldOrder,
+                onPlaceOrder = onPlaceOrder,
+                onQuantityChange = onQuantityChange,
+                onSelectDiscount = onSelectDiscount
+            )
         }
     } else {
         Column(
@@ -760,6 +722,85 @@ private fun DashboardCheckoutPanel(
                 onPlaceOrder = onPlaceOrder,
                 listMaxHeight = null
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OrderCheckoutModalSheet(
+    uiState: DashboardUiState,
+    cartItemCount: Int,
+    onDismiss: () -> Unit,
+    onHoldOrder: () -> Unit,
+    onPlaceOrder: () -> Unit,
+    onQuantityChange: (String, Int) -> Unit,
+    onSelectDiscount: (DiscountStrategy) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val bodyScrollState = rememberScrollState()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        dragHandle = null,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(bodyScrollState)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Current Order ($cartItemCount)",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = onHoldOrder,
+                        enabled = uiState.activeCart.isNotEmpty(),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        FluentIcon(
+                            imageVector = FluentIcons.Pause,
+                            contentDescription = null,
+                            size = 14.dp,
+                            useGlassGradient = false
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Hold", fontSize = 12.sp)
+                    }
+                    IconButton(onClick = onDismiss) {
+                        FluentIcon(
+                            imageVector = FluentIcons.ChevronDown,
+                            contentDescription = "Close order details",
+                            useGlassGradient = false
+                        )
+                    }
+                }
+            }
+            DashboardCheckoutBody(
+                uiState = uiState,
+                onQuantityChange = onQuantityChange,
+                onSelectDiscount = onSelectDiscount,
+                onPlaceOrder = {
+                    onDismiss()
+                    onPlaceOrder()
+                },
+                listMaxHeight = null
+            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -1150,12 +1191,32 @@ fun PaymentCheckoutDialog(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+private enum class ProductConfigStep {
+    FlavorGroup,
+    Flavor,
+    Size
+}
+
+private fun itemHasGroupedFlavors(item: Item): Boolean =
+    item.flavors.any { it.contains(":") }
+
+private fun itemFlavorGroups(item: Item): Map<String, List<String>> =
+    item.flavors.groupBy { flavor ->
+        if (flavor.contains(":")) flavor.substringBefore(":").trim() else "Flavors"
+    }
+
+private fun initialProductConfigStep(item: Item): ProductConfigStep = when {
+    itemHasGroupedFlavors(item) -> ProductConfigStep.FlavorGroup
+    item.flavors.isNotEmpty() -> ProductConfigStep.Flavor
+    else -> ProductConfigStep.Size
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Variant, String?) -> Unit) {
-    val sheetState = rememberModalBottomSheetState()
-    val contentScrollState = rememberScrollState()
-    val hazeState = rememberLiquidGlassHazeState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var currentStep by remember(item.id) { mutableStateOf(initialProductConfigStep(item)) }
+    var selectedFlavorGroup by remember(item.id) { mutableStateOf<String?>(null) }
     var selectedVariant by remember(item.id) {
         mutableStateOf(item.variants.firstOrNull() ?: Variant("", "", 0.0))
     }
@@ -1181,166 +1242,309 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.9f)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 16.dp)
         ) {
-            Text(
-                text = item.name,
+            AnimatedContent(
+                targetState = currentStep,
+                transitionSpec = {
+                    liquidSwipeTransition(forward = targetState.ordinal > initialState.ordinal)
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 20.dp, bottom = 12.dp),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .liquidGlassSource(hazeState)
-                    .verticalScroll(contentScrollState)
-            ) {
-                Spacer(modifier = Modifier.height(8.dp))
-
-                if (item.flavors.isNotEmpty()) {
-                    CupertinoSection(header = "Select Flavor") {
-                    if (item.id == "drink_coffee") {
-                        val grouped = item.flavors.groupBy { if (it.contains(":")) it.substringBefore(":").trim() else "Flavors" }
-                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            grouped.forEach { (group, flavorsInGroup) ->
-                                Text(
-                                    group,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(vertical = 2.dp)
-                                )
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    flavorsInGroup.forEach { flavor ->
-                                        key(flavor) {
-                                            CupertinoSegmentChip(
-                                                selected = selectedFlavor == flavor,
-                                                onClick = { selectedFlavor = flavor },
-                                                label = flavor.substringAfter(": ").trim()
-                                            )
-                                        }
+                    .clipToBounds(),
+                label = "ProductConfigStep"
+            ) { step ->
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    when (step) {
+                        ProductConfigStep.FlavorGroup -> {
+                            ProductConfigStepHeader(
+                                title = item.name,
+                                subtitle = "Choose a style"
+                            )
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                itemFlavorGroups(item).forEach { (group, _) ->
+                                    key(group) {
+                                        FlavorOptionRow(
+                                            label = group,
+                                            isSelected = selectedFlavorGroup == group,
+                                            onSelect = {
+                                                selectedFlavorGroup = group
+                                                selectedFlavor = null
+                                                currentStep = ProductConfigStep.Flavor
+                                            }
+                                        )
                                     }
                                 }
                             }
                         }
-                    } else {
-                        FlowRow(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            item.flavors.forEach { flavor ->
-                                key(flavor) {
-                                    CupertinoSegmentChip(
-                                        selected = selectedFlavor == flavor,
-                                        onClick = { selectedFlavor = flavor },
-                                        label = flavor
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
 
-                if (item.variants.isNotEmpty()) {
-                    CupertinoSection(header = "Select Size/Option") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            item.variants.forEach { variant ->
-                                key(variant.id) {
-                                    VariantOptionRow(
-                                        variant = variant,
-                                        item = item,
-                                        selectedFlavor = selectedFlavor,
-                                        isSelected = selectedVariant.id == variant.id,
-                                        onSelect = { selectedVariant = variant }
-                                    )
-                                }
+                        ProductConfigStep.Flavor -> {
+                            val flavorsForStep = if (selectedFlavorGroup != null) {
+                                itemFlavorGroups(item)[selectedFlavorGroup].orEmpty()
+                            } else {
+                                item.flavors
                             }
-                        }
-                    }
-
-                    if (hasComboDescriptions) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        val panelTextColor = adaptiveGlassContentColor()
-                        AdaptiveGlassCard(modifier = Modifier.fillMaxWidth()) {
+                            ProductConfigStepHeader(
+                                title = item.name,
+                                subtitle = selectedFlavorGroup ?: "Choose a flavor",
+                                onBack = {
+                                    if (itemHasGroupedFlavors(item)) {
+                                        currentStep = ProductConfigStep.FlavorGroup
+                                    } else {
+                                        onDismiss()
+                                    }
+                                }
+                            )
                             Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 12.dp, vertical = 10.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    "Included in this combo:",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
-                                    color = panelTextColor
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = selectedVariant.description ?: "Select an option to view combo details.",
-                                    fontSize = 12.sp,
-                                    color = panelTextColor,
-                                    lineHeight = 16.sp
-                                )
+                                flavorsForStep.forEach { flavor ->
+                                    key(flavor) {
+                                        FlavorOptionRow(
+                                            label = flavor.substringAfter(": ").trim(),
+                                            isSelected = selectedFlavor == flavor,
+                                            onSelect = {
+                                                selectedFlavor = flavor
+                                                currentStep = ProductConfigStep.Size
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Tap a flavor to continue",
+                                modifier = Modifier.fillMaxWidth(),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        ProductConfigStep.Size -> {
+                            ProductConfigStepHeader(
+                                title = item.name,
+                                subtitle = selectedFlavor?.substringAfter(": ")?.trim()
+                                    ?: if (item.flavors.isEmpty()) "Choose an option" else "Choose a size",
+                                onBack = {
+                                    if (item.flavors.isNotEmpty()) {
+                                        currentStep = ProductConfigStep.Flavor
+                                    } else {
+                                        onDismiss()
+                                    }
+                                }
+                            )
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                item.variants.forEach { variant ->
+                                    key(variant.id) {
+                                        VariantOptionRow(
+                                            variant = variant,
+                                            item = item,
+                                            selectedFlavor = selectedFlavor,
+                                            isSelected = selectedVariant.id == variant.id,
+                                            onSelect = { selectedVariant = variant }
+                                        )
+                                    }
+                                }
+                            }
+                            if (hasComboDescriptions) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                val panelTextColor = adaptiveGlassContentColor()
+                                AdaptiveGlassCard(modifier = Modifier.fillMaxWidth()) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 10.dp)
+                                    ) {
+                                        Text(
+                                            "Included in this combo:",
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 12.sp,
+                                            color = panelTextColor
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = selectedVariant.description ?: "Select an option to view combo details.",
+                                            fontSize = 12.sp,
+                                            color = panelTextColor,
+                                            lineHeight = 16.sp
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .liquidGlassChild(state = hazeState)
-                    .padding(top = 12.dp, bottom = 24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("Price Summary", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
-                    Text(
-                        "₱${String.format("%.0f", displayPrice)}",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                PosPrimaryButton(
-                    onClick = { onAddToCart(selectedVariant, selectedFlavor) },
-                    enabled = !(item.flavors.isNotEmpty() && selectedFlavor == null),
-                    modifier = Modifier.defaultMinSize(minWidth = 0.dp)
-                ) {
-                    PosButtonIconLabel(
-                        icon = {
-                            FluentIcon(
-                                imageVector = FluentIcons.Add,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                size = 24.dp
-                            )
-                        },
-                        label = "Add to Order",
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+            Crossfade(
+                targetState = currentStep == ProductConfigStep.Size,
+                animationSpec = tween(durationMillis = 140),
+                label = "ProductConfigFooter"
+            ) { showCheckoutFooter ->
+                if (showCheckoutFooter) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(top = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp, bottom = 24.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Price Summary", fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
+                                Text(
+                                    "₱${String.format("%.0f", displayPrice)}",
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.titleLarge,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            PosPrimaryButton(
+                                onClick = { onAddToCart(selectedVariant, selectedFlavor) },
+                                enabled = !(item.flavors.isNotEmpty() && selectedFlavor == null),
+                                modifier = Modifier.defaultMinSize(minWidth = 0.dp)
+                            ) {
+                                PosButtonIconLabel(
+                                    icon = {
+                                        FluentIcon(
+                                            imageVector = FluentIcons.Add,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onPrimary,
+                                            size = 24.dp
+                                        )
+                                    },
+                                    label = "Add to Order",
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ProductConfigStepHeader(
+    title: String,
+    subtitle: String? = null,
+    onBack: (() -> Unit)? = null
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 20.dp, bottom = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (onBack != null) {
+            IconButton(onClick = onBack) {
+                FluentIcon(
+                    imageVector = FluentIcons.ArrowLeft,
+                    contentDescription = "Back",
+                    useGlassGradient = false
+                )
+            }
+        }
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = if (onBack == null) 0.dp else 4.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    text = subtitle,
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FlavorOptionRow(
+    label: String,
+    isSelected: Boolean,
+    onSelect: () -> Unit
+) {
+    val darkTheme = isSystemInDarkTheme()
+    val labelColor = if (isSelected) {
+        if (darkTheme) Color.White else MaterialTheme.colorScheme.onSurface
+    } else {
+        adaptiveBodyMuted(darkTheme)
+    }
+    val optionShape = RoundedCornerShape(16.dp)
+    val performHaptic = rememberBionicHaptic()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .clip(optionShape)
+            .then(
+                if (isSelected) {
+                    Modifier.background(
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
+                        shape = optionShape
+                    )
+                } else {
+                    Modifier.background(
+                        brush = adaptiveGlassBrush(darkTheme),
+                        shape = optionShape
+                    )
+                }
+            )
+            .border(
+                width = 1.dp,
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else if (darkTheme) {
+                    Color.White.copy(alpha = 0.05f)
+                } else {
+                    Color.Black.copy(alpha = 0.05f)
+                },
+                shape = optionShape
+            )
+            .clickable {
+                performHaptic(BionicHaptic.Selection)
+                onSelect()
+            }
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = labelColor
+        )
     }
 }
 

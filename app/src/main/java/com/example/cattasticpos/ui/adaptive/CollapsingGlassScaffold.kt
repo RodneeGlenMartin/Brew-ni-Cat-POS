@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -134,6 +135,7 @@ fun CollapsingGlassScaffold(
     hazeState: HazeState,
     headerState: CollapsingHeaderState = rememberCollapsingHeaderState(),
     showBrandWordmark: Boolean = false,
+    showCollapsedToolbarTitle: Boolean = false,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
@@ -166,12 +168,6 @@ fun CollapsingGlassScaffold(
         animationSpec = iOSSpringSpec,
         label = "largeTitleAlpha"
     )
-    val inlineTitleAlpha by animateFloatAsState(
-        targetValue = collapseProgress,
-        animationSpec = iOSSpringSpec,
-        label = "inlineTitleAlpha"
-    )
-
     val barHeight = 56.dp
     val largeTitleBlockHeight = 48.dp
     val topContentInset by animateDpAsState(
@@ -235,20 +231,29 @@ fun CollapsingGlassScaffold(
                     ) {
                         navigationIcon()
                     }
-                    Text(
-                        text = title,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 8.dp)
-                            .graphicsLayer { alpha = inlineTitleAlpha },
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 17.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
+                    if (showCollapsedToolbarTitle && collapseProgress > 0.01f) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = title,
+                                modifier = Modifier.graphicsLayer { alpha = collapseProgress },
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 17.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
                     Row(
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.spacedBy(0.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         content = actions
                     )
