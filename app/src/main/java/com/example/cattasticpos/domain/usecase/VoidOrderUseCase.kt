@@ -15,7 +15,7 @@ class VoidOrderUseCase(
     private val inventoryRepository: InventoryRepository,
     private val transactionProvider: TransactionProvider
 ) {
-    suspend operator fun invoke(orderId: String, reason: String, cashierId: String?): Result<VoidRecord> {
+    suspend operator fun invoke(orderId: Long, reason: String, cashierId: String?): Result<VoidRecord> {
         val order = orderRepository.getOrderById(orderId)
             ?: return Result.failure(IllegalArgumentException("Order not found"))
 

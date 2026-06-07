@@ -36,7 +36,7 @@ class ExportDataUseCase(private val context: Context) {
                 for (order in orders) {
                     val timestampStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(order.timestamp))
                     val itemsStr = order.items.joinToString(" | ") { "${it.quantity}x ${it.itemName}" }
-                    append("ORDER,${csvEscape(order.id)},$timestampStr,${csvEscape(itemsStr)},${order.subtotal},${order.discountDeduction},${order.total},${csvEscape(order.paymentMethod)},\n")
+                    append("ORDER,${csvEscape(order.receiptNumber)},$timestampStr,${csvEscape(itemsStr)},${order.subtotal},${order.discountDeduction},${order.total},${csvEscape(order.paymentMethod)},${csvEscape(order.cashierName.orEmpty())}\n")
                 }
 
                 // Append Expenses

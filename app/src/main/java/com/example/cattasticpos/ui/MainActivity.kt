@@ -27,7 +27,6 @@ import com.example.cattasticpos.ui.history.HistoryScreen
 import com.example.cattasticpos.ui.history.HistoryViewModel
 import com.example.cattasticpos.ui.inventory.InventoryScreen
 import com.example.cattasticpos.ui.inventory.InventoryViewModel
-import com.example.cattasticpos.ui.components.PinScreen
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.cattasticpos.ui.adaptive.AdaptiveTheme
 import com.example.cattasticpos.ui.adaptive.BionicHaptic
@@ -113,16 +112,8 @@ class MainActivity : ComponentActivity() {
                             "dashboard" -> {
                                 DashboardScreen(
                                     viewModel = dashboardViewModel,
-                                    onNavigateToHistory = { navigateTo("pin_history") },
-                                    onNavigateToInventory = { navigateTo("pin_inventory") }
-                                )
-                            }
-                            "pin_history", "pin_inventory" -> {
-                                PinScreen(
-                                    onPinSuccess = {
-                                        navigateTo(if (screen == "pin_history") "history" else "inventory")
-                                    },
-                                    onCancel = { navigateTo("dashboard") }
+                                    onNavigateToHistory = { navigateTo("history") },
+                                    onNavigateToInventory = { navigateTo("inventory") }
                                 )
                             }
                             "history" -> {

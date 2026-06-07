@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "void_records")
 data class VoidRecordEntity(
     @PrimaryKey val id: String,
-    val orderId: String,
+    val orderId: Long,
     val reason: String,
     val timestamp: Long,
     val cashierId: String?,

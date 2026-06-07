@@ -57,8 +57,13 @@ import dev.chrisbanes.haze.HazeState
 @Stable
 class CollapsingHeaderState internal constructor(
     val nestedScrollConnection: NestedScrollConnection,
-    val collapseProgress: () -> Float
-)
+    val collapseProgress: () -> Float,
+    private val resetCollapseOffset: () -> Unit
+) {
+    fun resetCollapse() {
+        resetCollapseOffset()
+    }
+}
 
 @Composable
 fun rememberCollapsingHeaderState(collapseRange: Dp = 120.dp): CollapsingHeaderState {
@@ -101,7 +106,8 @@ fun rememberCollapsingHeaderState(collapseRange: Dp = 120.dp): CollapsingHeaderS
     return remember(connection, collapseProgress) {
         CollapsingHeaderState(
             nestedScrollConnection = connection,
-            collapseProgress = { collapseProgress.value }
+            collapseProgress = { collapseProgress.value },
+            resetCollapseOffset = { scrollOffset.floatValue = 0f }
         )
     }
 }

@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
         AppConfigEntity::class,
         VoidRecordEntity::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class PosDatabase : RoomDatabase() {
@@ -60,7 +60,8 @@ abstract class PosDatabase : RoomDatabase() {
                     PosDatabase::class.java,
                     "pos_database"
                 )
-                .addMigrations(MIGRATION_9_10, MIGRATION_10_11)
+                .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
                 .addCallback(PosDatabaseCallback(scope))
                 .build()
                 INSTANCE = instance
@@ -75,6 +76,61 @@ abstract class PosDatabase : RoomDatabase() {
                 db.execSQL("INSERT INTO inventory_new (id, itemName, unit, currentStock, reorderThreshold) SELECT id, itemName, unit, CAST(currentStock AS REAL), CAST(reorderThreshold AS REAL) FROM inventory")
                 db.execSQL("DROP TABLE inventory")
                 db.execSQL("ALTER TABLE inventory_new RENAME TO inventory")
+            }
+        }
+
+        val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS order_items")
+                db.execSQL("DROP TABLE IF EXISTS void_records")
+                db.execSQL("DROP TABLE IF EXISTS orders")
+                db.execSQL(
+                    """
+                    CREATE TABLE orders (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        subtotal REAL NOT NULL,
+                        discountDeduction REAL NOT NULL,
+                        discountLabel TEXT NOT NULL,
+                        total REAL NOT NULL,
+                        paymentMethod TEXT NOT NULL,
+                        paymentReference TEXT,
+                        cashierId TEXT,
+                        cashierName TEXT,
+                        tableLabel TEXT
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE order_items (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        orderId INTEGER NOT NULL,
+                        itemId TEXT NOT NULL,
+                        itemName TEXT NOT NULL,
+                        variantId TEXT NOT NULL,
+                        variantName TEXT NOT NULL,
+                        flavor TEXT,
+                        quantity INTEGER NOT NULL,
+                        unitPrice REAL NOT NULL,
+                        totalPrice REAL NOT NULL,
+                        FOREIGN KEY(orderId) REFERENCES orders(id) ON DELETE CASCADE
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_order_items_orderId ON order_items(orderId)")
+                db.execSQL(
+                    """
+                    CREATE TABLE void_records (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        orderId INTEGER NOT NULL,
+                        reason TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        cashierId TEXT,
+                        orderTotal REAL NOT NULL
+                    )
+                    """.trimIndent()
+                )
             }
         }
 

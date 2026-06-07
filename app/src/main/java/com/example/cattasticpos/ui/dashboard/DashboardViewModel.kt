@@ -226,12 +226,14 @@ class DashboardViewModel(
         
         viewModelScope.launch {
             val state = _uiState.value
+            val cashierName = state.cashiers.find { it.id == state.selectedCashierId }?.name
             val result = checkoutUseCase(
                 currentCart,
                 currentStrategy,
                 paymentMethod,
                 paymentReference,
                 cashierId = state.selectedCashierId,
+                cashierName = cashierName,
                 tableLabel = state.activeTableLabel
             )
             if (result.isSuccess) {

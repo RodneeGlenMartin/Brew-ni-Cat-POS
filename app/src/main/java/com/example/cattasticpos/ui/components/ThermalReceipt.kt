@@ -44,7 +44,7 @@ fun formatReceiptShareText(order: Order): String {
         add(STORE_NAME)
         add("Receipt")
         add(RECEIPT_DIVIDER)
-        add("Order ID: ${order.id}")
+        add("Order #${order.receiptNumber}")
         add("Date: $dateStr")
         add("Payment: ${order.paymentMethod}")
         if (!order.tableLabel.isNullOrBlank()) {
@@ -110,7 +110,7 @@ fun ThermalReceiptCard(
             color = ink.copy(alpha = 0.75f)
         )
         ReceiptDivider(mono, ink)
-        ReceiptMetaLine("Order ID", order.id.take(18), mono, ink)
+        ReceiptMetaLine("Order #", order.receiptNumber, mono, ink)
         ReceiptMetaLine("Date", dateStr, mono, ink)
         ReceiptMetaLine("Payment", order.paymentMethod, mono, ink)
         if (!order.tableLabel.isNullOrBlank()) {

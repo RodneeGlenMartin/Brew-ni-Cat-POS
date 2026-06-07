@@ -125,6 +125,13 @@ fun DashboardScreen(
     val headerState = rememberCollapsingHeaderState()
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
+    val isCatalogSearchActive = isSearchExpanded || searchQuery.isNotEmpty()
+
+    LaunchedEffect(isCatalogSearchActive) {
+        if (isCatalogSearchActive) {
+            headerState.resetCollapse()
+        }
+    }
 
     CollapsingGlassScaffold(
         title = "Brew ni Cat",
@@ -140,8 +147,13 @@ fun DashboardScreen(
         },
         actions = {
             IconButton(onClick = {
-                isSearchExpanded = !isSearchExpanded
-                if (!isSearchExpanded) searchQuery = ""
+                if (isSearchExpanded) {
+                    isSearchExpanded = false
+                    searchQuery = ""
+                } else {
+                    headerState.resetCollapse()
+                    isSearchExpanded = true
+                }
             }) {
                 Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
                     FluentIcon(
@@ -402,12 +414,20 @@ private fun StorefrontCatalogPane(
                 )
             }
 
+            val catalogListModifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp)
+                .then(
+                    if (isSearchExpanded || isSearching) {
+                        Modifier
+                    } else {
+                        Modifier.collapsingNestedScroll(headerState)
+                    }
+                )
+
             LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp)
-                    .collapsingNestedScroll(headerState),
+                modifier = catalogListModifier,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 if (isSearching) {
@@ -591,10 +611,10 @@ private fun DashboardCheckoutPanel(
 
     if (useBottomSheetStyle) {
         Surface(
-            shadowElevation = 0.dp,
-            color = adaptiveGlassFill(darkTheme),
+            shadowElevation = 4.dp,
+            color = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            border = checkoutBorder,
+            tonalElevation = 2.dp,
             modifier = modifier.animateContentSize(animationSpec = iOSSpringSize)
         ) {
             Column(
@@ -954,10 +974,25 @@ fun PaymentCheckoutDialog(
 
     AdaptiveGlassDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Payment Checkout", fontWeight = FontWeight.Bold) },
+        surfaceAlpha = 0.93f,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Payment Checkout", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(
+                    "₱${String.format("%.0f", finalTotal)}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
         confirmButton = {
-            Button(
+            PosPrimaryButton(
                 onClick = {
                     if (isCash) {
                         onConfirmPayment("CASH", null)
@@ -972,37 +1007,37 @@ fun PaymentCheckoutDialog(
                     }
                 },
                 enabled = isReady
-            ) { Text("Confirm & Pay") }
+            ) {
+                Text(
+                    text = "Confirm & Pay",
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         },
         content = {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("Total Due:", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    Text("₱${String.format("%.0f", finalTotal)}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.05f))
+                Text(
+                    "Total Due",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    TabRow(
-                        selectedTabIndex = paymentState.selectedTabIndex,
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                        divider = {}
-                    ) {
-                        Tab(
-                            selected = paymentState.selectedTabIndex == 0,
-                            onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 0)) },
-                            text = { Text("Cash") }
-                        )
-                        Tab(
-                            selected = paymentState.selectedTabIndex == 1,
-                            onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 1)) },
-                            text = { Text("GCash") }
-                        )
-                    }
+                    CupertinoSegmentChip(
+                        selected = paymentState.selectedTabIndex == 0,
+                        onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 0)) },
+                        label = "Cash",
+                        modifier = Modifier.weight(1f)
+                    )
+                    CupertinoSegmentChip(
+                        selected = paymentState.selectedTabIndex == 1,
+                        onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 1)) },
+                        label = "GCash",
+                        modifier = Modifier.weight(1f)
+                    )
                 }
                 if (isCash) {
                     OutlinedTextField(
@@ -1011,11 +1046,24 @@ fun PaymentCheckoutDialog(
                         label = { Text("Amount Tendered (₱)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     )
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("Change Due:", fontWeight = FontWeight.Medium)
-                        Text(if (changeDue >= 0) "₱${String.format("%.0f", changeDue)}" else "---", fontWeight = FontWeight.Medium, color = if (changeDue >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                    AdaptiveGlassCard(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Change Due", fontWeight = FontWeight.Medium)
+                            Text(
+                                if (changeDue >= 0) "₱${String.format("%.0f", changeDue)}" else "---",
+                                fontWeight = FontWeight.Bold,
+                                color = if (changeDue >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            )
+                        }
                     }
                 } else {
                     ExposedDropdownMenuBox(expanded = simDropdownExpanded, onExpandedChange = { simDropdownExpanded = it }) {
@@ -1026,7 +1074,8 @@ fun PaymentCheckoutDialog(
                             label = { Text("Receiving SIM") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = simDropdownExpanded) },
                             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                            modifier = Modifier.menuAnchor().fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
                         )
                         ExposedDropdownMenu(expanded = simDropdownExpanded, onDismissRequest = { simDropdownExpanded = false }) {
                             simOptions.forEach { option ->
@@ -1045,7 +1094,8 @@ fun PaymentCheckoutDialog(
                         onValueChange = { onPaymentStateChange(paymentState.copy(gcashReference = it)) },
                         label = { Text("GCash Reference No. (Optional)") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
                     )
                 }
             }
@@ -1059,7 +1109,6 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
     val sheetState = rememberModalBottomSheetState()
     val contentScrollState = rememberScrollState()
     val hazeState = rememberLiquidGlassHazeState()
-    val cupertino = LocalCupertinoColors.current
     var selectedVariant by remember(item.id) {
         mutableStateOf(item.variants.firstOrNull() ?: Variant("", "", 0.0))
     }

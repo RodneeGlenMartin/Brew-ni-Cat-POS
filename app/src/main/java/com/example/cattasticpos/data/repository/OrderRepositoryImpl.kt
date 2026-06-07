@@ -37,11 +37,11 @@ class OrderRepositoryImpl(
         return orderDao.getOrdersPage(startDate, endDate, beforeTimestamp, limit).map { it.toDomain() }
     }
 
-    override suspend fun getOrderById(orderId: String): Order? {
+    override suspend fun getOrderById(orderId: Long): Order? {
         return orderDao.getOrderWithItems(orderId)?.toDomain()
     }
 
-    override suspend fun saveOrder(order: Order) {
+    override suspend fun updateOrder(order: Order): Order {
         val orderEntity = OrderEntity(
             id = order.id,
             timestamp = order.timestamp,
@@ -52,6 +52,7 @@ class OrderRepositoryImpl(
             paymentMethod = order.paymentMethod,
             paymentReference = order.paymentReference,
             cashierId = order.cashierId,
+            cashierName = order.cashierName,
             tableLabel = order.tableLabel
         )
         val itemEntities = order.items.map { item ->
@@ -68,9 +69,45 @@ class OrderRepositoryImpl(
             )
         }
         database.withTransaction {
-            orderDao.insertOrder(orderEntity)
-            orderDao.insertOrderItems(itemEntities)
+            orderDao.replaceOrderWithItems(orderEntity, itemEntities)
         }
+        return order
+    }
+
+    override suspend fun saveOrder(order: Order): Order {
+        val orderEntity = OrderEntity(
+            id = 0,
+            timestamp = order.timestamp,
+            subtotal = order.subtotal,
+            discountDeduction = order.discountDeduction,
+            discountLabel = order.discountLabel,
+            total = order.total,
+            paymentMethod = order.paymentMethod,
+            paymentReference = order.paymentReference,
+            cashierId = order.cashierId,
+            cashierName = order.cashierName,
+            tableLabel = order.tableLabel
+        )
+        val itemEntities = order.items.map { item ->
+            OrderItemEntity(
+                orderId = 0,
+                itemId = item.itemId,
+                itemName = item.itemName,
+                variantId = item.variantId,
+                variantName = item.variantName,
+                flavor = item.flavor,
+                quantity = item.quantity,
+                unitPrice = item.unitPrice,
+                totalPrice = item.totalPrice
+            )
+        }
+        val newOrderId = database.withTransaction {
+            orderDao.insertOrderWithItems(orderEntity, itemEntities)
+        }
+        return order.copy(
+            id = newOrderId,
+            items = order.items.map { it.copy(orderId = newOrderId) }
+        )
     }
 
     override fun getTopSellingItemForDay(startOfDay: Long, endOfDay: Long): Flow<Pair<String, Int>?> {
@@ -108,7 +145,7 @@ class OrderRepositoryImpl(
         }
     }
 
-    override suspend fun deleteOrder(orderId: String) {
+    override suspend fun deleteOrder(orderId: Long) {
         database.withTransaction {
             orderDao.deleteOrderItemsForOrder(orderId)
             orderDao.deleteOrderEntity(orderId)
@@ -126,6 +163,7 @@ class OrderRepositoryImpl(
             paymentMethod = order.paymentMethod,
             paymentReference = order.paymentReference,
             cashierId = order.cashierId,
+            cashierName = order.cashierName,
             tableLabel = order.tableLabel,
             items = items.map { item ->
                 OrderItem(

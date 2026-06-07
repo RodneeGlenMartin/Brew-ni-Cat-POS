@@ -42,6 +42,29 @@ object InventoryRestorationHelper {
         }
     }
 
+    suspend fun deductForCartItems(
+        items: List<CartItem>,
+        recipeRepository: RecipeRepository,
+        inventoryRepository: InventoryRepository
+    ) {
+        items.forEach { cartItem ->
+            val components = ComboBundleResolver.expandFromCartItem(cartItem)
+            components.forEach { component ->
+                val mappings = recipeRepository.resolveCheckoutMappings(
+                    component.menuItemId,
+                    component.sizeVariantName,
+                    component.flavor
+                )
+                mappings.forEach { mapping ->
+                    val totalDeduction = mapping.deductionQuantity * component.quantity
+                    if (totalDeduction > 0) {
+                        inventoryRepository.decrementStock(mapping.inventoryItemId, totalDeduction)
+                    }
+                }
+            }
+        }
+    }
+
     private suspend fun restoreComponents(
         menuItemId: String,
         variantId: String,

@@ -8,7 +8,6 @@ import com.example.cattasticpos.domain.model.OrderItem
 import com.example.cattasticpos.domain.repository.OrderRepository
 import com.example.cattasticpos.domain.repository.TransactionProvider
 import com.example.cattasticpos.domain.strategy.DiscountStrategy
-import java.util.UUID
 
 class CheckoutUseCase(
     private val orderRepository: OrderRepository,
@@ -23,17 +22,17 @@ class CheckoutUseCase(
         paymentMethod: String,
         paymentReference: String?,
         cashierId: String? = null,
+        cashierName: String? = null,
         tableLabel: String? = null
     ): Result<Order> {
         if (items.isEmpty()) {
             return Result.failure(IllegalArgumentException("Cart is empty"))
         }
         val calculation = calculateCartUseCase(items, strategy)
-        val orderId = UUID.randomUUID().toString()
         val orderItems = items.map { cartItem ->
             OrderItem(
                 id = 0L,
-                orderId = orderId,
+                orderId = 0L,
                 itemId = cartItem.item.id,
                 itemName = cartItem.item.name,
                 variantId = cartItem.variant.id,
@@ -45,7 +44,7 @@ class CheckoutUseCase(
             )
         }
         val order = Order(
-            id = orderId,
+            id = 0L,
             timestamp = System.currentTimeMillis(),
             subtotal = calculation.subtotal,
             discountDeduction = calculation.discountDeduction,
@@ -54,13 +53,14 @@ class CheckoutUseCase(
             paymentMethod = paymentMethod,
             paymentReference = paymentReference,
             cashierId = cashierId,
+            cashierName = cashierName,
             tableLabel = tableLabel,
             items = orderItems
         )
         return try {
-            transactionProvider.runAsTransaction {
-                orderRepository.saveOrder(order)
-                
+            val savedOrder = transactionProvider.runAsTransaction {
+                val persisted = orderRepository.saveOrder(order)
+
                 items.forEach { cartItem ->
                     val components = ComboBundleResolver.expandFromCartItem(cartItem)
                     components.forEach { component ->
@@ -77,9 +77,10 @@ class CheckoutUseCase(
                         }
                     }
                 }
+                persisted
             }
-            
-            Result.success(order)
+
+            Result.success(savedOrder)
         } catch (e: Exception) {
             Result.failure(e)
         }

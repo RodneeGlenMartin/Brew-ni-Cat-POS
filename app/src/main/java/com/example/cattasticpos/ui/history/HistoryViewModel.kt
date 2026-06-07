@@ -9,6 +9,8 @@ import com.example.cattasticpos.domain.model.AppConfig
 import com.example.cattasticpos.domain.model.Cashier
 import com.example.cattasticpos.domain.model.Expense
 import com.example.cattasticpos.domain.model.GcashAccount
+import com.example.cattasticpos.domain.model.CartItem
+import com.example.cattasticpos.domain.model.Item
 import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.ZReadingSummary
 import com.example.cattasticpos.domain.repository.AppConfigRepository
@@ -16,7 +18,10 @@ import com.example.cattasticpos.domain.repository.ExpenseRepository
 import com.example.cattasticpos.domain.repository.OrderRepository
 import com.example.cattasticpos.domain.service.ReceiptPrinterService
 import com.example.cattasticpos.domain.usecase.ExportDataUseCase
+import com.example.cattasticpos.domain.usecase.GetMenuUseCase
+import com.example.cattasticpos.domain.usecase.UpdateOrderUseCase
 import com.example.cattasticpos.domain.usecase.VoidOrderUseCase
+import com.example.cattasticpos.domain.strategy.DiscountStrategy
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,8 +48,13 @@ class HistoryViewModel(
     private val exportDataUseCase: ExportDataUseCase,
     private val appConfigRepository: AppConfigRepository,
     private val voidOrderUseCase: VoidOrderUseCase,
+    private val updateOrderUseCase: UpdateOrderUseCase,
+    private val getMenuUseCase: GetMenuUseCase,
     private val receiptPrinterService: ReceiptPrinterService
 ) : ViewModel() {
+
+    private val _menuItems = MutableStateFlow<List<Item>>(emptyList())
+    val menuItemsState: StateFlow<List<Item>> = _menuItems.asStateFlow()
 
     private val todayStart: Long
     private val todayEnd: Long
@@ -82,6 +92,12 @@ class HistoryViewModel(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
+        viewModelScope.launch {
+            getMenuUseCase().collect { menu ->
+                _menuItems.value = menu.items
+            }
+        }
+
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
@@ -379,11 +395,22 @@ class HistoryViewModel(
         }
     }
 
-    fun voidOrder(orderId: String, reason: String) {
+    fun voidOrder(orderId: Long, reason: String) {
         viewModelScope.launch {
             val result = voidOrderUseCase(orderId, reason, cashierId = null)
             if (result.isFailure) {
                 _exportMessage.value = "Void failed: ${result.exceptionOrNull()?.message}"
+            }
+        }
+    }
+
+    fun updateOrder(orderId: Long, cartItems: List<CartItem>, discountStrategy: DiscountStrategy) {
+        viewModelScope.launch {
+            val result = updateOrderUseCase(orderId, cartItems, discountStrategy)
+            _exportMessage.value = if (result.isSuccess) {
+                "Receipt #${String.format("%04d", orderId)} updated."
+            } else {
+                "Update failed: ${result.exceptionOrNull()?.message}"
             }
         }
     }
@@ -432,6 +459,8 @@ class HistoryViewModel(
                     application.container.exportDataUseCase,
                     application.container.appConfigRepository,
                     application.container.voidOrderUseCase,
+                    application.container.updateOrderUseCase,
+                    application.container.getMenuUseCase,
                     application.container.receiptPrinterService
                 ) as T
             }

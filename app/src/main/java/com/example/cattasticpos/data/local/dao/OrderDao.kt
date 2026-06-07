@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Transaction
+import androidx.room.Update
 import com.example.cattasticpos.data.local.entity.OrderEntity
 import com.example.cattasticpos.data.local.entity.OrderItemEntity
 import kotlinx.coroutines.flow.Flow
@@ -32,15 +33,18 @@ data class CashierSalesResult(
 @Dao
 interface OrderDao {
     @Insert
-    suspend fun insertOrder(order: OrderEntity)
+    suspend fun insertOrder(order: OrderEntity): Long
 
     @Insert
     suspend fun insertOrderItems(items: List<OrderItemEntity>)
 
     @Transaction
-    suspend fun insertOrderWithItems(order: OrderEntity, items: List<OrderItemEntity>) {
-        insertOrder(order)
-        insertOrderItems(items)
+    suspend fun insertOrderWithItems(order: OrderEntity, items: List<OrderItemEntity>): Long {
+        val orderId = insertOrder(order)
+        if (items.isNotEmpty()) {
+            insertOrderItems(items.map { it.copy(orderId = orderId) })
+        }
+        return orderId
     }
 
     @Transaction
@@ -69,7 +73,7 @@ interface OrderDao {
 
     @Transaction
     @Query("SELECT * FROM orders WHERE id = :orderId")
-    suspend fun getOrderWithItems(orderId: String): OrderWithItems?
+    suspend fun getOrderWithItems(orderId: Long): OrderWithItems?
 
     @Query("SELECT itemName, SUM(quantity) as totalQuantity FROM order_items JOIN orders ON order_items.orderId = orders.id WHERE orders.timestamp >= :startOfDay AND orders.timestamp <= :endOfDay GROUP BY itemName ORDER BY totalQuantity DESC LIMIT 1")
     fun getTopSellingItemForDay(startOfDay: Long, endOfDay: Long): Flow<TopSellingItemResult?>
@@ -99,14 +103,26 @@ interface OrderDao {
     fun observeCashierSalesForDay(startOfDay: Long, endOfDay: Long): Flow<List<CashierSalesResult>>
 
     @Query("DELETE FROM orders WHERE id = :orderId")
-    suspend fun deleteOrderEntity(orderId: String)
+    suspend fun deleteOrderEntity(orderId: Long)
 
     @Query("DELETE FROM order_items WHERE orderId = :orderId")
-    suspend fun deleteOrderItemsForOrder(orderId: String)
+    suspend fun deleteOrderItemsForOrder(orderId: Long)
 
     @Transaction
-    suspend fun deleteOrderWithItems(orderId: String) {
+    suspend fun deleteOrderWithItems(orderId: Long) {
         deleteOrderItemsForOrder(orderId)
         deleteOrderEntity(orderId)
+    }
+
+    @Update
+    suspend fun updateOrderEntity(order: OrderEntity)
+
+    @Transaction
+    suspend fun replaceOrderWithItems(order: OrderEntity, items: List<OrderItemEntity>) {
+        updateOrderEntity(order)
+        deleteOrderItemsForOrder(order.id)
+        if (items.isNotEmpty()) {
+            insertOrderItems(items.map { it.copy(orderId = order.id) })
+        }
     }
 }

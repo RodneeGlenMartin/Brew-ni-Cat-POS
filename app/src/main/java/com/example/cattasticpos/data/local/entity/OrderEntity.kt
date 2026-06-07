@@ -5,7 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "orders")
 data class OrderEntity(
-    @PrimaryKey val id: String,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val timestamp: Long,
     val subtotal: Double,
     val discountDeduction: Double,
@@ -14,5 +14,6 @@ data class OrderEntity(
     val paymentMethod: String,
     val paymentReference: String?,
     val cashierId: String? = null,
+    val cashierName: String? = null,
     val tableLabel: String? = null
 )

@@ -104,7 +104,7 @@ class ReceiptPrinterService(private val context: Context) {
         if (!order.tableLabel.isNullOrBlank()) {
             outputStream.write("Table/Label: ${order.tableLabel}\n".toByteArray())
         }
-        outputStream.write("Order: ${order.id.take(8)}\n".toByteArray())
+        outputStream.write("Order: #${order.receiptNumber}\n".toByteArray())
         outputStream.write("Payment: ${order.paymentMethod}\n".toByteArray())
         outputStream.write("--------------------------------\n".toByteArray())
 

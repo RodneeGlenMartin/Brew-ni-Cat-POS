@@ -44,7 +44,7 @@ import com.example.cattasticpos.ui.adaptive.rememberLiquidGlassHazeState
 import com.example.cattasticpos.ui.adaptive.liquidGlassSource
 import com.example.cattasticpos.ui.theme.AdaptiveAmbientGlows
 import com.example.cattasticpos.ui.theme.AdaptiveGlassDialog
-import com.example.cattasticpos.ui.components.ReceiptPreviewDialog
+import com.example.cattasticpos.ui.components.ReceiptEditorDialog
 import com.example.cattasticpos.ui.components.formatReceiptShareText
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -61,7 +61,6 @@ import androidx.compose.ui.unit.sp
 import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.OrderItem
 import com.example.cattasticpos.domain.model.Expense
-import com.example.cattasticpos.ui.components.GlassSearchBar
 import com.example.cattasticpos.ui.components.SleepingCatGraphic
 import com.example.cattasticpos.ui.theme.ObsidianGlassCard
 import java.text.SimpleDateFormat
@@ -89,17 +88,9 @@ fun HistoryScreen(
     val showDateRangeDialog by viewModel.showDateRangeDialog.collectAsState()
     val canLoadMore by viewModel.canLoadMore.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var pendingVoidOrderId by remember { mutableStateOf<String?>(null) }
+    var pendingVoidOrderId by remember { mutableStateOf<Long?>(null) }
     var receiptPreviewOrder by remember { mutableStateOf<Order?>(null) }
-    var searchQuery by remember { mutableStateOf("") }
-
-    val filteredOrders = remember(orders, searchQuery) {
-        orders.filter { it.matchesHistorySearch(searchQuery) }
-    }
-    val filteredExpenses = remember(expensesList, searchQuery) {
-        expensesList.filter { it.matchesHistorySearch(searchQuery) }
-    }
-    
+    val menuItems by viewModel.menuItemsState.collectAsState()
     LaunchedEffect(exportMessage) {
         exportMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -512,18 +503,11 @@ fun HistoryScreen(
                         .weight(1f),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    item {
-                        GlassSearchBar(
-                            query = searchQuery,
-                            onQueryChange = { searchQuery = it },
-                            placeholder = "Search orders, items, payments..."
-                        )
-                    }
-                    if (filteredExpenses.isNotEmpty()) {
+                    if (expensesList.isNotEmpty()) {
                         item {
                             Text("Expense Timeline", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(vertical = 8.dp))
                         }
-                        items(filteredExpenses, key = { "exp_${it.id}" }) { expense ->
+                        items(expensesList, key = { "exp_${it.id}" }) { expense ->
                             Row(
                                 modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp)).padding(12.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -536,36 +520,20 @@ fun HistoryScreen(
                                 Text("- ₱${String.format("%.0f", expense.amount)}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
                             }
                         }
-                        if (filteredOrders.isNotEmpty()) {
+                        if (orders.isNotEmpty()) {
                             item {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 HorizontalDivider()
                                 Text("Order Timeline", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(vertical = 8.dp))
                             }
                         }
-                    } else if (filteredOrders.isNotEmpty()) {
+                    } else if (orders.isNotEmpty()) {
                         item {
                             Text("Order Timeline", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(vertical = 8.dp))
                         }
                     }
 
-                    if (filteredOrders.isEmpty() && searchQuery.isNotBlank()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No orders or expenses match your search.",
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
-                    }
-
-                    items(filteredOrders, key = { "order_${it.id}" }) { order ->
+                    items(orders, key = { "order_${it.id}" }) { order ->
                         OrderHistoryCard(
                             order = order,
                             onShare = { receiptPreviewOrder = order },
@@ -690,12 +658,16 @@ fun HistoryScreen(
             }
 
             receiptPreviewOrder?.let { order ->
-                ReceiptPreviewDialog(
+                ReceiptEditorDialog(
                     order = order,
+                    menuItems = menuItems,
                     onDismiss = { receiptPreviewOrder = null },
-                    onShare = {
-                        shareOrderReceipt(context, order)
+                    onSave = { cartItems, discountStrategy ->
+                        viewModel.updateOrder(order.id, cartItems, discountStrategy)
                         receiptPreviewOrder = null
+                    },
+                    onShare = { previewOrder ->
+                        shareOrderReceipt(context, previewOrder)
                     }
                 )
             }
@@ -711,6 +683,7 @@ fun OrderHistoryCard(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var isExpanded by remember(order.id) { mutableStateOf(false) }
     val dateFormatter = remember {
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     }
@@ -725,26 +698,57 @@ fun OrderHistoryCard(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Top row: Order ID & Timestamp
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isExpanded = !isExpanded },
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Order ID: ${order.id}",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.secondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FluentIcon(
+                        imageVector = if (isExpanded) FluentIcons.ChevronDown else FluentIcons.ChevronUp,
+                        contentDescription = if (isExpanded) "Collapse order" else "Expand order",
+                        size = 18.dp,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = "Order #${order.receiptNumber}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                        if (!order.cashierName.isNullOrBlank()) {
+                            Text(
+                                text = "Cashier: ${order.cashierName}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        Text(
+                            text = dateStr,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+                }
                 Column(horizontalAlignment = Alignment.End) {
-                    val badgeColor = if (order.paymentMethod == "GCASH") MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
+                    val badgeColor = if (order.paymentMethod == "GCASH") {
+                        MaterialTheme.colorScheme.tertiary
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.background(badgeColor, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .background(badgeColor, RoundedCornerShape(4.dp))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
                             Text(
                                 text = order.paymentMethod,
                                 color = MaterialTheme.colorScheme.onPrimary,
@@ -753,20 +757,14 @@ fun OrderHistoryCard(
                             )
                         }
                         Spacer(modifier = Modifier.width(4.dp))
-                        IconButton(
-                            onClick = onShare,
-                            modifier = Modifier.size(24.dp)
-                        ) {
+                        IconButton(onClick = onShare, modifier = Modifier.size(24.dp)) {
                             FluentIcon(
                                 imageVector = FluentIcons.Share,
                                 contentDescription = "Share Receipt",
                                 size = 16.dp
                             )
                         }
-                        IconButton(
-                            onClick = onDelete,
-                            modifier = Modifier.size(24.dp)
-                        ) {
+                        IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
                             FluentIcon(
                                 imageVector = FluentIcons.Delete,
                                 contentDescription = "Delete Order",
@@ -775,89 +773,101 @@ fun OrderHistoryCard(
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = dateStr,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.secondary,
-                        fontWeight = FontWeight.Medium
+                        text = "₱${String.format("%.0f", order.total)}",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            AnimatedVisibility(visible = isExpanded) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
-            // Items Sold list
-            Text(
-                text = "Items Sold:",
-                fontWeight = FontWeight.Bold,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                order.items.forEach { item ->
+                    Text(
+                        text = "Items Sold:",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        order.items.forEach { item ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val flavorText = if (item.flavor.isNullOrBlank()) {
+                                    ""
+                                } else {
+                                    " (${item.flavor.substringAfter(": ").trim()})"
+                                }
+                                Text(
+                                    text = "${item.quantity} x ${item.itemName} (${item.variantName}$flavorText)",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "₱${String.format("%.0f", item.totalPrice)}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val flavorText = if (item.flavor.isNullOrBlank()) "" else " (${item.flavor.substringAfter(": ").trim()})"
-                        Text(
-                            text = "${item.quantity} x ${item.itemName} (${item.variantName}$flavorText)",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "₱${String.format("%.0f", item.totalPrice)}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1
-                        )
+                        Column {
+                            Text(
+                                text = "Discount Type:",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                            Text(
+                                text = order.discountLabel.ifBlank { "None" },
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (order.discountDeduction > 0) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = "Subtotal: ₱${String.format("%.0f", order.subtotal)}",
+                                fontSize = 11.sp,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                            if (order.discountDeduction > 0) {
+                                Text(
+                                    text = "Discount: -₱${String.format("%.0f", order.discountDeduction)}",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
                     }
-                }
-            }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-            // Bottom row: Discount strategy used & Total payment collected
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Discount Type:",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Text(
-                        text = order.discountLabel.ifBlank { "None" },
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (order.discountDeduction > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "Total Payment Collected:",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Text(
-                        text = "₱${String.format("%.0f", order.total)}",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
                 }
             }
         }
@@ -1304,28 +1314,5 @@ private fun ConfigListSection(
             }
         }
     }
-}
-
-private fun Order.matchesHistorySearch(query: String): Boolean {
-    val trimmed = query.trim()
-    if (trimmed.isEmpty()) return true
-    return id.contains(trimmed, ignoreCase = true) ||
-        paymentMethod.contains(trimmed, ignoreCase = true) ||
-        discountLabel.contains(trimmed, ignoreCase = true) ||
-        paymentReference?.contains(trimmed, ignoreCase = true) == true ||
-        tableLabel?.contains(trimmed, ignoreCase = true) == true ||
-        cashierId?.contains(trimmed, ignoreCase = true) == true ||
-        items.any { item ->
-            item.itemName.contains(trimmed, ignoreCase = true) ||
-                item.variantName.contains(trimmed, ignoreCase = true) ||
-                item.flavor?.contains(trimmed, ignoreCase = true) == true
-        }
-}
-
-private fun Expense.matchesHistorySearch(query: String): Boolean {
-    val trimmed = query.trim()
-    if (trimmed.isEmpty()) return true
-    return description.contains(trimmed, ignoreCase = true) ||
-        recordedBy.contains(trimmed, ignoreCase = true)
 }
 
