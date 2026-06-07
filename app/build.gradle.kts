@@ -76,5 +76,8 @@ dependencies {
     // implementation(libs.compose.unstyled.theming)
     // implementation(libs.compose.unstyled.button)
     // implementation(libs.compose.unstyled.text.field)
-    // implementation(libs.compose.unstyled.platformtheme)
+    // Compose Cupertino (KMP artifacts — local adaptive layer in ui/adaptive mirrors API on AndroidX Compose)
+    // implementation(libs.compose.cupertino)
+    // implementation(libs.compose.cupertino.adaptive)
+    // implementation(libs.compose.cupertino.native)
 }

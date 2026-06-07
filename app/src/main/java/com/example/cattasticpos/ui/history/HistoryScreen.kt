@@ -33,6 +33,14 @@ import com.example.cattasticpos.domain.model.AppConfig
 import com.example.cattasticpos.domain.model.AppThemeAccent
 import com.example.cattasticpos.domain.model.Cashier
 import com.example.cattasticpos.domain.model.GcashAccount
+import com.example.cattasticpos.ui.adaptive.AdaptiveScaffold
+import com.example.cattasticpos.ui.adaptive.AdaptiveSnackbarHost
+import com.example.cattasticpos.ui.adaptive.AdaptiveTopAppBar
+import com.example.cattasticpos.ui.adaptive.CupertinoFormRow
+import com.example.cattasticpos.ui.adaptive.CupertinoSection
+import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
+import com.example.cattasticpos.ui.adaptive.adaptiveNestedScroll
+import com.example.cattasticpos.ui.adaptive.rememberAdaptiveTopBarScrollBehavior
 import com.example.cattasticpos.ui.components.ReceiptPreviewDialog
 import com.example.cattasticpos.ui.components.formatReceiptShareText
 import androidx.compose.material3.*
@@ -85,30 +93,22 @@ fun HistoryScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+    val scrollBehavior = rememberAdaptiveTopBarScrollBehavior()
+    val cupertino = LocalCupertinoColors.current
+
+    AdaptiveScaffold(
+        snackbarHost = { AdaptiveSnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        FluentIcon(
-                            imageVector = FluentIcons.History,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Order History Log",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                },
+            AdaptiveTopAppBar(
+                title = "Order History Log",
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         FluentIcon(
                             imageVector = FluentIcons.ArrowLeft,
                             contentDescription = "Go Back",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = cupertino.accent,
+                            size = 24.dp
                         )
                     }
                 },
@@ -117,25 +117,23 @@ fun HistoryScreen(
                         FluentIcon(
                             imageVector = FluentIcons.Calendar,
                             contentDescription = "Filter by Date",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = cupertino.accent,
+                            size = 24.dp
                         )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         },
         modifier = modifier
     ) { innerPadding ->
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(scrollState)
+                .adaptiveNestedScroll(scrollBehavior)
                 .padding(16.dp)
         ) {
             val context = LocalContext.current
@@ -823,94 +821,112 @@ fun EditConfigDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Business Goals", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                OutlinedTextField(
-                    value = targetStr,
-                    onValueChange = { targetStr = it },
-                    label = { Text("Target Sales") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = floatStr,
-                    onValueChange = { floatStr = it },
-                    label = { Text("Starting Cash Float") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Text("Security Setup", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                OutlinedTextField(
-                    value = currentPin,
-                    onValueChange = { value ->
-                        currentPin = value.filter { it.isDigit() }.take(4)
-                        isError = false
-                    },
-                    label = { Text("Current PIN (Required to change goals or PIN)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    visualTransformation = PasswordVisualTransformation(),
-                    isError = isError,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                CupertinoSection(header = "Business Goals") {
+                    CupertinoFormRow(label = "Target Sales") {
+                        OutlinedTextField(
+                            value = targetStr,
+                            onValueChange = { targetStr = it },
+                            label = { Text("₱") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                    CupertinoFormRow(label = "Starting Cash Float", showDivider = false) {
+                        OutlinedTextField(
+                            value = floatStr,
+                            onValueChange = { floatStr = it },
+                            label = { Text("₱") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                CupertinoSection(header = "Security Setup") {
+                    CupertinoFormRow(label = "Current PIN") {
+                        OutlinedTextField(
+                            value = currentPin,
+                            onValueChange = { value ->
+                                currentPin = value.filter { it.isDigit() }.take(4)
+                                isError = false
+                            },
+                            label = { Text("Required") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            visualTransformation = PasswordVisualTransformation(),
+                            isError = isError,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                    CupertinoFormRow(label = "New PIN", showDivider = false) {
+                        OutlinedTextField(
+                            value = newPin,
+                            onValueChange = { value ->
+                                newPin = value.filter { it.isDigit() }.take(4)
+                                isError = false
+                            },
+                            label = { Text("Optional") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                }
                 if (isError) {
                     Text("Incorrect PIN", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
-                OutlinedTextField(
-                    value = newPin,
-                    onValueChange = { value ->
-                        newPin = value.filter { it.isDigit() }.take(4)
-                        isError = false
-                    },
-                    label = { Text("New PIN (Optional)") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                    visualTransformation = PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth()
-                )
                 if (newPin.isNotEmpty() && newPin.length < 4) {
                     Text("PIN must be 4 digits", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
                 }
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                Text("System Theme Accent", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    AppThemeAccent.entries.forEach { accent ->
-                        val isSelected = accent.id == initialThemeAccentId
-                        Box(
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(CircleShape)
-                                .background(accent.swatch)
-                                .then(
-                                    if (isSelected) {
-                                        Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
-                                    } else {
-                                        Modifier
-                                    }
-                                )
-                                .clickable { onThemeAccentChange(accent.id) },
-                            contentAlignment = Alignment.Center
+                Spacer(modifier = Modifier.height(8.dp))
+                CupertinoSection(header = "System Theme Accent") {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            if (isSelected) {
+                            AppThemeAccent.entries.forEach { accent ->
+                                val isSelected = accent.id == initialThemeAccentId
                                 Box(
                                     modifier = Modifier
-                                        .size(10.dp)
+                                        .size(36.dp)
                                         .clip(CircleShape)
-                                        .background(Color.White.copy(alpha = 0.9f))
-                                )
+                                        .background(accent.swatch)
+                                        .then(
+                                            if (isSelected) {
+                                                Modifier.border(2.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                        .clickable { onThemeAccentChange(accent.id) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (isSelected) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(10.dp)
+                                                .clip(CircleShape)
+                                                .background(Color.White.copy(alpha = 0.9f))
+                                        )
+                                    }
+                                }
                             }
                         }
+                        Text(
+                            text = selectedAccent.label,
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
-                Text(
-                    text = selectedAccent.label,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 CashierRosterSection(
                     cashiers = cashiers,
                     activeCashierId = activeCashierId,

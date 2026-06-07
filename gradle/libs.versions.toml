@@ -7,6 +7,7 @@ room = "2.6.1"
 work = "2.9.1"
 coroutines = "1.9.0"
 composeUnstyled = "2.0.0"
+composeCupertino = "0.1.0-alpha04"
 coreKtx = "1.12.0"
 lifecycle = "2.8.7"
 activityCompose = "1.9.3"
@@ -45,6 +46,11 @@ compose-unstyled-theming = { group = "com.composables", name = "composeunstyled-
 compose-unstyled-button = { group = "com.composables", name = "composeunstyled-button", version.ref = "composeUnstyled" }
 compose-unstyled-text-field = { group = "com.composables", name = "composeunstyled-text-field", version.ref = "composeUnstyled" }
 compose-unstyled-platformtheme = { group = "com.composables", name = "composeunstyled-platformtheme", version.ref = "composeUnstyled" }
+
+# Compose Cupertino (KMP — catalog registered; local adaptive layer used on Android until KMP migration)
+compose-cupertino = { group = "io.github.alexzhirkevich", name = "cupertino", version.ref = "composeCupertino" }
+compose-cupertino-adaptive = { group = "io.github.alexzhirkevich", name = "cupertino-adaptive", version.ref = "composeCupertino" }
+compose-cupertino-native = { group = "io.github.alexzhirkevich", name = "cupertino-native", version.ref = "composeCupertino" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

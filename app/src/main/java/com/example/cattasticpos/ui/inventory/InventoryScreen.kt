@@ -6,7 +6,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import com.example.cattasticpos.ui.components.unstyled.PosFloatingActionButton
+import com.example.cattasticpos.ui.adaptive.AdaptiveFloatingActionButton
+import com.example.cattasticpos.ui.adaptive.AdaptiveScaffold
+import com.example.cattasticpos.ui.adaptive.AdaptiveTopAppBar
+import com.example.cattasticpos.ui.adaptive.CupertinoSection
+import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
+import com.example.cattasticpos.ui.adaptive.adaptiveNestedScroll
+import com.example.cattasticpos.ui.adaptive.rememberAdaptiveTopBarScrollBehavior
 import com.example.cattasticpos.ui.components.unstyled.PosPrimaryButton
 import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
@@ -32,37 +38,35 @@ fun InventoryScreen(
     val uiState by viewModel.uiState.collectAsState()
     var selectedTabIndex by remember { mutableStateOf(0) }
 
-    Scaffold(
+    val scrollBehavior = rememberAdaptiveTopBarScrollBehavior()
+    val cupertino = LocalCupertinoColors.current
+
+    AdaptiveScaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("📦 Inventory & Recipes", fontWeight = FontWeight.Bold) },
+            AdaptiveTopAppBar(
+                title = "Inventory & Recipes",
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
                             FluentIcon(
                                 imageVector = FluentIcons.ArrowLeft,
                                 contentDescription = "Go Back",
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = cupertino.accent,
                                 size = 24.dp
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         },
         floatingActionButton = {
             if (selectedTabIndex == 0) {
-                PosFloatingActionButton(onClick = { viewModel.setShowAddRawMaterialDialog(true) }) {
+                AdaptiveFloatingActionButton(onClick = { viewModel.setShowAddRawMaterialDialog(true) }) {
                     FluentIcon(
                         imageVector = FluentIcons.Add,
                         contentDescription = "Add Raw Material",
-                        tint = MaterialTheme.colorScheme.onPrimary,
+                        tint = cupertino.onAccent,
                         size = 24.dp
                     )
                 }
@@ -92,6 +96,7 @@ fun InventoryScreen(
             if (selectedTabIndex == 0) {
                 InventoryStockTab(
                     inventoryItems = uiState.inventoryItems,
+                    scrollBehavior = scrollBehavior,
                     onRestock = { itemId, qty -> viewModel.restockItem(itemId, qty) },
                     onDelete = { viewModel.deleteInventoryItem(it) }
                 )
@@ -126,9 +131,11 @@ fun InventoryScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventoryStockTab(
     inventoryItems: List<InventoryItem>,
+    scrollBehavior: androidx.compose.material3.TopAppBarScrollBehavior? = null,
     onRestock: (String, Double) -> Unit,
     onDelete: (String) -> Unit
 ) {
@@ -138,16 +145,13 @@ fun InventoryStockTab(
         }
     } else {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
+            modifier = Modifier.fillMaxSize().padding(16.dp).adaptiveNestedScroll(scrollBehavior),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(inventoryItems, key = { it.id }) { item ->
                 var amountStr by remember { mutableStateOf("") }
 
-                Card(
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                CupertinoSection {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)

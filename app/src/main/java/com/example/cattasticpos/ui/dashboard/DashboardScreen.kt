@@ -33,6 +33,17 @@ import androidx.compose.material.icons.filled.Fastfood
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Remove
+import com.example.cattasticpos.ui.adaptive.AdaptiveScaffold
+import com.example.cattasticpos.ui.adaptive.AdaptiveSnackbarHost
+import com.example.cattasticpos.ui.adaptive.AdaptiveTopAppBar
+import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
+import com.example.cattasticpos.ui.adaptive.adaptiveNestedScroll
+import com.example.cattasticpos.ui.adaptive.rememberAdaptiveTopBarScrollBehavior
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import com.example.cattasticpos.ui.adaptive.CupertinoSection
+import com.example.cattasticpos.ui.adaptive.CupertinoSegmentChip
 import com.example.cattasticpos.ui.components.unstyled.PosFilterChip
 import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
@@ -89,24 +100,21 @@ fun DashboardScreen(
         }
     }
 
-    Scaffold(
+    val scrollBehavior = rememberAdaptiveTopBarScrollBehavior()
+    val cupertino = LocalCupertinoColors.current
+
+    AdaptiveScaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Brew ni Cat",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
-                        maxLines = 1
-                    )
-                },
+            AdaptiveTopAppBar(
+                title = "Brew ni Cat",
+                scrollBehavior = scrollBehavior,
                 actions = {
                     IconButton(onClick = onNavigateToInventory) {
                         Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
                             FluentIcon(
                                 imageVector = FluentIcons.Box,
                                 contentDescription = "Inventory Management",
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = cupertino.accent,
                                 size = 24.dp
                             )
                         }
@@ -116,7 +124,7 @@ fun DashboardScreen(
                             FluentIcon(
                                 imageVector = FluentIcons.Wallet,
                                 contentDescription = "Add Expense",
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = cupertino.accent,
                                 size = 24.dp
                             )
                         }
@@ -126,7 +134,7 @@ fun DashboardScreen(
                             FluentIcon(
                                 imageVector = FluentIcons.Queue,
                                 contentDescription = "View Queues",
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = cupertino.accent,
                                 size = 24.dp
                             )
                         }
@@ -136,20 +144,15 @@ fun DashboardScreen(
                             FluentIcon(
                                 imageVector = FluentIcons.History,
                                 contentDescription = "History",
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = cupertino.accent,
                                 size = 24.dp
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { AdaptiveSnackbarHost(snackbarHostState) },
         modifier = modifier
     ) { innerPadding ->
         Column(
@@ -183,6 +186,7 @@ fun DashboardScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 12.dp)
+                        .adaptiveNestedScroll(scrollBehavior)
                 ) {
                     items(uiState.menuItems, key = { it.id }) { item ->
                         val itemMappings = uiState.recipeMappings.filter { it.menuItemId == item.id }
@@ -610,10 +614,6 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
         mutableStateOf(item.variants.firstOrNull() ?: Variant("", "", 0.0))
     }
     var selectedFlavor by remember(item.id) { mutableStateOf<String?>(null) }
-    val chipColors = FilterChipDefaults.filterChipColors(
-        selectedContainerColor = MaterialTheme.colorScheme.secondary,
-        selectedLabelColor = MaterialTheme.colorScheme.onSecondary
-    )
     val hasComboDescriptions = item.variants.any { !it.description.isNullOrBlank() }
     val displayPrice = if (selectedFlavor == null && selectedVariant.basePrice == 0.0) {
         0.0
@@ -625,12 +625,17 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
         }
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState, containerColor = MaterialTheme.colorScheme.surface) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.background
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight(0.9f)
-                .padding(horizontal = 24.dp)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = 16.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -641,16 +646,10 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (item.flavors.isNotEmpty()) {
-                    Text(
-                        "Select Flavor",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    CupertinoSection(header = "Select Flavor") {
                     if (item.id == "drink_coffee") {
                         val grouped = item.flavors.groupBy { if (it.contains(":")) it.substringBefore(":").trim() else "Flavors" }
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             grouped.forEach { (group, flavorsInGroup) ->
                                 Text(
                                     group,
@@ -665,12 +664,10 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                 ) {
                                     flavorsInGroup.forEach { flavor ->
                                         key(flavor) {
-                                            FilterChip(
+                                            CupertinoSegmentChip(
                                                 selected = selectedFlavor == flavor,
                                                 onClick = { selectedFlavor = flavor },
-                                                label = { Text(flavor.substringAfter(": ").trim(), fontSize = 12.sp) },
-                                                colors = chipColors,
-                                                shape = RoundedCornerShape(8.dp)
+                                                label = flavor.substringAfter(": ").trim()
                                             )
                                         }
                                     }
@@ -679,47 +676,43 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                         }
                     } else {
                         FlowRow(
+                            modifier = Modifier.padding(12.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             item.flavors.forEach { flavor ->
                                 key(flavor) {
-                                    FilterChip(
+                                    CupertinoSegmentChip(
                                         selected = selectedFlavor == flavor,
                                         onClick = { selectedFlavor = flavor },
-                                        label = { Text(flavor, fontSize = 12.sp) },
-                                        colors = chipColors,
-                                        shape = RoundedCornerShape(8.dp)
+                                        label = flavor
                                     )
                                 }
                             }
                         }
                     }
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
                 if (item.variants.isNotEmpty()) {
-                    Text(
-                        "Select Size/Option",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item.variants.forEach { variant ->
-                            key(variant.id) {
-                                VariantOptionRow(
-                                    variant = variant,
-                                    item = item,
-                                    selectedFlavor = selectedFlavor,
-                                    isSelected = selectedVariant.id == variant.id,
-                                    onSelect = { selectedVariant = variant }
-                                )
+                    CupertinoSection(header = "Select Size/Option") {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            item.variants.forEach { variant ->
+                                key(variant.id) {
+                                    VariantOptionRow(
+                                        variant = variant,
+                                        item = item,
+                                        selectedFlavor = selectedFlavor,
+                                        isSelected = selectedVariant.id == variant.id,
+                                        onSelect = { selectedVariant = variant }
+                                    )
+                                }
                             }
                         }
                     }

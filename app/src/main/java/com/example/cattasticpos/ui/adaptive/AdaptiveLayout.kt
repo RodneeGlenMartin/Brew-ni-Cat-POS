@@ -1,0 +1,145 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
+package com.example.cattasticpos.ui.adaptive
+
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.LargeTopAppBar
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
+import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdaptiveScaffold(
+    modifier: Modifier = Modifier,
+    topBar: @Composable () -> Unit = {},
+    snackbarHost: @Composable () -> Unit = {},
+    floatingActionButton: @Composable () -> Unit = {},
+    contentWindowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    content: @Composable (PaddingValues) -> Unit
+) {
+    Scaffold(
+        modifier = modifier.windowInsetsPadding(WindowInsets.safeDrawing),
+        topBar = topBar,
+        snackbarHost = snackbarHost,
+        floatingActionButton = floatingActionButton,
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = contentWindowInsets,
+        content = content
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AdaptiveTopAppBar(
+    title: String,
+    modifier: Modifier = Modifier,
+    navigationIcon: @Composable () -> Unit = {},
+    actions: @Composable RowScope.() -> Unit = {},
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    largeTitle: Boolean = true
+) {
+    val cupertino = LocalCupertinoColors.current
+    val colors = TopAppBarDefaults.largeTopAppBarColors(
+        containerColor = MaterialTheme.colorScheme.background,
+        scrolledContainerColor = MaterialTheme.colorScheme.surface,
+        navigationIconContentColor = cupertino.accent,
+        titleContentColor = MaterialTheme.colorScheme.onBackground,
+        actionIconContentColor = cupertino.accent
+    )
+
+    if (largeTitle && scrollBehavior != null) {
+        LargeTopAppBar(
+            title = {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 34.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            navigationIcon = navigationIcon,
+            actions = actions,
+            scrollBehavior = scrollBehavior,
+            colors = colors,
+            modifier = modifier
+        )
+    } else {
+        androidx.compose.material3.TopAppBar(
+            title = {
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            },
+            navigationIcon = navigationIcon,
+            actions = actions,
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                titleContentColor = MaterialTheme.colorScheme.onBackground,
+                navigationIconContentColor = cupertino.accent,
+                actionIconContentColor = cupertino.accent
+            ),
+            modifier = modifier
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun rememberAdaptiveTopBarScrollBehavior(): TopAppBarScrollBehavior {
+    return TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+        state = androidx.compose.material3.rememberTopAppBarState()
+    )
+}
+
+fun Modifier.adaptiveNestedScroll(scrollBehavior: TopAppBarScrollBehavior?): Modifier {
+    return if (scrollBehavior != null) {
+        nestedScroll(scrollBehavior.nestedScrollConnection)
+    } else {
+        this
+    }
+}
+
+@Composable
+fun AdaptiveSnackbarHost(hostState: SnackbarHostState) {
+    SnackbarHost(hostState = hostState)
+}
+
+@Composable
+fun AdaptiveFloatingActionButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    FloatingActionButton(
+        onClick = onClick,
+        modifier = modifier,
+        containerColor = LocalCupertinoColors.current.accent,
+        contentColor = LocalCupertinoColors.current.onAccent,
+        content = content
+    )
+}

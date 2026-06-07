@@ -29,8 +29,7 @@ import com.example.cattasticpos.ui.history.HistoryViewModel
 import com.example.cattasticpos.ui.inventory.InventoryScreen
 import com.example.cattasticpos.ui.inventory.InventoryViewModel
 import com.example.cattasticpos.ui.components.PinScreen
-import com.example.cattasticpos.ui.theme.darkColorSchemeFor
-import com.example.cattasticpos.ui.theme.lightColorSchemeFor
+import com.example.cattasticpos.ui.adaptive.AdaptiveTheme
 
 @Composable
 fun CattasticTheme(
@@ -38,11 +37,7 @@ fun CattasticTheme(
     darkTheme: Boolean = androidx.compose.foundation.isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) darkColorSchemeFor(accent) else lightColorSchemeFor(accent)
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content
-    )
+    AdaptiveTheme(accent = accent, darkTheme = darkTheme, content = content)
 }
 
 class MainActivity : ComponentActivity() {
