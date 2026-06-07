@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
@@ -32,14 +33,15 @@ fun SleepingCatGraphic(modifier: Modifier = Modifier, color: Color = MaterialThe
             close()
         }
         // Closed eyes (sleeping)
-        path(stroke = SolidColor(Color.White), strokeLineWidth = 1.5f) {
+        val detailColor = if (color.luminance() > 0.5f) Color.Black else Color.White
+        path(stroke = SolidColor(detailColor), strokeLineWidth = 1.5f) {
             moveTo(6f, 12f)
             curveTo(7f, 14f, 9f, 14f, 10f, 12f)
             moveTo(14f, 12f)
             curveTo(15f, 14f, 17f, 14f, 18f, 12f)
         }
         // Nose
-        path(fill = SolidColor(Color.White)) {
+        path(fill = SolidColor(detailColor)) {
             moveTo(11.2f, 16f)
             lineTo(12.8f, 16f)
             lineTo(12f, 17f)

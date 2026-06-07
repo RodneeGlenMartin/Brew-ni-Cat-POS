@@ -9,6 +9,8 @@ data class Order(
     val total: Double,
     val paymentMethod: String,
     val paymentReference: String?,
+    val cashierId: String? = null,
+    val tableLabel: String? = null,
     val items: List<OrderItem>
 )
 

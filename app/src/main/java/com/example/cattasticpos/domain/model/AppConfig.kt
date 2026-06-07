@@ -9,7 +9,8 @@ import javax.crypto.spec.PBEKeySpec
 data class AppConfig(
     val targetSales: Double,
     val startingCashFloat: Double,
-    val pinHash: String
+    val pinHash: String,
+    val cashiers: List<Cashier> = Cashier.defaultCashiers()
 ) {
     companion object {
         const val DEFAULT_PIN_HASH = "otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0="

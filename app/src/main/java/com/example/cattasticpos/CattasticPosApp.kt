@@ -1,6 +1,9 @@
 package com.example.cattasticpos
 
 import android.app.Application
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import com.example.cattasticpos.data.local.PosDatabase
 import com.example.cattasticpos.data.repository.MenuRepositoryImpl
 import com.example.cattasticpos.data.repository.OrderRepositoryImpl
@@ -14,6 +17,8 @@ import com.example.cattasticpos.domain.repository.RecipeRepository
 import com.example.cattasticpos.data.repository.RecipeRepositoryImpl
 import com.example.cattasticpos.domain.repository.AppConfigRepository
 import com.example.cattasticpos.data.repository.AppConfigRepositoryImpl
+import com.example.cattasticpos.domain.repository.VoidRepository
+import com.example.cattasticpos.data.repository.VoidRepositoryImpl
 import com.example.cattasticpos.domain.repository.TransactionProvider
 import com.example.cattasticpos.data.local.RoomTransactionProvider
 import com.example.cattasticpos.domain.usecase.CalculateCartUseCase
@@ -21,15 +26,17 @@ import com.example.cattasticpos.domain.usecase.CheckoutUseCase
 import com.example.cattasticpos.domain.usecase.RestockItemUseCase
 import com.example.cattasticpos.domain.usecase.GetMenuUseCase
 import com.example.cattasticpos.domain.usecase.ExportDataUseCase
+import com.example.cattasticpos.domain.usecase.VoidOrderUseCase
 import com.example.cattasticpos.domain.service.ReceiptPrinterService
+import com.example.cattasticpos.worker.LowStockCheckWorker
 import android.util.Log
 import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import java.util.concurrent.TimeUnit
 
 class CattasticPosApp : Application() {
     
-    // Global scope for application tasks like database seeding
     private val applicationScope = CoroutineScope(SupervisorJob())
 
     lateinit var container: AppContainer
@@ -56,6 +63,17 @@ class CattasticPosApp : Application() {
         }
 
         container = AppContainerImpl(this, applicationScope)
+        scheduleLowStockChecks()
+    }
+
+    private fun scheduleLowStockChecks() {
+        LowStockCheckWorker.ensureChannel(this)
+        val request = PeriodicWorkRequestBuilder<LowStockCheckWorker>(6, TimeUnit.HOURS).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            LowStockCheckWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            request
+        )
     }
 
     private fun isCrashProcess(): Boolean {
@@ -92,6 +110,8 @@ interface AppContainer {
     val inventoryRepository: InventoryRepository
     val recipeRepository: RecipeRepository
     val appConfigRepository: AppConfigRepository
+    val voidRepository: VoidRepository
+    val voidOrderUseCase: VoidOrderUseCase
     val restockItemUseCase: RestockItemUseCase
     val receiptPrinterService: ReceiptPrinterService
     val transactionProvider: TransactionProvider
@@ -140,6 +160,14 @@ class AppContainerImpl(
 
     override val appConfigRepository: AppConfigRepository by lazy {
         AppConfigRepositoryImpl(database.appConfigDao())
+    }
+
+    override val voidRepository: VoidRepository by lazy {
+        VoidRepositoryImpl(database.voidDao())
+    }
+
+    override val voidOrderUseCase: VoidOrderUseCase by lazy {
+        VoidOrderUseCase(orderRepository, voidRepository, recipeRepository, inventoryRepository, transactionProvider)
     }
 
     override val exportDataUseCase: ExportDataUseCase by lazy {

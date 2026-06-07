@@ -9,6 +9,7 @@ import com.example.cattasticpos.domain.model.RecipeMapping
 import com.example.cattasticpos.domain.repository.RecipeRepository
 import com.example.cattasticpos.domain.repository.InventoryRepository
 import com.example.cattasticpos.domain.usecase.GetMenuUseCase
+import com.example.cattasticpos.domain.usecase.RestockItemUseCase
 import com.example.cattasticpos.domain.model.InventoryItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +26,8 @@ import java.util.UUID
 class InventoryViewModel(
     private val inventoryRepository: InventoryRepository,
     private val recipeRepository: RecipeRepository,
-    private val getMenuUseCase: GetMenuUseCase
+    private val getMenuUseCase: GetMenuUseCase,
+    private val restockItemUseCase: RestockItemUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InventoryUiState())
@@ -58,9 +60,7 @@ class InventoryViewModel(
 
     fun restockItem(itemId: String, amount: Double) {
         viewModelScope.launch {
-            if (amount > 0) {
-                inventoryRepository.restockItem(itemId, amount)
-            }
+            restockItemUseCase(itemId, amount)
         }
     }
 
@@ -134,7 +134,8 @@ class InventoryViewModel(
                 return InventoryViewModel(
                     application.container.inventoryRepository,
                     application.container.recipeRepository,
-                    application.container.getMenuUseCase
+                    application.container.getMenuUseCase,
+                    application.container.restockItemUseCase
                 ) as T
             }
         }

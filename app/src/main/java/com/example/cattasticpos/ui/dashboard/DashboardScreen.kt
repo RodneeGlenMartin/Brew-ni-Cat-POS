@@ -59,20 +59,9 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(uiState.checkoutSuccessEvent) {
-        uiState.checkoutSuccessEvent?.let { message ->
-            val job = launch { snackbarHostState.showSnackbar(message) }
-            kotlinx.coroutines.delay(700)
-            job.cancel()
-            viewModel.clearCheckoutEvent()
-        }
-    }
-
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { message ->
-            val job = launch { snackbarHostState.showSnackbar(message) }
-            kotlinx.coroutines.delay(700)
-            job.cancel()
+            snackbarHostState.showSnackbar(message)
             viewModel.clearSnackbarMessage()
         }
     }
@@ -121,6 +110,31 @@ fun DashboardScreen(
                 .padding(innerPadding)
                 .background(MaterialTheme.colorScheme.background)
         ) {
+            if (uiState.cashiers.isNotEmpty()) {
+                LazyRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(uiState.cashiers, key = { it.id }) { cashier ->
+                        FilterChip(
+                            selected = cashier.id == uiState.selectedCashierId,
+                            onClick = { viewModel.selectCashier(cashier.id) },
+                            label = { Text(cashier.name, fontSize = 12.sp) }
+                        )
+                    }
+                }
+            }
+            if (!uiState.activeTableLabel.isNullOrBlank()) {
+                Text(
+                    text = "Label: ${uiState.activeTableLabel}",
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.secondary,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             // TOP SECTION: Menu (Takes up available space)
             Column(modifier = Modifier.weight(1f)) {
                 CategorySelector(
@@ -184,7 +198,7 @@ fun DashboardScreen(
                             }
                         }
                         TextButton(
-                            onClick = { viewModel.holdCurrentOrder() },
+                            onClick = { viewModel.setShowHoldOrderDialog(true) },
                             enabled = uiState.activeCart.isNotEmpty(),
                             modifier = Modifier.height(32.dp)
                         ) {
@@ -300,11 +314,18 @@ fun DashboardScreen(
         if (uiState.showPaymentDialog) {
             PaymentCheckoutDialog(
                 finalTotal = uiState.total,
+                paymentState = uiState.paymentDialogState,
+                onPaymentStateChange = { viewModel.setPaymentDialogState(it) },
                 onConfirmPayment = { method, ref ->
-                    viewModel.setShowPaymentDialog(false)
                     viewModel.confirmCheckout(method, ref)
                 },
                 onDismiss = { viewModel.setShowPaymentDialog(false) }
+            )
+        }
+        if (uiState.showHoldOrderDialog) {
+            HoldOrderDialog(
+                onHold = { label -> viewModel.holdCurrentOrder(label) },
+                onDismiss = { viewModel.setShowHoldOrderDialog(false) }
             )
         }
         if (uiState.showExpenseDialog) {
@@ -410,18 +431,20 @@ fun DiscountButton(label: String, isSelected: Boolean, onClick: () -> Unit, modi
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PaymentCheckoutDialog(finalTotal: Double, onConfirmPayment: (String, String?) -> Unit, onDismiss: () -> Unit) {
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    var amountTenderedStr by remember { mutableStateOf("") }
-    var gcashReference by remember { mutableStateOf("") }
-    var receivingAccount by remember { mutableStateOf("Main GCash (0917...)") }
+fun PaymentCheckoutDialog(
+    finalTotal: Double,
+    paymentState: PaymentDialogState,
+    onPaymentStateChange: (PaymentDialogState) -> Unit,
+    onConfirmPayment: (String, String?) -> Unit,
+    onDismiss: () -> Unit
+) {
     var simDropdownExpanded by remember { mutableStateOf(false) }
     val simOptions = listOf("Main GCash (0917...)", "Store GCash (0999...)", "Personal GCash")
 
-    val amountTendered = amountTenderedStr.toDoubleOrNull() ?: 0.0
+    val amountTendered = paymentState.amountTenderedStr.toDoubleOrNull() ?: 0.0
     val changeDue = amountTendered - finalTotal
-    val isCash = selectedTabIndex == 0
-    val isReady = if (isCash) amountTendered >= finalTotal else receivingAccount.isNotBlank()
+    val isCash = paymentState.selectedTabIndex == 0
+    val isReady = if (isCash) amountTendered >= finalTotal else paymentState.receivingAccount.isNotBlank()
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -432,30 +455,82 @@ fun PaymentCheckoutDialog(finalTotal: Double, onConfirmPayment: (String, String?
                     Text("Total Due:", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text("₱${String.format("%.0f", finalTotal)}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
                 }
-                TabRow(selectedTabIndex = selectedTabIndex) {
-                    Tab(selected = selectedTabIndex == 0, onClick = { selectedTabIndex = 0 }, text = { Text("Cash") })
-                    Tab(selected = selectedTabIndex == 1, onClick = { selectedTabIndex = 1 }, text = { Text("GCash") })
+                TabRow(selectedTabIndex = paymentState.selectedTabIndex) {
+                    Tab(
+                        selected = paymentState.selectedTabIndex == 0,
+                        onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 0)) },
+                        text = { Text("Cash") }
+                    )
+                    Tab(
+                        selected = paymentState.selectedTabIndex == 1,
+                        onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 1)) },
+                        text = { Text("GCash") }
+                    )
                 }
                 if (isCash) {
-                    OutlinedTextField(value = amountTenderedStr, onValueChange = { amountTenderedStr = it }, label = { Text("Amount Tendered (₱)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = paymentState.amountTenderedStr,
+                        onValueChange = { onPaymentStateChange(paymentState.copy(amountTenderedStr = it)) },
+                        label = { Text("Amount Tendered (₱)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Change Due:", fontWeight = FontWeight.Medium)
                         Text(if (changeDue >= 0) "₱${String.format("%.0f", changeDue)}" else "---", fontWeight = FontWeight.Medium, color = if (changeDue >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                     }
                 } else {
                     ExposedDropdownMenuBox(expanded = simDropdownExpanded, onExpandedChange = { simDropdownExpanded = it }) {
-                        OutlinedTextField(value = receivingAccount, onValueChange = {}, readOnly = true, label = { Text("Receiving SIM") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = simDropdownExpanded) }, colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(), modifier = Modifier.menuAnchor().fillMaxWidth())
+                        OutlinedTextField(
+                            value = paymentState.receivingAccount,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Receiving SIM") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = simDropdownExpanded) },
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                        )
                         ExposedDropdownMenu(expanded = simDropdownExpanded, onDismissRequest = { simDropdownExpanded = false }) {
                             simOptions.forEach { option ->
-                                DropdownMenuItem(text = { Text(option) }, onClick = { receivingAccount = option; simDropdownExpanded = false })
+                                DropdownMenuItem(
+                                    text = { Text(option) },
+                                    onClick = {
+                                        onPaymentStateChange(paymentState.copy(receivingAccount = option))
+                                        simDropdownExpanded = false
+                                    }
+                                )
                             }
                         }
                     }
-                    OutlinedTextField(value = gcashReference, onValueChange = { gcashReference = it }, label = { Text("GCash Reference No. (Optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(
+                        value = paymentState.gcashReference,
+                        onValueChange = { onPaymentStateChange(paymentState.copy(gcashReference = it)) },
+                        label = { Text("GCash Reference No. (Optional)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         },
-        confirmButton = { Button(onClick = { if (isCash) onConfirmPayment("CASH", null) else onConfirmPayment("GCASH", "$receivingAccount - $gcashReference") }, enabled = isReady) { Text("Confirm & Pay") } },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (isCash) {
+                        onConfirmPayment("CASH", null)
+                    } else {
+                        val ref = buildString {
+                            append("account=${paymentState.receivingAccount}")
+                            if (paymentState.gcashReference.isNotBlank()) {
+                                append("|ref=${paymentState.gcashReference.trim()}")
+                            }
+                        }
+                        onConfirmPayment("GCASH", ref)
+                    }
+                },
+                enabled = isReady
+            ) { Text("Confirm & Pay") }
+        },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
@@ -560,7 +635,8 @@ fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDism
                             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)), modifier = Modifier.fillMaxWidth()) {
                                 Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text("Queue #${queue.id}", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        val labelText = queue.tableLabel?.let { " [$it]" } ?: ""
+                                        Text("Queue #${queue.id}$labelText", fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                         val timeStr = java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(queue.timestamp))
                                         Text("Held at: $timeStr", fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
                                         Text("${queue.items.sumOf { it.quantity }} items • ₱${String.format("%.0f", queue.items.sumOf { it.totalPrice })}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -574,6 +650,29 @@ fun QueuesDialog(heldQueues: List<HeldQueue>, onResume: (String) -> Unit, onDism
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } }
+    )
+}
+
+@Composable
+fun HoldOrderDialog(onHold: (String?) -> Unit, onDismiss: () -> Unit) {
+    var tableLabel by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Hold Order", fontWeight = FontWeight.Bold) },
+        text = {
+            OutlinedTextField(
+                value = tableLabel,
+                onValueChange = { tableLabel = it },
+                label = { Text("Table / Label (Optional)") },
+                placeholder = { Text("e.g. Table 3, Take-out #5") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(onClick = { onHold(tableLabel) }) { Text("Hold Order") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }
 

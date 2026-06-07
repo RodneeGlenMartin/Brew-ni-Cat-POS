@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.cattasticpos.CattasticPosApp
 import com.example.cattasticpos.domain.model.CartItem
+import com.example.cattasticpos.domain.model.CartKey
 import com.example.cattasticpos.domain.model.Item
 import com.example.cattasticpos.domain.model.Variant
 import com.example.cattasticpos.domain.strategy.DiscountStrategy
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.example.cattasticpos.domain.repository.AppConfigRepository
 import com.example.cattasticpos.domain.repository.ExpenseRepository
 import com.example.cattasticpos.domain.repository.InventoryRepository
 import com.example.cattasticpos.domain.repository.RecipeRepository
@@ -34,7 +36,8 @@ class DashboardViewModel(
     private val expenseRepository: ExpenseRepository,
     private val inventoryRepository: InventoryRepository,
     private val receiptPrinterService: ReceiptPrinterService,
-    private val recipeRepository: RecipeRepository
+    private val recipeRepository: RecipeRepository,
+    private val appConfigRepository: AppConfigRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -70,6 +73,24 @@ class DashboardViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            appConfigRepository.getAppConfig().collect { config ->
+                val cashiers = config?.cashiers.orEmpty()
+                _uiState.update { state ->
+                    val selected = state.selectedCashierId.ifBlank {
+                        cashiers.firstOrNull()?.id ?: "cashier_default"
+                    }
+                    state.copy(
+                        cashiers = cashiers,
+                        selectedCashierId = if (cashiers.any { it.id == selected }) {
+                            selected
+                        } else {
+                            cashiers.firstOrNull()?.id ?: "cashier_default"
+                        }
+                    )
+                }
+            }
+        }
     }
 
     private fun filterItemsByCategoryId(items: List<Item>, categoryId: String): List<Item> {
@@ -101,8 +122,8 @@ class DashboardViewModel(
         val currentItem = _uiState.value.selectedConfiguringItem ?: return
         
         _uiState.update { state ->
-            val cartId = "${currentItem.id}_${variant.id}_${flavor ?: ""}"
-            val existingIndex = state.activeCart.indexOfFirst { it.id == cartId }
+            val cartKey = CartKey.from(currentItem, variant, flavor)
+            val existingIndex = state.activeCart.indexOfFirst { it.key == cartKey }
             
             val updatedCart = if (existingIndex != -1) {
                 state.activeCart.mapIndexed { index, cartItem ->
@@ -114,7 +135,7 @@ class DashboardViewModel(
                 }
             } else {
                 state.activeCart + CartItem(
-                    id = cartId,
+                    key = cartKey,
                     item = currentItem,
                     variant = variant,
                     flavor = flavor,
@@ -180,9 +201,24 @@ class DashboardViewModel(
         if (currentCart.isEmpty()) return
         
         viewModelScope.launch {
-            val result = checkoutUseCase(currentCart, currentStrategy, paymentMethod, paymentReference)
+            val state = _uiState.value
+            val result = checkoutUseCase(
+                currentCart,
+                currentStrategy,
+                paymentMethod,
+                paymentReference,
+                cashierId = state.selectedCashierId,
+                tableLabel = state.activeTableLabel
+            )
             if (result.isSuccess) {
                 result.getOrNull()?.let { order ->
+                    val printerResult = receiptPrinterService.printReceipt(order)
+                    val message = buildString {
+                        append("Order placed successfully! 🐾")
+                        if (printerResult.isFailure) {
+                            append("\nPrinter: ${printerResult.exceptionOrNull()?.message}")
+                        }
+                    }
                     _uiState.update { state ->
                         val freshCalculation = calculateCartUseCase(emptyList(), state.selectedDiscountStrategy)
                         state.copy(
@@ -193,39 +229,40 @@ class DashboardViewModel(
                             discountDeduction = freshCalculation.discountDeduction,
                             discountLabel = freshCalculation.discountLabel,
                             total = freshCalculation.total,
-                            checkoutSuccessEvent = "Order placed successfully! 🐾\n(Receipt printing...)"
+                            showPaymentDialog = false,
+                            paymentDialogState = PaymentDialogState(),
+                            activeTableLabel = null,
+                            snackbarMessage = message
                         )
-                    }
-                    viewModelScope.launch {
-                        val printerResult = receiptPrinterService.printReceipt(order)
-                        if (printerResult.isFailure) {
-                            _uiState.update { state ->
-                                state.copy(snackbarMessage = "Printer: ${printerResult.exceptionOrNull()?.message}")
-                            }
-                        }
                     }
                 }
             } else {
                 _uiState.update { state ->
-                    state.copy(checkoutSuccessEvent = "Checkout failed: ${result.exceptionOrNull()?.message}")
+                    state.copy(snackbarMessage = "Checkout failed: ${result.exceptionOrNull()?.message}")
                 }
             }
         }
     }
 
     fun clearCheckoutEvent() {
-        _uiState.update { it.copy(checkoutSuccessEvent = null) }
+        // Kept for API compatibility; checkout now uses snackbarMessage only.
     }
 
     // Removed int queueCounter
 
-    fun holdCurrentOrder() {
+    fun holdCurrentOrder(tableLabel: String?) {
         val currentCart = _uiState.value.activeCart
         if (currentCart.isEmpty()) return
         
         _uiState.update { state ->
             val queueId = state.currentQueueId ?: UUID.randomUUID().toString().substring(0, 8).uppercase()
-            val newQueue = HeldQueue(id = queueId, timestamp = System.currentTimeMillis(), items = currentCart)
+            val label = tableLabel?.trim()?.takeIf { it.isNotBlank() }
+            val newQueue = HeldQueue(
+                id = queueId,
+                timestamp = System.currentTimeMillis(),
+                items = currentCart,
+                tableLabel = label
+            )
             val updatedQueues = state.heldQueues.filter { it.id != queueId } + newQueue
             val freshCalculation = calculateCartUseCase(emptyList(), state.selectedDiscountStrategy)
             state.copy(
@@ -235,9 +272,18 @@ class DashboardViewModel(
                 subtotal = freshCalculation.subtotal,
                 discountDeduction = freshCalculation.discountDeduction,
                 discountLabel = freshCalculation.discountLabel,
-                total = freshCalculation.total
+                total = freshCalculation.total,
+                showHoldOrderDialog = false
             )
         }
+    }
+
+    fun setShowHoldOrderDialog(show: Boolean) {
+        _uiState.update { it.copy(showHoldOrderDialog = show) }
+    }
+
+    fun selectCashier(cashierId: String) {
+        _uiState.update { it.copy(selectedCashierId = cashierId) }
     }
 
     fun resumeOrder(queueId: String) {
@@ -249,6 +295,7 @@ class DashboardViewModel(
             state.copy(
                 heldQueues = updatedQueues,
                 currentQueueId = queueId,
+                activeTableLabel = queueToResume.tableLabel,
                 activeCart = resumedCart,
                 subtotal = calculation.subtotal,
                 discountDeduction = calculation.discountDeduction,
@@ -267,19 +314,26 @@ class DashboardViewModel(
 
     fun setShowPaymentDialog(show: Boolean) {
         _uiState.update { state ->
-            state.copy(showPaymentDialog = show)
+            state.copy(
+                showPaymentDialog = show,
+                paymentDialogState = if (show) state.paymentDialogState else PaymentDialogState()
+            )
         }
+    }
+
+    fun updatePaymentDialogState(update: PaymentDialogState.() -> PaymentDialogState) {
+        _uiState.update { state ->
+            state.copy(paymentDialogState = state.paymentDialogState.update())
+        }
+    }
+
+    fun setPaymentDialogState(state: PaymentDialogState) {
+        _uiState.update { it.copy(paymentDialogState = state) }
     }
 
     fun setShowExpenseDialog(show: Boolean) {
         _uiState.update { state ->
             state.copy(showExpenseDialog = show)
-        }
-    }
-
-    fun setShowInventoryDialog(show: Boolean) {
-        _uiState.update { state ->
-            state.copy(showInventoryDialog = show)
         }
     }
 
@@ -311,7 +365,8 @@ class DashboardViewModel(
                     application.container.expenseRepository,
                     application.container.inventoryRepository,
                     application.container.receiptPrinterService,
-                    application.container.recipeRepository
+                    application.container.recipeRepository,
+                    application.container.appConfigRepository
                 ) as T
             }
         }

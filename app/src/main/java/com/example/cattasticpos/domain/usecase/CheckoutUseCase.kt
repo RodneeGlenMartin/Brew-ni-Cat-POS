@@ -21,7 +21,9 @@ class CheckoutUseCase(
         items: List<CartItem>, 
         strategy: DiscountStrategy,
         paymentMethod: String,
-        paymentReference: String?
+        paymentReference: String?,
+        cashierId: String? = null,
+        tableLabel: String? = null
     ): Result<Order> {
         if (items.isEmpty()) {
             return Result.failure(IllegalArgumentException("Cart is empty"))
@@ -51,20 +53,30 @@ class CheckoutUseCase(
             total = calculation.total,
             paymentMethod = paymentMethod,
             paymentReference = paymentReference,
+            cashierId = cashierId,
+            tableLabel = tableLabel,
             items = orderItems
         )
         return try {
             transactionProvider.runAsTransaction {
                 orderRepository.saveOrder(order)
                 
-                // Deduct inventory dynamically using Recipe Mappings
                 items.forEach { cartItem ->
-                    val qty = cartItem.quantity
-                    val mappings = recipeRepository.getMappingsForCheckout(cartItem.item.id, cartItem.variant.name)
-                    mappings.forEach { mapping ->
-                        val totalDeduction = mapping.deductionQuantity * qty
-                        if (totalDeduction > 0) {
-                            inventoryRepository.decrementStock(mapping.inventoryItemId, totalDeduction)
+                    val components = ComboBundleResolver.expand(
+                        cartItem.item.id,
+                        cartItem.variant.id,
+                        cartItem.quantity
+                    )
+                    components.forEach { component ->
+                        val mappings = recipeRepository.getMappingsForCheckout(
+                            component.menuItemId,
+                            component.variantName
+                        )
+                        mappings.forEach { mapping ->
+                            val totalDeduction = mapping.deductionQuantity * component.quantity
+                            if (totalDeduction > 0) {
+                                inventoryRepository.decrementStock(mapping.inventoryItemId, totalDeduction)
+                            }
                         }
                     }
                 }

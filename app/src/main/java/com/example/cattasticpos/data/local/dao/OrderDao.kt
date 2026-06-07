@@ -32,15 +32,27 @@ interface OrderDao {
     @Insert
     suspend fun insertOrderItems(items: List<OrderItemEntity>)
 
-    // Note: Room 2.4+ safely wraps suspend functions inside @Transaction in a single database transaction.
+    @Transaction
     suspend fun insertOrderWithItems(order: OrderEntity, items: List<OrderItemEntity>) {
         insertOrder(order)
         insertOrderItems(items)
     }
 
     @Transaction
-    @Query("SELECT * FROM orders WHERE timestamp >= :startDate AND timestamp <= :endDate ORDER BY timestamp DESC LIMIT :limit OFFSET :offset")
-    fun getOrdersWithItems(startDate: Long, endDate: Long, limit: Int, offset: Int): Flow<List<OrderWithItems>>
+    @Query(
+        """
+        SELECT * FROM orders
+        WHERE timestamp >= :startDate AND timestamp <= :endDate
+        AND timestamp < :beforeTimestamp
+        ORDER BY timestamp DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getOrdersPage(startDate: Long, endDate: Long, beforeTimestamp: Long, limit: Int): List<OrderWithItems>
+
+    @Transaction
+    @Query("SELECT * FROM orders WHERE id = :orderId")
+    suspend fun getOrderWithItems(orderId: String): OrderWithItems?
 
     @Query("SELECT itemName, SUM(quantity) as totalQuantity FROM order_items JOIN orders ON order_items.orderId = orders.id WHERE orders.timestamp >= :startOfDay AND orders.timestamp <= :endOfDay GROUP BY itemName ORDER BY totalQuantity DESC LIMIT 1")
     fun getTopSellingItemForDay(startOfDay: Long, endOfDay: Long): Flow<TopSellingItemResult?>
@@ -66,7 +78,7 @@ interface OrderDao {
     @Query("DELETE FROM order_items WHERE orderId = :orderId")
     suspend fun deleteOrderItemsForOrder(orderId: String)
 
-    // Note: Room 2.4+ safely wraps suspend functions inside @Transaction in a single database transaction.
+    @Transaction
     suspend fun deleteOrderWithItems(orderId: String) {
         deleteOrderItemsForOrder(orderId)
         deleteOrderEntity(orderId)

@@ -19,6 +19,8 @@ import com.example.cattasticpos.data.local.entity.RecipeMappingEntity
 import com.example.cattasticpos.data.local.dao.RecipeDao
 import com.example.cattasticpos.data.local.entity.AppConfigEntity
 import com.example.cattasticpos.data.local.dao.AppConfigDao
+import com.example.cattasticpos.data.local.dao.VoidDao
+import com.example.cattasticpos.data.local.entity.VoidRecordEntity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,9 +34,10 @@ import kotlinx.coroutines.launch
         ExpenseEntity::class,
         InventoryEntity::class,
         RecipeMappingEntity::class,
-        AppConfigEntity::class
+        AppConfigEntity::class,
+        VoidRecordEntity::class
     ],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class PosDatabase : RoomDatabase() {
@@ -44,6 +47,7 @@ abstract class PosDatabase : RoomDatabase() {
     abstract fun inventoryDao(): InventoryDao
     abstract fun recipeDao(): RecipeDao
     abstract fun appConfigDao(): AppConfigDao
+    abstract fun voidDao(): VoidDao
 
     companion object {
         @Volatile
@@ -56,7 +60,7 @@ abstract class PosDatabase : RoomDatabase() {
                     PosDatabase::class.java,
                     "pos_database"
                 )
-                .addMigrations(MIGRATION_9_10)
+                .addMigrations(MIGRATION_9_10, MIGRATION_10_11)
                 .addCallback(PosDatabaseCallback(scope))
                 .build()
                 INSTANCE = instance
@@ -71,6 +75,29 @@ abstract class PosDatabase : RoomDatabase() {
                 db.execSQL("INSERT INTO inventory_new (id, itemName, unit, currentStock, reorderThreshold) SELECT id, itemName, unit, CAST(currentStock AS REAL), CAST(reorderThreshold AS REAL) FROM inventory")
                 db.execSQL("DROP TABLE inventory")
                 db.execSQL("ALTER TABLE inventory_new RENAME TO inventory")
+            }
+        }
+
+        val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE orders ADD COLUMN cashierId TEXT")
+                db.execSQL("ALTER TABLE orders ADD COLUMN tableLabel TEXT")
+                db.execSQL(
+                    "ALTER TABLE app_config ADD COLUMN cashiersJson TEXT NOT NULL DEFAULT '" +
+                        AppConfigEntity.DEFAULT_CASHIERS_JSON.replace("'", "''") + "'"
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS void_records (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        orderId TEXT NOT NULL,
+                        reason TEXT NOT NULL,
+                        timestamp INTEGER NOT NULL,
+                        cashierId TEXT,
+                        orderTotal REAL NOT NULL
+                    )
+                    """.trimIndent()
+                )
             }
         }
     }
@@ -89,7 +116,15 @@ abstract class PosDatabase : RoomDatabase() {
 
         private suspend fun prepopulateDatabase(menuDao: MenuDao, inventoryDao: InventoryDao, recipeDao: RecipeDao, appConfigDao: AppConfigDao) {
             try {
-                appConfigDao.insertConfig(AppConfigEntity(id = 1, targetSales = 5000.0, startingCashFloat = 500.0, pinHash = "otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0="))
+                appConfigDao.insertConfig(
+                    AppConfigEntity(
+                        id = 1,
+                        targetSales = 5000.0,
+                        startingCashFloat = 500.0,
+                        pinHash = "otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0=",
+                        cashiersJson = AppConfigEntity.DEFAULT_CASHIERS_JSON
+                    )
+                )
             } catch (e: Exception) {
                 android.util.Log.e("PosDatabase", "Error seeding app config", e)
             }

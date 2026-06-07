@@ -9,7 +9,10 @@ import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.repository.OrderRepository
 import com.example.cattasticpos.domain.repository.ExpenseRepository
 import com.example.cattasticpos.domain.model.Expense
+import com.example.cattasticpos.domain.model.ZReadingSummary
+import com.example.cattasticpos.domain.service.ReceiptPrinterService
 import com.example.cattasticpos.domain.usecase.ExportDataUseCase
+import com.example.cattasticpos.domain.usecase.VoidOrderUseCase
 import com.example.cattasticpos.domain.repository.AppConfigRepository
 import com.example.cattasticpos.domain.model.AppConfig
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,15 +30,24 @@ class HistoryViewModel(
     private val orderRepository: OrderRepository,
     private val expenseRepository: ExpenseRepository,
     private val exportDataUseCase: ExportDataUseCase,
-    private val appConfigRepository: AppConfigRepository
+    private val appConfigRepository: AppConfigRepository,
+    private val voidOrderUseCase: VoidOrderUseCase,
+    private val receiptPrinterService: ReceiptPrinterService
 ) : ViewModel() {
 
     private val todayStart: Long
     private val todayEnd: Long
+    private val allTimeStart: Long = 0L
+    private val allTimeEnd: Long = Long.MAX_VALUE
 
     private val _startDate: MutableStateFlow<Long>
     private val _endDate: MutableStateFlow<Long>
-    private val _limit = MutableStateFlow<Int>(50)
+    private val _orders = MutableStateFlow<List<Order>>(emptyList())
+    private val _showDateRangeDialog = MutableStateFlow(false)
+    private val _canLoadMore = MutableStateFlow(false)
+
+    val showDateRangeDialog: StateFlow<Boolean> = _showDateRangeDialog.asStateFlow()
+    val canLoadMore: StateFlow<Boolean> = _canLoadMore.asStateFlow()
 
     init {
         val calendar = Calendar.getInstance()
@@ -53,27 +65,59 @@ class HistoryViewModel(
 
         _startDate = MutableStateFlow(todayStart)
         _endDate = MutableStateFlow(todayEnd)
+
+        viewModelScope.launch {
+            combine(_startDate, _endDate) { start, end -> start to end }.collect {
+                refreshOrders()
+            }
+        }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
-    val ordersState: StateFlow<List<Order>> = combine(_startDate, _endDate, _limit) { start, end, limit -> 
-        Triple(start, end, limit) 
-    }.flatMapLatest { (start, end, limit) ->
-        orderRepository.getOrdersWithItems(start, end, limit, 0)
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5000),
-        initialValue = emptyList()
-    )
+    val ordersState: StateFlow<List<Order>> = _orders.asStateFlow()
 
     fun loadMoreOrders() {
-        _limit.value += 50
+        if (!_canLoadMore.value) return
+        viewModelScope.launch {
+            val beforeTimestamp = _orders.value.minOfOrNull { it.timestamp } ?: return@launch
+            val nextPage = orderRepository.getOrdersPage(
+                startDate = _startDate.value,
+                endDate = _endDate.value,
+                beforeTimestamp = beforeTimestamp,
+                limit = PAGE_SIZE
+            )
+            if (nextPage.isEmpty()) {
+                _canLoadMore.value = false
+            } else {
+                _orders.value = _orders.value + nextPage
+                _canLoadMore.value = nextPage.size == PAGE_SIZE
+            }
+        }
+    }
+
+    private suspend fun refreshOrders() {
+        _canLoadMore.value = false
+        val firstPage = orderRepository.getOrdersPage(
+            startDate = _startDate.value,
+            endDate = _endDate.value,
+            beforeTimestamp = Long.MAX_VALUE,
+            limit = PAGE_SIZE
+        )
+        _orders.value = firstPage
+        _canLoadMore.value = firstPage.size == PAGE_SIZE
     }
 
     fun setDateRange(start: Long?, end: Long?) {
-        _startDate.value = start ?: todayStart
-        _endDate.value = end ?: todayEnd
-        _limit.value = 50
+        if (start == null && end == null) {
+            _startDate.value = allTimeStart
+            _endDate.value = allTimeEnd
+        } else {
+            _startDate.value = start ?: todayStart
+            _endDate.value = end ?: todayEnd
+        }
+    }
+
+    fun setShowDateRangeDialog(show: Boolean) {
+        _showDateRangeDialog.value = show
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -125,7 +169,7 @@ class HistoryViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     val appConfigState: StateFlow<AppConfig?> = appConfigRepository.getAppConfig()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     fun updateConfig(targetSales: Double, startingCashFloat: Double, pinHash: String) {
         viewModelScope.launch {
@@ -133,9 +177,25 @@ class HistoryViewModel(
         }
     }
 
-    fun deleteOrder(orderId: String) {
+    fun voidOrder(orderId: String, reason: String) {
         viewModelScope.launch {
-            orderRepository.deleteOrder(orderId)
+            val result = voidOrderUseCase(orderId, reason, cashierId = null)
+            if (result.isFailure) {
+                _exportMessage.value = "Void failed: ${result.exceptionOrNull()?.message}"
+            } else {
+                refreshOrders()
+            }
+        }
+    }
+
+    fun printZReading(summary: ZReadingSummary) {
+        viewModelScope.launch {
+            val result = receiptPrinterService.printZReading(summary)
+            _exportMessage.value = if (result.isSuccess) {
+                "Z-Reading sent to printer."
+            } else {
+                "Z-Reading print failed: ${result.exceptionOrNull()?.message}"
+            }
         }
     }
 
@@ -160,6 +220,8 @@ class HistoryViewModel(
     }
 
     companion object {
+        private const val PAGE_SIZE = 50
+
         val Factory: ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
@@ -168,7 +230,9 @@ class HistoryViewModel(
                     application.container.orderRepository,
                     application.container.expenseRepository,
                     application.container.exportDataUseCase,
-                    application.container.appConfigRepository
+                    application.container.appConfigRepository,
+                    application.container.voidOrderUseCase,
+                    application.container.receiptPrinterService
                 ) as T
             }
         }

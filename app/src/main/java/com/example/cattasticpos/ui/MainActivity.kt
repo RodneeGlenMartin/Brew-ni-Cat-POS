@@ -4,9 +4,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.*
 import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.*
@@ -20,6 +28,8 @@ import com.example.cattasticpos.ui.history.HistoryViewModel
 import com.example.cattasticpos.ui.inventory.InventoryScreen
 import com.example.cattasticpos.ui.inventory.InventoryViewModel
 import com.example.cattasticpos.ui.components.PinScreen
+import com.example.cattasticpos.ui.config.AppConfigViewModel
+import com.example.cattasticpos.ui.config.AppConfigUiState
 
 private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF3E5C49),       // Forest Green
@@ -121,6 +131,7 @@ class MainActivity : ComponentActivity() {
                     val dashboardViewModel: DashboardViewModel = viewModel(factory = DashboardViewModel.Factory)
                     val historyViewModel: HistoryViewModel = viewModel(factory = HistoryViewModel.Factory)
                     val inventoryViewModel: InventoryViewModel = viewModel(factory = InventoryViewModel.Factory)
+                    val appConfigViewModel: AppConfigViewModel = viewModel(factory = AppConfigViewModel.Factory)
 
                     Crossfade(targetState = currentScreen, label = "ScreenTransition") { screen ->
                         when (screen) {
@@ -131,28 +142,44 @@ class MainActivity : ComponentActivity() {
                                     onNavigateToInventory = { currentScreen = "pin_inventory" }
                                 )
                             }
-                            "pin_history" -> {
-                                val config = historyViewModel.appConfigState.collectAsState().value
-                                if (config == null) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                                } else {
-                                    PinScreen(
-                                        expectedPinHash = config.pinHash,
-                                        onPinSuccess = { currentScreen = "history" },
-                                        onCancel = { currentScreen = "dashboard" }
-                                    )
-                                }
-                            }
-                            "pin_inventory" -> {
-                                val config = historyViewModel.appConfigState.collectAsState().value
-                                if (config == null) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
-                                } else {
-                                    PinScreen(
-                                        expectedPinHash = config.pinHash,
-                                        onPinSuccess = { currentScreen = "inventory" },
-                                        onCancel = { currentScreen = "dashboard" }
-                                    )
+                            "pin_history", "pin_inventory" -> {
+                                val configState by appConfigViewModel.uiState.collectAsState()
+                                when (val state = configState) {
+                                    AppConfigUiState.Loading -> {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
+                                    }
+                                    is AppConfigUiState.Ready -> {
+                                        PinScreen(
+                                            expectedPinHash = state.config.pinHash,
+                                            onPinSuccess = {
+                                                currentScreen = if (screen == "pin_history") "history" else "inventory"
+                                            },
+                                            onCancel = { currentScreen = "dashboard" }
+                                        )
+                                    }
+                                    is AppConfigUiState.Error -> {
+                                        Column(
+                                            modifier = Modifier.fillMaxSize().padding(24.dp),
+                                            verticalArrangement = Arrangement.Center,
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(state.message, textAlign = TextAlign.Center)
+                                            Spacer(modifier = Modifier.height(16.dp))
+                                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                                Button(onClick = { appConfigViewModel.loadConfig() }) {
+                                                    Text("Retry")
+                                                }
+                                                OutlinedButton(onClick = { currentScreen = "dashboard" }) {
+                                                    Text("Go Back")
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             "history" -> {

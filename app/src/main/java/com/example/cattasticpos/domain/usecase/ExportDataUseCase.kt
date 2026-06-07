@@ -61,7 +61,8 @@ class ExportDataUseCase(private val context: Context) {
                     outputStream.write(csvContent.toByteArray())
                 } ?: return@withContext Result.failure(Exception("Failed to open output stream"))
             } else {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val downloadsDir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+                    ?: return@withContext Result.failure(Exception("No app storage available for export"))
                 if (!downloadsDir.exists()) {
                     downloadsDir.mkdirs()
                 }

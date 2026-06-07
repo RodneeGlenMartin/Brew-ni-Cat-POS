@@ -14,8 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.platform.LocalContext
 import android.content.Context
-import android.content.Intent
 import androidx.core.app.ShareCompat
+import com.example.cattasticpos.domain.model.ZReadingSummary
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -27,7 +27,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.example.cattasticpos.domain.model.AppConfig
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.*
@@ -63,8 +63,10 @@ fun HistoryScreen(
     val totalExpenses by viewModel.totalExpensesState.collectAsState()
     val exportMessage by viewModel.exportMessage.collectAsState()
     val appConfig by viewModel.appConfigState.collectAsState()
+    val showDateRangeDialog by viewModel.showDateRangeDialog.collectAsState()
+    val canLoadMore by viewModel.canLoadMore.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var showDateRangeDialog by remember { mutableStateOf(false) }
+    var pendingVoidOrderId by remember { mutableStateOf<String?>(null) }
     
     LaunchedEffect(exportMessage) {
         exportMessage?.let {
@@ -92,7 +94,7 @@ fun HistoryScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showDateRangeDialog = true }) {
+                    IconButton(onClick = { viewModel.setShowDateRangeDialog(true) }) {
                         Icon(imageVector = Icons.Default.DateRange, contentDescription = "Filter by Date")
                     }
                 },
@@ -194,6 +196,32 @@ fun HistoryScreen(
                             }
                         }
                         
+                        OutlinedButton(
+                            onClick = {
+                                viewModel.printZReading(
+                                    ZReadingSummary(
+                                        grossSales = totalSales,
+                                        discounts = discounts ?: 0.0,
+                                        netRevenue = netRevenue ?: 0.0,
+                                        cashSales = totalCash,
+                                        gcashSales = totalGcash,
+                                        totalExpenses = expenses,
+                                        startingCashFloat = startingFloat,
+                                        cashDrawer = cashDrawer,
+                                        profits = profits,
+                                        topSellingItem = topSellingItem,
+                                        orderCount = orders.size
+                                    )
+                                )
+                            },
+                            modifier = Modifier.padding(end = 8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Print, contentDescription = "Print Z-Reading", modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Print Z", fontSize = 12.sp)
+                        }
+
                         OutlinedButton(
                             onClick = { viewModel.exportData() },
                             modifier = Modifier.padding(end = 8.dp),
@@ -396,15 +424,15 @@ fun HistoryScreen(
                         }
                     }
                     
-                    items(orders, key = { it.id }) { order ->
+                    items(orders, key = { "order_${it.id}" }) { order ->
                         OrderHistoryCard(
                             order = order,
                             onShare = { shareOrderReceipt(context, order) },
-                            onDelete = { viewModel.deleteOrder(order.id) }
+                            onDelete = { pendingVoidOrderId = order.id }
                         )
                     }
                     
-                    if (orders.isNotEmpty()) {
+                    if (canLoadMore) {
                         item {
                             OutlinedButton(
                                 onClick = { viewModel.loadMoreOrders() },
@@ -420,23 +448,23 @@ fun HistoryScreen(
             if (showDateRangeDialog) {
                 val dateRangePickerState = rememberDateRangePickerState()
                 DatePickerDialog(
-                    onDismissRequest = { showDateRangeDialog = false },
+                    onDismissRequest = { viewModel.setShowDateRangeDialog(false) },
                     confirmButton = {
                         TextButton(onClick = {
                             viewModel.setDateRange(
                                 start = dateRangePickerState.selectedStartDateMillis,
                                 end = dateRangePickerState.selectedEndDateMillis?.plus(86399999)
                             )
-                            showDateRangeDialog = false
+                            viewModel.setShowDateRangeDialog(false)
                         }) { Text("Apply") }
                     },
                     dismissButton = {
                         Row {
                             TextButton(onClick = {
                                 viewModel.setDateRange(null, null)
-                                showDateRangeDialog = false
+                                viewModel.setShowDateRangeDialog(false)
                             }) { Text("Clear Filter") }
-                            TextButton(onClick = { showDateRangeDialog = false }) { Text("Cancel") }
+                            TextButton(onClick = { viewModel.setShowDateRangeDialog(false) }) { Text("Cancel") }
                         }
                     }
                 ) {
@@ -461,7 +489,18 @@ fun HistoryScreen(
                         showConfigDialog = false
                     }
                 )
-            }        }
+            }
+
+            pendingVoidOrderId?.let { orderId ->
+                VoidOrderDialog(
+                    onDismiss = { pendingVoidOrderId = null },
+                    onConfirm = { reason ->
+                        viewModel.voidOrder(orderId, reason)
+                        pendingVoidOrderId = null
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -657,6 +696,40 @@ $itemsText
         .setText(text)
         .intent
     context.startActivity(android.content.Intent.createChooser(intent, "Share Receipt"))
+}
+
+@Composable
+fun VoidOrderDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+    val reasons = listOf("Wrong order", "Customer cancelled", "Duplicate entry", "Other")
+    var selectedReason by remember { mutableStateOf(reasons.first()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Void Order", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Select a reason. Inventory will be restored.", fontSize = 13.sp)
+                reasons.forEach { reason ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedReason = reason }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = selectedReason == reason, onClick = { selectedReason = reason })
+                        Text(reason)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(selectedReason) }) {
+                Text("Void & Restock")
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+    )
 }
 
 @Composable

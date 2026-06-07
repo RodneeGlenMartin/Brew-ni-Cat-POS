@@ -3,12 +3,14 @@ package com.example.cattasticpos.data.repository
 import androidx.room.withTransaction
 import com.example.cattasticpos.data.local.PosDatabase
 import com.example.cattasticpos.data.local.dao.OrderDao
+import com.example.cattasticpos.data.local.dao.OrderWithItems
 import com.example.cattasticpos.data.local.entity.OrderEntity
 import com.example.cattasticpos.data.local.entity.OrderItemEntity
 import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.OrderItem
 import com.example.cattasticpos.domain.repository.OrderRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 class OrderRepositoryImpl(
@@ -18,34 +20,22 @@ class OrderRepositoryImpl(
     private val orderDao: OrderDao = database.orderDao()
 
     override fun getOrdersWithItems(startDate: Long, endDate: Long, limit: Int, offset: Int): Flow<List<Order>> {
-        return orderDao.getOrdersWithItems(startDate, endDate, limit, offset).map { list ->
-            list.map { wrapper ->
-                Order(
-                    id = wrapper.order.id,
-                    timestamp = wrapper.order.timestamp,
-                    subtotal = wrapper.order.subtotal,
-                    discountDeduction = wrapper.order.discountDeduction,
-                    discountLabel = wrapper.order.discountLabel,
-                    total = wrapper.order.total,
-                    paymentMethod = wrapper.order.paymentMethod,
-                    paymentReference = wrapper.order.paymentReference,
-                    items = wrapper.items.map { item ->
-                        OrderItem(
-                            id = item.id,
-                            orderId = item.orderId,
-                            itemId = item.itemId,
-                            itemName = item.itemName,
-                            variantId = item.variantId,
-                            variantName = item.variantName,
-                            flavor = item.flavor,
-                            quantity = item.quantity,
-                            unitPrice = item.unitPrice,
-                            totalPrice = item.totalPrice
-                        )
-                    }
-                )
-            }
+        return flow {
+            emit(getOrdersPage(startDate, endDate, Long.MAX_VALUE, limit))
         }
+    }
+
+    override suspend fun getOrdersPage(
+        startDate: Long,
+        endDate: Long,
+        beforeTimestamp: Long,
+        limit: Int
+    ): List<Order> {
+        return orderDao.getOrdersPage(startDate, endDate, beforeTimestamp, limit).map { it.toDomain() }
+    }
+
+    override suspend fun getOrderById(orderId: String): Order? {
+        return orderDao.getOrderWithItems(orderId)?.toDomain()
     }
 
     override suspend fun saveOrder(order: Order) {
@@ -57,7 +47,9 @@ class OrderRepositoryImpl(
             discountLabel = order.discountLabel,
             total = order.total,
             paymentMethod = order.paymentMethod,
-            paymentReference = order.paymentReference
+            paymentReference = order.paymentReference,
+            cashierId = order.cashierId,
+            tableLabel = order.tableLabel
         )
         val itemEntities = order.items.map { item ->
             OrderItemEntity(
@@ -109,5 +101,34 @@ class OrderRepositoryImpl(
             orderDao.deleteOrderItemsForOrder(orderId)
             orderDao.deleteOrderEntity(orderId)
         }
+    }
+
+    private fun OrderWithItems.toDomain(): Order {
+        return Order(
+            id = order.id,
+            timestamp = order.timestamp,
+            subtotal = order.subtotal,
+            discountDeduction = order.discountDeduction,
+            discountLabel = order.discountLabel,
+            total = order.total,
+            paymentMethod = order.paymentMethod,
+            paymentReference = order.paymentReference,
+            cashierId = order.cashierId,
+            tableLabel = order.tableLabel,
+            items = items.map { item ->
+                OrderItem(
+                    id = item.id,
+                    orderId = item.orderId,
+                    itemId = item.itemId,
+                    itemName = item.itemName,
+                    variantId = item.variantId,
+                    variantName = item.variantName,
+                    flavor = item.flavor,
+                    quantity = item.quantity,
+                    unitPrice = item.unitPrice,
+                    totalPrice = item.totalPrice
+                )
+            }
+        )
     }
 }

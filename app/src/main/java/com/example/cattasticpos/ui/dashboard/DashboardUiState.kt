@@ -1,6 +1,7 @@
 package com.example.cattasticpos.ui.dashboard
 
 import com.example.cattasticpos.domain.model.CartItem
+import com.example.cattasticpos.domain.model.Cashier
 import com.example.cattasticpos.domain.model.Category
 import com.example.cattasticpos.domain.model.Item
 import com.example.cattasticpos.domain.strategy.DiscountStrategy
@@ -11,7 +12,15 @@ import com.example.cattasticpos.domain.model.RecipeMapping
 data class HeldQueue(
     val id: String,
     val timestamp: Long,
-    val items: List<CartItem>
+    val items: List<CartItem>,
+    val tableLabel: String? = null
+)
+
+data class PaymentDialogState(
+    val selectedTabIndex: Int = 0,
+    val amountTenderedStr: String = "",
+    val gcashReference: String = "",
+    val receivingAccount: String = "Main GCash (0917...)"
 )
 
 data class DashboardUiState(
@@ -29,10 +38,14 @@ data class DashboardUiState(
     val snackbarMessage: String? = null,
     val heldQueues: List<HeldQueue> = emptyList(),
     val showQueuesDialog: Boolean = false,
+    val showHoldOrderDialog: Boolean = false,
     val currentQueueId: String? = null,
+    val activeTableLabel: String? = null,
+    val cashiers: List<Cashier> = emptyList(),
+    val selectedCashierId: String = "cashier_default",
     val showPaymentDialog: Boolean = false,
+    val paymentDialogState: PaymentDialogState = PaymentDialogState(),
     val showExpenseDialog: Boolean = false,
-    val showInventoryDialog: Boolean = false,
     val inventory: List<InventoryItem> = emptyList(),
     val recipeMappings: List<RecipeMapping> = emptyList()
 )
