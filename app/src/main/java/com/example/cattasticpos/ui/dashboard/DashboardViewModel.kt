@@ -62,14 +62,14 @@ class DashboardViewModel(
                 allItems = menuResult.items
                 
                 _uiState.update { state ->
-                    val defaultCatId = state.selectedCategoryId.ifBlank {
-                        categories.firstOrNull()?.id ?: ""
-                    }
+                    val selectedCatId = state.selectedCategoryId
+                        .takeIf { id -> categories.any { it.id == id } }
+                        ?: categories.firstOrNull()?.id.orEmpty()
                     state.copy(
                         categories = categories,
                         allMenuItems = allItems,
-                        selectedCategoryId = defaultCatId,
-                        menuItems = filterItemsByCategoryId(allItems, defaultCatId)
+                        selectedCategoryId = selectedCatId,
+                        menuItems = filterItemsByCategoryId(allItems, selectedCatId)
                     )
                 }
             }

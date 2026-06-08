@@ -13,6 +13,9 @@ interface RecipeDao {
     @Query("SELECT * FROM recipe_mappings")
     fun getAllMappings(): Flow<List<RecipeMappingEntity>>
 
+    @Query("SELECT COUNT(*) FROM recipe_mappings")
+    suspend fun getMappingCount(): Int
+
     @Query("SELECT * FROM recipe_mappings WHERE menuItemId = :menuItemId")
     fun getMappingsForMenu(menuItemId: String): Flow<List<RecipeMappingEntity>>
 

@@ -1,6 +1,7 @@
 package com.example.cattasticpos.data.local
 
 import android.content.Context
+import android.database.sqlite.SQLiteDatabase
 import android.os.Build
 import android.util.Log
 import java.io.File
@@ -38,15 +39,8 @@ internal object DatabaseSafetyBackup {
         }
 
         try {
+            checkpointDatabase(dbFile)
             dbFile.copyTo(backupFile(appContext), overwrite = true)
-            File(dbFile.parent, "$DB_NAME-wal").takeIf { it.exists() }?.copyTo(
-                File(appContext.filesDir, "$DB_NAME-wal.pre_upgrade"),
-                overwrite = true
-            )
-            File(dbFile.parent, "$DB_NAME-shm").takeIf { it.exists() }?.copyTo(
-                File(appContext.filesDir, "$DB_NAME-shm.pre_upgrade"),
-                overwrite = true
-            )
             Log.i(TAG, "Pre-upgrade database backup saved")
         } catch (e: Exception) {
             Log.e(TAG, "Could not create pre-upgrade backup", e)
@@ -77,19 +71,19 @@ internal object DatabaseSafetyBackup {
         val dbFile = context.getDatabasePath(DB_NAME)
         dbFile.parentFile?.mkdirs()
         backup.copyTo(dbFile, overwrite = true)
-        val walBackup = File(context.filesDir, "$DB_NAME-wal.pre_upgrade")
-        if (walBackup.exists()) {
-            walBackup.copyTo(File(dbFile.parent, "$DB_NAME-wal"), overwrite = true)
-        } else {
-            File(dbFile.parent, "$DB_NAME-wal").delete()
-        }
-        val shmBackup = File(context.filesDir, "$DB_NAME-shm.pre_upgrade")
-        if (shmBackup.exists()) {
-            shmBackup.copyTo(File(dbFile.parent, "$DB_NAME-shm"), overwrite = true)
-        } else {
-            File(dbFile.parent, "$DB_NAME-shm").delete()
-        }
+        File(dbFile.parent, "$DB_NAME-wal").delete()
+        File(dbFile.parent, "$DB_NAME-shm").delete()
         Log.i(TAG, "Restored database from pre-upgrade backup")
+    }
+
+    private fun checkpointDatabase(dbFile: File) {
+        SQLiteDatabase.openDatabase(
+            dbFile.path,
+            null,
+            SQLiteDatabase.OPEN_READWRITE
+        ).use { db ->
+            db.rawQuery("PRAGMA wal_checkpoint(FULL)", null).close()
+        }
     }
 
     private fun installedVersionCode(context: Context): Int {

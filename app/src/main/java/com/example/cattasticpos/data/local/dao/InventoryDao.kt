@@ -13,6 +13,9 @@ interface InventoryDao {
     @Query("SELECT * FROM inventory")
     fun getAllInventory(): Flow<List<InventoryEntity>>
 
+    @Query("SELECT COUNT(*) FROM inventory")
+    suspend fun getInventoryCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInventoryItems(items: List<InventoryEntity>)
 

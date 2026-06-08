@@ -16,6 +16,9 @@ interface MenuDao {
     @Query("SELECT * FROM items")
     fun getItems(): Flow<List<ItemEntity>>
 
+    @Query("SELECT COUNT(*) FROM categories")
+    suspend fun getCategoryCount(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategories(categories: List<CategoryEntity>)
 
