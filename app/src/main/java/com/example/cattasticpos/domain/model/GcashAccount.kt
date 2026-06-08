@@ -10,9 +10,7 @@ data class GcashAccount(
 ) {
     companion object {
         fun defaultAccounts(): List<GcashAccount> = listOf(
-            GcashAccount("gcash_main", "Main GCash (0917...)"),
-            GcashAccount("gcash_store", "Store GCash (0999...)"),
-            GcashAccount("gcash_personal", "Personal GCash")
+            GcashAccount("gcash_personal", "Personal")
         )
 
         fun fromJsonArray(array: JSONArray?): List<GcashAccount> {

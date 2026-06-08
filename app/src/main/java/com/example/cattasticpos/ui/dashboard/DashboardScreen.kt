@@ -468,15 +468,6 @@ private fun StorefrontCatalogPane(
                         }
                     } else {
                         browseGroupedItems.forEach { (categoryName, categoryItems) ->
-                            item(key = "header_$categoryName") {
-                                Text(
-                                    text = categoryName,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                )
-                            }
                             items(
                                 items = categoryItems.chunked(2),
                                 key = { row -> "browse_${categoryName}_${row.joinToString("_") { it.id }}" }
