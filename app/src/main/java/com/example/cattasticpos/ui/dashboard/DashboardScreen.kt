@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.Crossfade
@@ -16,6 +17,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -60,6 +62,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -92,6 +95,7 @@ import com.example.cattasticpos.ui.theme.adaptiveGlassBrush
 import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassContentColor
 import com.example.cattasticpos.ui.theme.ObsidianGlassCard
+import com.example.cattasticpos.ui.theme.ObsidianGlassSurface
 import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassFill
 import com.example.cattasticpos.ui.theme.specularBorderBrush
@@ -605,62 +609,16 @@ private fun DashboardCheckoutPanel(
     useBottomSheetStyle: Boolean = true
 ) {
     if (useBottomSheetStyle) {
-        Surface(
-            shadowElevation = 0.dp,
-            color = adaptiveGlassFill(darkTheme),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            border = checkoutBorder,
+        MobileGlassCartBar(
+            uiState = uiState,
+            cartItemCount = cartItemCount,
+            isCartExpanded = isCartExpanded,
+            checkoutBorder = checkoutBorder,
+            darkTheme = darkTheme,
+            onOpenCart = { onCartExpandedChange(true) },
+            onHoldOrder = onHoldOrder,
             modifier = modifier
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onCartExpandedChange(true) }
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Current Order ($cartItemCount)",
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = adaptiveGlassContentColor(darkTheme)
-                    )
-                    if (cartItemCount > 0) {
-                        Text(
-                            "Total: ₱${String.format("%.0f", uiState.total)}",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(
-                        onClick = onHoldOrder,
-                        enabled = uiState.activeCart.isNotEmpty(),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        FluentIcon(
-                            imageVector = FluentIcons.Pause,
-                            contentDescription = null,
-                            size = 14.dp,
-                            useGlassGradient = false
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Hold", fontSize = 12.sp)
-                    }
-                    IconButton(onClick = { onCartExpandedChange(true) }) {
-                        FluentIcon(
-                            imageVector = FluentIcons.ChevronUp,
-                            contentDescription = "Open order details",
-                            useGlassGradient = false
-                        )
-                    }
-                }
-            }
-        }
+        )
         if (isCartExpanded) {
             OrderCheckoutModalSheet(
                 uiState = uiState,
@@ -715,6 +673,109 @@ private fun DashboardCheckoutPanel(
     }
 }
 
+@Composable
+private fun MobileGlassCartBar(
+    uiState: DashboardUiState,
+    cartItemCount: Int,
+    isCartExpanded: Boolean,
+    checkoutBorder: BorderStroke,
+    darkTheme: Boolean,
+    onOpenCart: () -> Unit,
+    onHoldOrder: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val cartBarShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    val labelColor = adaptiveGlassContentColor(darkTheme)
+    val chevronRotation by animateFloatAsState(
+        targetValue = if (isCartExpanded) 180f else 0f,
+        animationSpec = iOSSpringSpec,
+        label = "cartChevronRotation"
+    )
+    val performHaptic = rememberBionicHaptic()
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(animationSpec = iOSSpringSize)
+            .clip(cartBarShape)
+            .background(adaptiveGlassBrush(darkTheme), cartBarShape)
+            .border(checkoutBorder.width, checkoutBorder.brush, cartBarShape)
+            .shadow(8.dp, cartBarShape, clip = false)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable {
+                        performHaptic(BionicHaptic.Selection)
+                        onOpenCart()
+                    }
+            ) {
+                AnimatedContent(
+                    targetState = cartItemCount,
+                    transitionSpec = {
+                        fadeIn(animationSpec = iOSSpringSpec) togetherWith fadeOut(animationSpec = iOSSpringSpec)
+                    },
+                    label = "cartCount"
+                ) { count ->
+                    Text(
+                        "Current Order ($count)",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = labelColor
+                    )
+                }
+                AnimatedVisibility(
+                    visible = cartItemCount > 0,
+                    enter = expandVertically(animationSpec = iOSSpringSize) + fadeIn(animationSpec = iOSSpringSpec),
+                    exit = shrinkVertically(animationSpec = iOSSpringSize) + fadeOut(animationSpec = iOSSpringSpec)
+                ) {
+                    Text(
+                        "Total: ₱${String.format("%.0f", uiState.total)}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(
+                    onClick = onHoldOrder,
+                    enabled = uiState.activeCart.isNotEmpty(),
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    FluentIcon(
+                        imageVector = FluentIcons.Pause,
+                        contentDescription = null,
+                        size = 14.dp,
+                        useGlassGradient = false
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Hold", fontSize = 12.sp)
+                }
+                IconButton(onClick = {
+                    performHaptic(BionicHaptic.Selection)
+                    onOpenCart()
+                }) {
+                    FluentIcon(
+                        imageVector = FluentIcons.ChevronUp,
+                        contentDescription = "Open order details",
+                        useGlassGradient = false,
+                        modifier = Modifier.graphicsLayer { rotationZ = chevronRotation }
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OrderCheckoutModalSheet(
@@ -734,62 +795,70 @@ private fun OrderCheckoutModalSheet(
         sheetState = sheetState,
         dragHandle = null,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = MaterialTheme.colorScheme.surface
+        containerColor = Color.Transparent
     ) {
-        Column(
+        AdaptiveGlassCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(horizontal = 16.dp)
-                .verticalScroll(bodyScrollState)
+                .windowInsetsPadding(WindowInsets.safeDrawing),
+            dialogMode = true,
+            surfaceAlpha = 0.94f
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 20.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 16.dp)
+                    .verticalScroll(bodyScrollState)
             ) {
-                Text(
-                    "Current Order ($cartItemCount)",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TextButton(
-                        onClick = onHoldOrder,
-                        enabled = uiState.activeCart.isNotEmpty(),
-                        modifier = Modifier.height(32.dp)
-                    ) {
-                        FluentIcon(
-                            imageVector = FluentIcons.Pause,
-                            contentDescription = null,
-                            size = 14.dp,
-                            useGlassGradient = false
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Hold", fontSize = 12.sp)
-                    }
-                    IconButton(onClick = onDismiss) {
-                        FluentIcon(
-                            imageVector = FluentIcons.ChevronDown,
-                            contentDescription = "Close order details",
-                            useGlassGradient = false
-                        )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp, bottom = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Current Order ($cartItemCount)",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = adaptiveGlassContentColor()
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(
+                            onClick = onHoldOrder,
+                            enabled = uiState.activeCart.isNotEmpty(),
+                            modifier = Modifier.height(32.dp)
+                        ) {
+                            FluentIcon(
+                                imageVector = FluentIcons.Pause,
+                                contentDescription = null,
+                                size = 14.dp,
+                                useGlassGradient = false
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Hold", fontSize = 12.sp)
+                        }
+                        IconButton(onClick = onDismiss) {
+                            FluentIcon(
+                                imageVector = FluentIcons.ChevronDown,
+                                contentDescription = "Close order details",
+                                useGlassGradient = false
+                            )
+                        }
                     }
                 }
+                DashboardCheckoutBody(
+                    uiState = uiState,
+                    onQuantityChange = onQuantityChange,
+                    onSelectDiscount = onSelectDiscount,
+                    onPlaceOrder = {
+                        onDismiss()
+                        onPlaceOrder()
+                    },
+                    listMaxHeight = null
+                )
+                Spacer(modifier = Modifier.height(16.dp))
             }
-            DashboardCheckoutBody(
-                uiState = uiState,
-                onQuantityChange = onQuantityChange,
-                onSelectDiscount = onSelectDiscount,
-                onPlaceOrder = {
-                    onDismiss()
-                    onPlaceOrder()
-                },
-                listMaxHeight = null
-            )
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -994,21 +1063,31 @@ fun ItemCard(
 
 @Composable
 fun CartItemRow(cartItem: CartItem, onQuantityChange: (String, Int) -> Unit) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(8.dp),
-        modifier = Modifier.fillMaxWidth()
+    val lineColor = adaptiveGlassContentColor()
+    ObsidianGlassSurface(
+        modifier = Modifier.fillMaxWidth(),
+        cornerRadius = 12.dp
     ) {
-        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Column(modifier = Modifier.weight(1f)) {
-                val variantFlavorText = if (cartItem.flavor.isNullOrBlank()) cartItem.variant.name else "${cartItem.variant.name}/${cartItem.flavor.substringAfter(": ").trim()}"
+                val variantFlavorText = if (cartItem.flavor.isNullOrBlank()) {
+                    cartItem.variant.name
+                } else {
+                    "${cartItem.variant.name}/${cartItem.flavor.substringAfter(": ").trim()}"
+                }
                 Text(
                     "${cartItem.quantity}x ${cartItem.item.name} ($variantFlavorText) - ₱${String.format("%.0f", cartItem.totalPrice)}",
                     fontWeight = FontWeight.Medium,
                     fontSize = 12.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = lineColor,
+                    lineHeight = 16.sp
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
