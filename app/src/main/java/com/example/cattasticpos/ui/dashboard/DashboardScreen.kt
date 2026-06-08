@@ -1200,18 +1200,19 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var currentStep by remember(item.id) { mutableStateOf(initialProductConfigStep(item)) }
     var selectedFlavorGroup by remember(item.id) { mutableStateOf<String?>(null) }
-    var selectedVariant by remember(item.id) {
-        mutableStateOf(item.variants.firstOrNull() ?: Variant("", "", 0.0))
-    }
+    var selectedVariant by remember(item.id) { mutableStateOf<Variant?>(null) }
     var selectedFlavor by remember(item.id) { mutableStateOf<String?>(null) }
     val hasComboDescriptions = item.variants.any { !it.description.isNullOrBlank() }
-    val displayPrice = if (selectedFlavor == null && selectedVariant.basePrice == 0.0) {
-        0.0
-    } else {
-        try {
-            selectedVariant.getPrice(selectedFlavor)
-        } catch (_: Exception) {
+    val displayPrice = run {
+        val variant = selectedVariant ?: return@run 0.0
+        if (selectedFlavor == null && variant.basePrice == 0.0) {
             0.0
+        } else {
+            try {
+                variant.getPrice(selectedFlavor)
+            } catch (_: Exception) {
+                0.0
+            }
         }
     }
 
@@ -1295,6 +1296,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                             isSelected = selectedFlavor == flavor,
                                             onSelect = {
                                                 selectedFlavor = flavor
+                                                selectedVariant = null
                                                 currentStep = ProductConfigStep.Size
                                             }
                                         )
@@ -1319,6 +1321,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                 onBack = {
                                     if (item.flavors.isNotEmpty()) {
                                         selectedFlavor = null
+                                        selectedVariant = null
                                         currentStep = ProductConfigStep.Flavor
                                     } else {
                                         onDismiss()
@@ -1335,7 +1338,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                             variant = variant,
                                             item = item,
                                             selectedFlavor = selectedFlavor,
-                                            isSelected = selectedVariant.id == variant.id,
+                                            isSelected = selectedVariant?.id == variant.id,
                                             onSelect = { selectedVariant = variant }
                                         )
                                     }
@@ -1358,7 +1361,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(
-                                            text = selectedVariant.description ?: "Select an option to view combo details.",
+                                            text = selectedVariant?.description ?: "Select an option to view combo details.",
                                             fontSize = 12.sp,
                                             color = panelTextColor,
                                             lineHeight = 16.sp
@@ -1399,8 +1402,9 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                 )
                             }
                             PosPrimaryButton(
-                                onClick = { onAddToCart(selectedVariant, selectedFlavor) },
-                                enabled = !(item.flavors.isNotEmpty() && selectedFlavor == null),
+                                onClick = { selectedVariant?.let { onAddToCart(it, selectedFlavor) } },
+                                enabled = selectedVariant != null &&
+                                    !(item.flavors.isNotEmpty() && selectedFlavor == null),
                                 modifier = Modifier.defaultMinSize(minWidth = 0.dp)
                             ) {
                                 PosButtonIconLabel(
