@@ -116,7 +116,7 @@ fun PinScreen(
                 textAlign = TextAlign.Center
             )
             Text(
-                text = "Admin access is required to continue",
+                text = "Enter your PIN to view order history",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,

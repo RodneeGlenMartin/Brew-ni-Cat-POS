@@ -19,7 +19,8 @@ import androidx.compose.ui.unit.dp
 
 fun screenDepth(screen: String): Int = when (screen) {
     "dashboard" -> 0
-    "history", "inventory" -> 1
+    "pin_history", "inventory" -> 1
+    "history" -> 2
     else -> 0
 }
 
