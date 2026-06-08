@@ -37,6 +37,7 @@ import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.foundation.text.KeyboardOptions
 import com.example.cattasticpos.domain.model.AppConfig
 import com.example.cattasticpos.domain.model.AppThemeAccent
@@ -668,8 +669,8 @@ fun HistoryScreen(
                     gcashAccounts = appConfig?.gcashAccounts.orEmpty(),
                     initialThemeAccentId = appConfig?.themeAccentId ?: AppThemeAccent.DEFAULT_ID,
                     onDismiss = { showConfigDialog = false },
-                    onSaveGoals = { target, float ->
-                        viewModel.saveBusinessGoals(target, float)
+                    onSaveWithPin = { target, float, currentPin, newPin ->
+                        viewModel.saveConfigWithPinVerification(target, float, currentPin, newPin)
                     },
                     onThemeAccentChange = { viewModel.updateThemeAccent(it) },
                     onSelectActiveCashier = { viewModel.selectActiveCashier(it) },
@@ -1131,7 +1132,7 @@ fun EditConfigDialog(
     gcashAccounts: List<GcashAccount>,
     initialThemeAccentId: String,
     onDismiss: () -> Unit,
-    onSaveGoals: suspend (Double, Double) -> Boolean,
+    onSaveWithPin: suspend (Double, Double, String, String) -> Boolean,
     onThemeAccentChange: (String) -> Unit,
     onSelectActiveCashier: (String) -> Unit,
     onAddCashier: (String) -> Unit,
@@ -1141,6 +1142,9 @@ fun EditConfigDialog(
 ) {
     var targetStr by remember { mutableStateOf(if (initialTarget % 1.0 == 0.0) initialTarget.toInt().toString() else initialTarget.toString()) }
     var floatStr by remember { mutableStateOf(if (initialFloat % 1.0 == 0.0) initialFloat.toInt().toString() else initialFloat.toString()) }
+    var currentPin by remember { mutableStateOf("") }
+    var newPin by remember { mutableStateOf("") }
+    var isPinError by remember { mutableStateOf(false) }
     var cashiersExpanded by remember { mutableStateOf(false) }
     var gcashExpanded by remember { mutableStateOf(false) }
     var newCashierName by remember { mutableStateOf("") }
@@ -1166,17 +1170,30 @@ fun EditConfigDialog(
                     scope.launch {
                         val t = targetStr.toDoubleOrNull() ?: initialTarget
                         val f = floatStr.toDoubleOrNull() ?: initialFloat
-                        if (t == initialTarget && f == initialFloat) {
+                        val goalsChanged = t != initialTarget || f != initialFloat
+                        val pinChangeRequested = newPin.length == 4
+
+                        if (!goalsChanged && !pinChangeRequested) {
                             onDismiss()
                             return@launch
                         }
-                        if (onSaveGoals(t, f)) {
+                        if (newPin.isNotEmpty() && newPin.length < 4) {
+                            isPinError = true
+                            return@launch
+                        }
+                        if (currentPin.isBlank()) {
+                            isPinError = true
+                            return@launch
+                        }
+                        if (onSaveWithPin(t, f, currentPin, newPin)) {
                             onDismiss()
+                        } else {
+                            isPinError = true
                         }
                     }
                 }
             ) {
-                Text("Save Goals")
+                Text("Save")
             }
         },
         content = {
@@ -1204,6 +1221,54 @@ fun EditConfigDialog(
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                CupertinoSection(header = "Security Setup") {
+                    CupertinoFormRow(label = "Current PIN") {
+                        OutlinedTextField(
+                            value = currentPin,
+                            onValueChange = { value ->
+                                currentPin = value.filter { it.isDigit() }.take(4)
+                                isPinError = false
+                            },
+                            label = { Text("Required to save goals or change PIN") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                            visualTransformation = PasswordVisualTransformation(),
+                            isError = isPinError,
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                    CupertinoFormRow(label = "New PIN", showDivider = false) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            OutlinedTextField(
+                                value = newPin,
+                                onValueChange = { value ->
+                                    newPin = value.filter { it.isDigit() }.take(4)
+                                    isPinError = false
+                                },
+                                label = { Text("Optional — leave blank to keep current PIN") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                                visualTransformation = PasswordVisualTransformation(),
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            if (isPinError) {
+                                Text(
+                                    "Incorrect current PIN or incomplete new PIN",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 12.sp
+                                )
+                            } else if (newPin.isNotEmpty() && newPin.length < 4) {
+                                Text(
+                                    "PIN must be 4 digits",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
                     }
                 }
 
