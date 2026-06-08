@@ -1276,6 +1276,8 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                 subtitle = selectedFlavorGroup ?: "Choose a flavor",
                                 onBack = {
                                     if (itemHasGroupedFlavors(item)) {
+                                        selectedFlavor = null
+                                        selectedFlavorGroup = null
                                         currentStep = ProductConfigStep.FlavorGroup
                                     } else {
                                         onDismiss()
@@ -1316,6 +1318,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                     ?: if (item.flavors.isEmpty()) "Choose an option" else "Choose a size",
                                 onBack = {
                                     if (item.flavors.isNotEmpty()) {
+                                        selectedFlavor = null
                                         currentStep = ProductConfigStep.Flavor
                                     } else {
                                         onDismiss()
