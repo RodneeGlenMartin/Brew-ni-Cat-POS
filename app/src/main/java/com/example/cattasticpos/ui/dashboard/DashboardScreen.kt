@@ -6,7 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.Crossfade
@@ -35,7 +34,6 @@ import com.example.cattasticpos.ui.adaptive.CollapsingGlassScaffold
 import com.example.cattasticpos.ui.adaptive.CollapsingHeaderState
 import com.example.cattasticpos.ui.adaptive.LocalCupertinoColors
 import com.example.cattasticpos.ui.adaptive.collapsingNestedScroll
-import com.example.cattasticpos.ui.adaptive.iOSSpringDp
 import com.example.cattasticpos.ui.adaptive.iOSSpringSpec
 import com.example.cattasticpos.ui.adaptive.iOSSpringSize
 import com.example.cattasticpos.ui.adaptive.liquidSwipeTransition
@@ -110,14 +108,11 @@ fun DashboardScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var isCartExpanded by remember { mutableStateOf(false) }
     val cartItemCount = uiState.activeCart.sumOf { it.quantity }
-    var lastCartItemCount by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(cartItemCount) {
-        when {
-            cartItemCount == 0 -> isCartExpanded = false
-            lastCartItemCount == 0 && cartItemCount > 0 -> isCartExpanded = true
+        if (cartItemCount == 0) {
+            isCartExpanded = false
         }
-        lastCartItemCount = cartItemCount
     }
 
     LaunchedEffect(uiState.snackbarMessage) {
@@ -255,11 +250,6 @@ fun DashboardScreen(
                     )
                 }
             } else {
-                val cartBottomPadding by animateDpAsState(
-                    targetValue = if (isCartExpanded) 380.dp else 120.dp,
-                    animationSpec = iOSSpringDp,
-                    label = "cartPadding"
-                )
                 Column(modifier = Modifier.weight(1f)) {
                     StorefrontCatalogPane(
                         modifier = Modifier.weight(1f),
@@ -272,8 +262,7 @@ fun DashboardScreen(
                         onSearchExpandedChange = { isSearchExpanded = it },
                         onCategorySelected = { viewModel.selectCategory(it) },
                         onItemClick = { viewModel.showConfigurationSheet(it) },
-                        compactGlows = true,
-                        bottomContentPadding = cartBottomPadding
+                        compactGlows = true
                     )
                     DashboardCheckoutPanel(
                         modifier = Modifier.fillMaxWidth(),
@@ -615,86 +604,73 @@ private fun DashboardCheckoutPanel(
     forceExpanded: Boolean = false,
     useBottomSheetStyle: Boolean = true
 ) {
-    val showCartBody = forceExpanded || isCartExpanded
-
     if (useBottomSheetStyle) {
         Surface(
             shadowElevation = 0.dp,
             color = adaptiveGlassFill(darkTheme),
             shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
             border = checkoutBorder,
-            modifier = modifier.animateContentSize(animationSpec = iOSSpringSize)
+            modifier = modifier
         ) {
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .clickable { onCartExpandedChange(true) }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onCartExpandedChange(!isCartExpanded) },
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Current Order ($cartItemCount)",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = adaptiveGlassContentColor(darkTheme)
+                    )
+                    if (cartItemCount > 0) {
                         Text(
-                            "Current Order ($cartItemCount)",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium
+                            "Total: ₱${String.format("%.0f", uiState.total)}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
                         )
-                        if (cartItemCount > 0) {
-                            Text(
-                                "Total: ₱${String.format("%.0f", uiState.total)}",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(
-                            onClick = onHoldOrder,
-                            enabled = uiState.activeCart.isNotEmpty(),
-                            modifier = Modifier.height(32.dp)
-                        ) {
-                            FluentIcon(
-                                imageVector = FluentIcons.Pause,
-                                contentDescription = null,
-                                size = 14.dp,
-                                useGlassGradient = false
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Hold", fontSize = 12.sp)
-                        }
-                        IconButton(onClick = { onCartExpandedChange(!isCartExpanded) }) {
-                            FluentIcon(
-                                imageVector = if (isCartExpanded) FluentIcons.ChevronDown else FluentIcons.ChevronUp,
-                                contentDescription = if (isCartExpanded) {
-                                    "Collapse order panel"
-                                } else {
-                                    "Expand order panel"
-                                },
-                                useGlassGradient = false
-                            )
-                        }
                     }
                 }
-                AnimatedVisibility(
-                    visible = showCartBody,
-                    enter = expandVertically(animationSpec = iOSSpringSize) + fadeIn(animationSpec = iOSSpringSpec),
-                    exit = shrinkVertically(animationSpec = iOSSpringSize) + fadeOut(animationSpec = iOSSpringSpec)
-                ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        DashboardCheckoutBody(
-                            uiState = uiState,
-                            onQuantityChange = onQuantityChange,
-                            onSelectDiscount = onSelectDiscount,
-                            onPlaceOrder = onPlaceOrder
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = onHoldOrder,
+                        enabled = uiState.activeCart.isNotEmpty(),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        FluentIcon(
+                            imageVector = FluentIcons.Pause,
+                            contentDescription = null,
+                            size = 14.dp,
+                            useGlassGradient = false
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Hold", fontSize = 12.sp)
+                    }
+                    IconButton(onClick = { onCartExpandedChange(true) }) {
+                        FluentIcon(
+                            imageVector = FluentIcons.ChevronUp,
+                            contentDescription = "Open order details",
+                            useGlassGradient = false
                         )
                     }
                 }
             }
+        }
+        if (isCartExpanded) {
+            OrderCheckoutModalSheet(
+                uiState = uiState,
+                cartItemCount = cartItemCount,
+                onDismiss = { onCartExpandedChange(false) },
+                onHoldOrder = onHoldOrder,
+                onPlaceOrder = onPlaceOrder,
+                onQuantityChange = onQuantityChange,
+                onSelectDiscount = onSelectDiscount
+            )
         }
     } else {
         Column(
@@ -735,6 +711,85 @@ private fun DashboardCheckoutPanel(
                 onPlaceOrder = onPlaceOrder,
                 listMaxHeight = null
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OrderCheckoutModalSheet(
+    uiState: DashboardUiState,
+    cartItemCount: Int,
+    onDismiss: () -> Unit,
+    onHoldOrder: () -> Unit,
+    onPlaceOrder: () -> Unit,
+    onQuantityChange: (String, Int) -> Unit,
+    onSelectDiscount: (DiscountStrategy) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val bodyScrollState = rememberScrollState()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        dragHandle = null,
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(bodyScrollState)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp, bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Current Order ($cartItemCount)",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = onHoldOrder,
+                        enabled = uiState.activeCart.isNotEmpty(),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        FluentIcon(
+                            imageVector = FluentIcons.Pause,
+                            contentDescription = null,
+                            size = 14.dp,
+                            useGlassGradient = false
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Hold", fontSize = 12.sp)
+                    }
+                    IconButton(onClick = onDismiss) {
+                        FluentIcon(
+                            imageVector = FluentIcons.ChevronDown,
+                            contentDescription = "Close order details",
+                            useGlassGradient = false
+                        )
+                    }
+                }
+            }
+            DashboardCheckoutBody(
+                uiState = uiState,
+                onQuantityChange = onQuantityChange,
+                onSelectDiscount = onSelectDiscount,
+                onPlaceOrder = {
+                    onDismiss()
+                    onPlaceOrder()
+                },
+                listMaxHeight = null
+            )
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -947,7 +1002,14 @@ fun CartItemRow(cartItem: CartItem, onQuantityChange: (String, Int) -> Unit) {
         Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 val variantFlavorText = if (cartItem.flavor.isNullOrBlank()) cartItem.variant.name else "${cartItem.variant.name}/${cartItem.flavor.substringAfter(": ").trim()}"
-                Text("${cartItem.quantity}x ${cartItem.item.name} ($variantFlavorText) - ₱${String.format("%.0f", cartItem.totalPrice)}", fontWeight = FontWeight.Medium, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    "${cartItem.quantity}x ${cartItem.item.name} ($variantFlavorText) - ₱${String.format("%.0f", cartItem.totalPrice)}",
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 12.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { onQuantityChange(cartItem.id, -1) }, modifier = Modifier.size(24.dp)) {
