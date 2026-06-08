@@ -4,7 +4,6 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import com.example.cattasticpos.data.local.entity.AppConfigEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -18,7 +17,4 @@ interface AppConfigDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertConfig(config: AppConfigEntity)
-
-    @Update
-    suspend fun updateConfig(config: AppConfigEntity)
 }

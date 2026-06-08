@@ -319,7 +319,9 @@ class HistoryViewModel(
     }
 
     suspend fun saveBusinessGoals(targetSales: Double, startingCashFloat: Double): Boolean {
-        val config = appConfigRepository.getAppConfig().first { it != null } ?: return false
+        val config = appConfigState.value
+            ?: appConfigRepository.getAppConfig().first { it != null }
+            ?: return false
         appConfigRepository.updateConfig(targetSales, startingCashFloat, config.pinHash)
         return true
     }

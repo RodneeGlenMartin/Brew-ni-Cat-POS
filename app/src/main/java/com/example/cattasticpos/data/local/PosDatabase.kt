@@ -55,18 +55,37 @@ abstract class PosDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context, scope: CoroutineScope): PosDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    PosDatabase::class.java,
-                    "pos_database"
-                )
-                .fallbackToDestructiveMigration()
-                .addMigrations(MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12)
-                .addCallback(PosDatabaseCallback(scope))
-                .build()
+                val appContext = context.applicationContext
+                DatabaseSafetyBackup.prepareForUpgrade(appContext)
+                val instance = try {
+                    buildDatabase(appContext, scope).also { db ->
+                        db.openHelper.writableDatabase
+                    }
+                } catch (e: Exception) {
+                    DatabaseSafetyBackup.markMigrationFailed(appContext)
+                    android.util.Log.e("PosDatabase", "Database open/migration failed", e)
+                    throw e
+                }
                 INSTANCE = instance
                 instance
             }
+        }
+
+        private fun buildDatabase(appContext: Context, scope: CoroutineScope): PosDatabase {
+            return Room.databaseBuilder(
+                appContext,
+                PosDatabase::class.java,
+                "pos_database"
+            )
+                .addMigrations(
+                    MIGRATION_9_10,
+                    MIGRATION_10_11,
+                    MIGRATION_11_12,
+                    MIGRATION_10_12
+                )
+                .addCallback(PosDatabaseCallback(scope))
+                .addCallback(MigrationSuccessCallback(appContext))
+                .build()
         }
 
         val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
@@ -79,82 +98,32 @@ abstract class PosDatabase : RoomDatabase() {
             }
         }
 
-        val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
+        val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("DROP TABLE IF EXISTS order_items")
-                db.execSQL("DROP TABLE IF EXISTS void_records")
-                db.execSQL("DROP TABLE IF EXISTS orders")
-                db.execSQL(
-                    """
-                    CREATE TABLE orders (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                        timestamp INTEGER NOT NULL,
-                        subtotal REAL NOT NULL,
-                        discountDeduction REAL NOT NULL,
-                        discountLabel TEXT NOT NULL,
-                        total REAL NOT NULL,
-                        paymentMethod TEXT NOT NULL,
-                        paymentReference TEXT,
-                        cashierId TEXT,
-                        cashierName TEXT,
-                        tableLabel TEXT
-                    )
-                    """.trimIndent()
-                )
-                db.execSQL(
-                    """
-                    CREATE TABLE order_items (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                        orderId INTEGER NOT NULL,
-                        itemId TEXT NOT NULL,
-                        itemName TEXT NOT NULL,
-                        variantId TEXT NOT NULL,
-                        variantName TEXT NOT NULL,
-                        flavor TEXT,
-                        quantity INTEGER NOT NULL,
-                        unitPrice REAL NOT NULL,
-                        totalPrice REAL NOT NULL,
-                        FOREIGN KEY(orderId) REFERENCES orders(id) ON DELETE CASCADE
-                    )
-                    """.trimIndent()
-                )
-                db.execSQL("CREATE INDEX IF NOT EXISTS index_order_items_orderId ON order_items(orderId)")
-                db.execSQL(
-                    """
-                    CREATE TABLE void_records (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        orderId INTEGER NOT NULL,
-                        reason TEXT NOT NULL,
-                        timestamp INTEGER NOT NULL,
-                        cashierId TEXT,
-                        orderTotal REAL NOT NULL
-                    )
-                    """.trimIndent()
-                )
+                DatabaseMigrationUtils.migrate10To11(db)
             }
         }
 
-        val MIGRATION_10_11 = object : androidx.room.migration.Migration(10, 11) {
+        val MIGRATION_11_12 = object : androidx.room.migration.Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE orders ADD COLUMN cashierId TEXT")
-                db.execSQL("ALTER TABLE orders ADD COLUMN tableLabel TEXT")
-                db.execSQL(
-                    "ALTER TABLE app_config ADD COLUMN cashiersJson TEXT NOT NULL DEFAULT '" +
-                        AppConfigEntity.DEFAULT_CASHIERS_JSON.replace("'", "''") + "'"
-                )
-                db.execSQL(
-                    """
-                    CREATE TABLE IF NOT EXISTS void_records (
-                        id TEXT NOT NULL PRIMARY KEY,
-                        orderId TEXT NOT NULL,
-                        reason TEXT NOT NULL,
-                        timestamp INTEGER NOT NULL,
-                        cashierId TEXT,
-                        orderTotal REAL NOT NULL
-                    )
-                    """.trimIndent()
-                )
+                DatabaseMigrationUtils.migrate11To12(db)
             }
+        }
+
+        /** Single-hop path for users still on v10 — preserves all orders in one migration. */
+        val MIGRATION_10_12 = object : androidx.room.migration.Migration(10, 12) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                DatabaseMigrationUtils.migrate10To11(db)
+                DatabaseMigrationUtils.migrate11To12(db)
+            }
+        }
+    }
+
+    private class MigrationSuccessCallback(
+        private val appContext: Context
+    ) : RoomDatabase.Callback() {
+        override fun onOpen(db: SupportSQLiteDatabase) {
+            DatabaseSafetyBackup.markMigrationSucceeded(appContext)
         }
     }
 
@@ -175,8 +144,8 @@ abstract class PosDatabase : RoomDatabase() {
                 appConfigDao.insertConfig(
                     AppConfigEntity(
                         id = 1,
-                        targetSales = 5000.0,
-                        startingCashFloat = 500.0,
+                        targetSales = AppConfigEntity.DEFAULT_TARGET_SALES,
+                        startingCashFloat = AppConfigEntity.DEFAULT_STARTING_CASH_FLOAT,
                         pinHash = "otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0=",
                         cashiersJson = AppConfigEntity.DEFAULT_CASHIERS_JSON
                     )

@@ -24,7 +24,7 @@ class AppConfigRepositoryImpl(
     override suspend fun updateConfig(targetSales: Double, startingCashFloat: Double, pinHash: String) {
         val existing = dao.getAppConfigOnce()
         val paymentConfig = PaymentConfigJson.fromStoredJson(existing?.cashiersJson.orEmpty())
-        dao.updateConfig(
+        dao.insertConfig(
             AppConfigEntity(
                 id = 1,
                 targetSales = targetSales,
@@ -40,11 +40,11 @@ class AppConfigRepositoryImpl(
         val paymentConfig = PaymentConfigJson.fromStoredJson(existing?.cashiersJson.orEmpty())
         val activeId = paymentConfig.activeCashierId?.takeIf { id -> cashiers.any { it.id == id } }
             ?: cashiers.firstOrNull()?.id
-        dao.updateConfig(
+        dao.insertConfig(
             AppConfigEntity(
                 id = 1,
-                targetSales = existing?.targetSales ?: 5000.0,
-                startingCashFloat = existing?.startingCashFloat ?: 500.0,
+                targetSales = existing?.targetSales ?: AppConfigEntity.DEFAULT_TARGET_SALES,
+                startingCashFloat = existing?.startingCashFloat ?: AppConfigEntity.DEFAULT_STARTING_CASH_FLOAT,
                 pinHash = existing?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
                 cashiersJson = PaymentConfigJson.toStoredJson(
                     cashiers = cashiers,
@@ -59,11 +59,11 @@ class AppConfigRepositoryImpl(
     override suspend fun updateThemeAccent(themeAccentId: String) {
         val existing = dao.getAppConfigOnce()
         val paymentConfig = PaymentConfigJson.fromStoredJson(existing?.cashiersJson.orEmpty())
-        dao.updateConfig(
+        dao.insertConfig(
             AppConfigEntity(
                 id = 1,
-                targetSales = existing?.targetSales ?: 5000.0,
-                startingCashFloat = existing?.startingCashFloat ?: 500.0,
+                targetSales = existing?.targetSales ?: AppConfigEntity.DEFAULT_TARGET_SALES,
+                startingCashFloat = existing?.startingCashFloat ?: AppConfigEntity.DEFAULT_STARTING_CASH_FLOAT,
                 pinHash = existing?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
                 cashiersJson = paymentConfig.copy(themeAccentId = themeAccentId).toStoredJson()
             )
@@ -74,11 +74,11 @@ class AppConfigRepositoryImpl(
         val existing = dao.getAppConfigOnce()
         val paymentConfig = PaymentConfigJson.fromStoredJson(existing?.cashiersJson.orEmpty())
         if (paymentConfig.cashiers.none { it.id == activeCashierId }) return
-        dao.updateConfig(
+        dao.insertConfig(
             AppConfigEntity(
                 id = 1,
-                targetSales = existing?.targetSales ?: 5000.0,
-                startingCashFloat = existing?.startingCashFloat ?: 500.0,
+                targetSales = existing?.targetSales ?: AppConfigEntity.DEFAULT_TARGET_SALES,
+                startingCashFloat = existing?.startingCashFloat ?: AppConfigEntity.DEFAULT_STARTING_CASH_FLOAT,
                 pinHash = existing?.pinHash ?: AppConfig.DEFAULT_PIN_HASH,
                 cashiersJson = paymentConfig.copy(activeCashierId = activeCashierId).toStoredJson()
             )

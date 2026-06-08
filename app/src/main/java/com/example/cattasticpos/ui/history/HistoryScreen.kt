@@ -192,8 +192,10 @@ fun HistoryScreen(
                 orders.size
             }
 
-            val startingFloat = appConfig?.startingCashFloat ?: 500.0
-            val targetSales = appConfig?.targetSales ?: 5000.0
+            val startingFloat = appConfig?.startingCashFloat
+                ?: com.example.cattasticpos.data.local.entity.AppConfigEntity.DEFAULT_STARTING_CASH_FLOAT
+            val targetSales = appConfig?.targetSales
+                ?: com.example.cattasticpos.data.local.entity.AppConfigEntity.DEFAULT_TARGET_SALES
             val totalCash = cashSales ?: 0.0
             val totalGcash = gcashSales ?: 0.0
             val totalSales = grossSales ?: 0.0
@@ -656,8 +658,10 @@ fun HistoryScreen(
 
             if (showConfigDialog) {
                 EditConfigDialog(
-                    initialTarget = appConfig?.targetSales ?: 5000.0,
-                    initialFloat = appConfig?.startingCashFloat ?: 500.0,
+                    initialTarget = appConfig?.targetSales
+                        ?: com.example.cattasticpos.data.local.entity.AppConfigEntity.DEFAULT_TARGET_SALES,
+                    initialFloat = appConfig?.startingCashFloat
+                        ?: com.example.cattasticpos.data.local.entity.AppConfigEntity.DEFAULT_STARTING_CASH_FLOAT,
                     cashiers = appConfig?.cashiers.orEmpty(),
                     activeCashierId = appConfig?.activeCashierId,
                     cashierSalesToday = cashierSalesToday,
