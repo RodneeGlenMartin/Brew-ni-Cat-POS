@@ -40,7 +40,6 @@ import com.example.cattasticpos.ui.adaptive.liquidSwipeTransition
 import com.example.cattasticpos.ui.adaptive.rememberCollapsingHeaderState
 import com.example.cattasticpos.ui.adaptive.rememberLiquidGlassHazeState
 import com.example.cattasticpos.ui.adaptive.liquidGlassSource
-import com.example.cattasticpos.ui.adaptive.liquidGlassChild
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding

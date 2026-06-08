@@ -6,8 +6,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -18,12 +18,19 @@ import dev.chrisbanes.haze.hazeChild
 fun rememberLiquidGlassHazeState(): HazeState = remember { HazeState() }
 
 @Composable
+private fun resolveHazeBackgroundColor(darkTheme: Boolean): Color {
+    val themeSurface = MaterialTheme.colorScheme.surface
+    if (themeSurface.isSpecified) return themeSurface
+    return if (darkTheme) Color(0xFF1C1B1F) else Color(0xFFFFFBFE)
+}
+
+@Composable
 fun liquidGlassHazeStyle(
     darkTheme: Boolean = isSystemInDarkTheme(),
     intensity: Float = 1f
 ): HazeStyle {
     val effective = intensity.coerceIn(0f, 1f)
-    val backgroundColor = MaterialTheme.colorScheme.surface
+    val backgroundColor = resolveHazeBackgroundColor(darkTheme)
     return if (darkTheme) {
         HazeStyle(
             backgroundColor = backgroundColor,
@@ -51,13 +58,8 @@ fun Modifier.liquidGlassChild(
 ): Modifier {
     val effective = intensity.coerceIn(0f, 1f)
     if (effective <= 0f) return this
-    val endIntensityFactor = if (darkTheme) 0.35f else 0.5f
-    val backgroundColor = MaterialTheme.colorScheme.surface
+    val backgroundColor = resolveHazeBackgroundColor(darkTheme)
     return hazeChild(state = state, style = liquidGlassHazeStyle(darkTheme, effective)) {
         this.backgroundColor = backgroundColor
-        progressive = HazeProgressive.verticalGradient(
-            startIntensity = effective,
-            endIntensity = effective * endIntensityFactor
-        )
     }
 }

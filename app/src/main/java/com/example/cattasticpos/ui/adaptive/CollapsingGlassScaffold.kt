@@ -212,10 +212,16 @@ fun CollapsingGlassScaffold(
                     .height(barHeight)
             ) {
                 if (collapseProgress > 0f) {
+                    // Solid scrim instead of Haze blur — Haze 1.1.x crashes when backgroundColor
+                    // is missing during progressive redraws (e.g. add-to-cart on some devices).
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .liquidGlassChild(state = hazeState, intensity = collapseProgress)
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(
+                                    alpha = (0.88f * collapseProgress).coerceIn(0f, 1f)
+                                )
+                            )
                     )
                 }
 
