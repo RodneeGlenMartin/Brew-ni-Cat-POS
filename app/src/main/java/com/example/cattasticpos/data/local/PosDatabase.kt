@@ -149,6 +149,11 @@ abstract class PosDatabase : RoomDatabase() {
                         database.recipeDao(),
                         database.appConfigDao()
                     )
+                    MenuContentUpdater.applyPendingUpdates(
+                        database.menuDao(),
+                        database.inventoryDao(),
+                        database.recipeDao()
+                    )
                 }
             }
         }

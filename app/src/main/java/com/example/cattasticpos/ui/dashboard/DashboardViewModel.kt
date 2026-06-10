@@ -234,7 +234,7 @@ class DashboardViewModel(
                 paymentReference,
                 cashierId = state.selectedCashierId,
                 cashierName = cashierName,
-                tableLabel = state.activeTableLabel
+                tableLabel = resolveCheckoutTableLabel(state.activeTableLabel, state.paymentDialogState)
             )
             if (result.isSuccess) {
                 result.getOrNull()?.let { order ->
@@ -272,6 +272,20 @@ class DashboardViewModel(
 
     fun clearCheckoutEvent() {
         // Kept for API compatibility; checkout now uses snackbarMessage only.
+    }
+
+    private fun resolveCheckoutTableLabel(
+        heldLabel: String?,
+        payment: PaymentDialogState
+    ): String? {
+        heldLabel?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
+        return when (payment.serviceType) {
+            OrderServiceType.DINE_IN -> {
+                val table = payment.tableNumber.trim()
+                if (table.isNotEmpty()) "Dine In - Table $table" else "Dine In"
+            }
+            OrderServiceType.TAKE_OUT -> "Take Out"
+        }
     }
 
     // Removed int queueCounter

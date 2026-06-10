@@ -1089,6 +1089,45 @@ fun PaymentCheckoutDialog(
         content = {
             Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
+                    "Order Type",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CupertinoSegmentChip(
+                        selected = paymentState.serviceType == OrderServiceType.DINE_IN,
+                        onClick = { onPaymentStateChange(paymentState.copy(serviceType = OrderServiceType.DINE_IN)) },
+                        label = "Dine In",
+                        modifier = Modifier.weight(1f)
+                    )
+                    CupertinoSegmentChip(
+                        selected = paymentState.serviceType == OrderServiceType.TAKE_OUT,
+                        onClick = {
+                            onPaymentStateChange(
+                                paymentState.copy(
+                                    serviceType = OrderServiceType.TAKE_OUT,
+                                    tableNumber = ""
+                                )
+                            )
+                        },
+                        label = "Take Out",
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                if (paymentState.serviceType == OrderServiceType.DINE_IN) {
+                    OutlinedTextField(
+                        value = paymentState.tableNumber,
+                        onValueChange = { onPaymentStateChange(paymentState.copy(tableNumber = it)) },
+                        label = { Text("Table # (optional)") },
+                        placeholder = { Text("e.g. Table 3") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                Text(
                     "Total Due",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1177,8 +1216,20 @@ fun PaymentCheckoutDialog(
 private enum class ProductConfigStep {
     FlavorGroup,
     Flavor,
-    Size
+    Size,
+    CoffeeOption
 }
+
+private fun isDrinkItem(item: Item): Boolean = item.categoryId == "cat_drinks"
+
+private fun buildCartFlavor(baseFlavor: String?, coffeeOption: String?): String? =
+    buildString {
+        if (!baseFlavor.isNullOrBlank()) append(baseFlavor)
+        if (!coffeeOption.isNullOrBlank()) {
+            if (isNotEmpty()) append(" — ")
+            append(coffeeOption)
+        }
+    }.takeIf { it.isNotBlank() }
 
 private fun itemHasGroupedFlavors(item: Item): Boolean =
     item.flavors.any { it.contains(":") }
@@ -1202,7 +1253,13 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
     var selectedFlavorGroup by remember(item.id) { mutableStateOf<String?>(null) }
     var selectedVariant by remember(item.id) { mutableStateOf<Variant?>(null) }
     var selectedFlavor by remember(item.id) { mutableStateOf<String?>(null) }
+    var selectedCoffeeOption by remember(item.id) { mutableStateOf<String?>(null) }
+    val isDrink = isDrinkItem(item)
     val hasComboDescriptions = item.variants.any { !it.description.isNullOrBlank() }
+    val showCheckoutFooter = when {
+        isDrink -> currentStep == ProductConfigStep.CoffeeOption
+        else -> currentStep == ProductConfigStep.Size
+    }
     val displayPrice = run {
         val variant = selectedVariant ?: return@run 0.0
         if (selectedFlavor == null && variant.basePrice == 0.0) {
@@ -1322,6 +1379,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                     if (item.flavors.isNotEmpty()) {
                                         selectedFlavor = null
                                         selectedVariant = null
+                                        selectedCoffeeOption = null
                                         currentStep = ProductConfigStep.Flavor
                                     } else {
                                         onDismiss()
@@ -1339,7 +1397,13 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                             item = item,
                                             selectedFlavor = selectedFlavor,
                                             isSelected = selectedVariant?.id == variant.id,
-                                            onSelect = { selectedVariant = variant }
+                                            onSelect = {
+                                                selectedVariant = variant
+                                                if (isDrink) {
+                                                    selectedCoffeeOption = null
+                                                    currentStep = ProductConfigStep.CoffeeOption
+                                                }
+                                            }
                                         )
                                     }
                                 }
@@ -1370,12 +1434,48 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                 }
                             }
                         }
+
+                        ProductConfigStep.CoffeeOption -> {
+                            ProductConfigStepHeader(
+                                title = item.name,
+                                subtitle = listOfNotNull(
+                                    selectedFlavor?.substringAfter(": ")?.trim(),
+                                    selectedVariant?.name
+                                ).joinToString(" · ").ifBlank { "Coffee option" },
+                                onBack = {
+                                    selectedCoffeeOption = null
+                                    currentStep = ProductConfigStep.Size
+                                }
+                            )
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf("With Coffee", "Without Coffee").forEach { option ->
+                                    key(option) {
+                                        FlavorOptionRow(
+                                            label = option,
+                                            isSelected = selectedCoffeeOption == option,
+                                            onSelect = { selectedCoffeeOption = option }
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Tap an option to continue",
+                                modifier = Modifier.fillMaxWidth(),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
             }
 
             Crossfade(
-                targetState = currentStep == ProductConfigStep.Size,
+                targetState = showCheckoutFooter,
                 animationSpec = tween(durationMillis = 140),
                 label = "ProductConfigFooter"
             ) { showCheckoutFooter ->
@@ -1402,9 +1502,13 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                 )
                             }
                             PosPrimaryButton(
-                                onClick = { selectedVariant?.let { onAddToCart(it, selectedFlavor) } },
+                                onClick = {
+                                    val variant = selectedVariant ?: return@PosPrimaryButton
+                                    onAddToCart(variant, buildCartFlavor(selectedFlavor, selectedCoffeeOption))
+                                },
                                 enabled = selectedVariant != null &&
-                                    !(item.flavors.isNotEmpty() && selectedFlavor == null),
+                                    !(item.flavors.isNotEmpty() && selectedFlavor == null) &&
+                                    (!isDrink || selectedCoffeeOption != null),
                                 modifier = Modifier.defaultMinSize(minWidth = 0.dp)
                             ) {
                                 PosButtonIconLabel(

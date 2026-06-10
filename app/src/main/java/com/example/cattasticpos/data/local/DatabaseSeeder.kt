@@ -69,6 +69,7 @@ internal object DatabaseSeeder {
                 listOf(
                     InventoryEntity("inv_cups", "Cups", "pcs", 100.0, 20.0),
                     InventoryEntity("inv_takoyaki", "Takoyaki Balls", "pcs", 100.0, 20.0),
+                    InventoryEntity("inv_shrimp", "Shrimp Takoyaki", "pcs", 100.0, 20.0),
                     InventoryEntity("inv_fries", "Potato Fries", "grams", 100.0, 10.0),
                     InventoryEntity("inv_nachos", "Nacho Chips", "grams", 100.0, 10.0)
                 )
@@ -86,6 +87,7 @@ internal object DatabaseSeeder {
                     RecipeMappingEntity("r_tako_8", "bite_takoyaki", "8pcs", "inv_takoyaki", 8.0),
                     RecipeMappingEntity("r_tako_12", "bite_takoyaki", "12pcs", "inv_takoyaki", 12.0),
                     RecipeMappingEntity("r_tako_16", "bite_takoyaki", "16pcs", "inv_takoyaki", 16.0),
+                    *MenuContentUpdater.shrimpTakoyakiRecipeMappings().toTypedArray(),
                     RecipeMappingEntity("r_fries_all", "bite_fries", null, "inv_fries", 150.0),
                     RecipeMappingEntity("r_nachos_all", "bite_nachos", null, "inv_nachos", 150.0),
                     RecipeMappingEntity("r_soda_all", "drink_soda", null, "inv_cups", 1.0),
@@ -98,20 +100,7 @@ internal object DatabaseSeeder {
     }
 
     private fun defaultMenuItems(): List<ItemEntity> = listOf(
-        ItemEntity(
-            id = "bite_takoyaki",
-            categoryId = "cat_bites",
-            name = "Takoyaki (Pawsome Octopus Balls)",
-            flavors = "Veggie Whiskers|Cheesy Calico|Octo-Paws",
-            variantsJson = """
-                [
-                  {"id":"4pcs","name":"4pcs","basePrice":0.0,"priceByFlavor":{"Veggie Whiskers":40.0,"Cheesy Calico":45.0,"Octo-Paws":55.0}},
-                  {"id":"8pcs","name":"8pcs","basePrice":0.0,"priceByFlavor":{"Veggie Whiskers":80.0,"Cheesy Calico":85.0,"Octo-Paws":110.0}},
-                  {"id":"12pcs","name":"12pcs","basePrice":0.0,"priceByFlavor":{"Veggie Whiskers":120.0,"Cheesy Calico":130.0,"Octo-Paws":160.0}},
-                  {"id":"16pcs","name":"16pcs","basePrice":0.0,"priceByFlavor":{"Veggie Whiskers":150.0,"Cheesy Calico":170.0,"Octo-Paws":210.0}}
-                ]
-            """.trimIndent()
-        ),
+        MenuContentUpdater.takoyakiItemWithShrimp(),
         ItemEntity(
             id = "bite_fries",
             categoryId = "cat_bites",

@@ -17,11 +17,18 @@ data class HeldQueue(
     val tableLabel: String? = null
 )
 
+enum class OrderServiceType {
+    DINE_IN,
+    TAKE_OUT
+}
+
 data class PaymentDialogState(
     val selectedTabIndex: Int = 0,
     val amountTenderedStr: String = "",
     val gcashReference: String = "",
-    val receivingAccount: String = ""
+    val receivingAccount: String = "",
+    val serviceType: OrderServiceType = OrderServiceType.DINE_IN,
+    val tableNumber: String = ""
 )
 
 data class DashboardUiState(

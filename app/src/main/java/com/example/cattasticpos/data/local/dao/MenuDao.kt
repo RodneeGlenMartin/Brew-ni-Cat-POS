@@ -19,6 +19,9 @@ interface MenuDao {
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun getCategoryCount(): Int
 
+    @Query("SELECT * FROM items WHERE id = :itemId LIMIT 1")
+    suspend fun getItemById(itemId: String): ItemEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategories(categories: List<CategoryEntity>)
 
