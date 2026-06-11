@@ -169,7 +169,7 @@ internal object DatabaseSeeder {
                   {"id":"combo_3","name":"The Sweet Puspin","basePrice":138.0,"priceByFlavor":{},"description":"Food: Nachos + Meat\nDrink: 16oz Condensed Milk Meow (Sweet Filipino Style Coffee)"},
                   {"id":"combo_4","name":"The Two-Tail","basePrice":228.0,"priceByFlavor":{},"description":"Food: 8pcs Octo-Paws (Octobits) Takoyaki\nDrinks: Two 16oz Oreo Coffee Drinks (e.g., Oreo Iced Paw-tte)"},
                   {"id":"combo_5","name":"Matcha Made in Heaven","basePrice":217.0,"priceByFlavor":{},"description":"Food: The Triple Purr Nachos (Nachos + Fries + Meat) to share\nDrinks: Two 16oz Matcha Coffee Drinks (e.g., Dirty Neko)"},
-                  {"id":"combo_6","name":"Litter Box Feast","basePrice":496.0,"priceByFlavor":{},"description":"Food: * 16pcs Veggie Whiskers Takoyaki\n* 1 Barkada Overload Fries (Choice of flavor)\nDrinks: Four 16oz Fizzy Feline Sodas (Any flavor)"},
+                  {"id":"combo_6","name":"Litter Box Feast","basePrice":300.0,"priceByFlavor":{},"description":"Food: * 16pcs Veggie Whiskers Takoyaki\n* 1 Barkada Overload Fries (Choice of flavor)\nDrinks: Four 16oz Fizzy Feline Sodas (Any flavor)"},
                   {"id":"combo_7","name":"Ultimate Alley Cat Party","basePrice":725.0,"priceByFlavor":{},"description":"Food: * 12pcs Octo-Paws Takoyaki\n* 1 Barkada Overload Fries\n* 1 Meaty Meow Nachos\nDrinks: Four 22oz Cat-Feine Coffees (Any style)"}
                 ]
             """.trimIndent()
