@@ -36,6 +36,10 @@ class RecipeRepositoryImpl(
         return recipeDao.getAllMappings().map { list -> list.map { it.toDomain() } }
     }
 
+    override suspend fun getAllMappingsOnce(): List<RecipeMapping> {
+        return recipeDao.getAllMappingsOnce().map { it.toDomain() }
+    }
+
     override fun getMappingsForMenu(menuItemId: String): Flow<List<RecipeMapping>> {
         return recipeDao.getMappingsForMenu(menuItemId).map { list -> list.map { it.toDomain() } }
     }

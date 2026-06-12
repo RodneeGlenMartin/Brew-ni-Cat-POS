@@ -58,14 +58,18 @@ class CheckoutUseCase(
             items = orderItems
         )
         return try {
+            val mappingsByMenu = recipeRepository.getAllMappingsOnce()
+                .groupBy { it.menuItemId }
+
             val savedOrder = transactionProvider.runAsTransaction {
                 val persisted = orderRepository.saveOrder(order)
 
                 items.forEach { cartItem ->
                     val components = ComboBundleResolver.expandFromCartItem(cartItem)
                     components.forEach { component ->
-                        val mappings = recipeRepository.resolveCheckoutMappings(
-                            component.menuItemId,
+                        val menuMappings = mappingsByMenu[component.menuItemId].orEmpty()
+                        val mappings = RecipeDeductionResolver.resolve(
+                            menuMappings,
                             component.sizeVariantName,
                             component.flavor
                         )

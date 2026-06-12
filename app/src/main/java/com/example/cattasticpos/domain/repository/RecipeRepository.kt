@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface RecipeRepository {
     fun getAllMappings(): Flow<List<RecipeMapping>>
+    suspend fun getAllMappingsOnce(): List<RecipeMapping>
     fun getMappingsForMenu(menuItemId: String): Flow<List<RecipeMapping>>
     suspend fun getMappingsForCheckout(menuItemId: String, variantName: String?): List<RecipeMapping>
     suspend fun resolveCheckoutMappings(

@@ -15,11 +15,13 @@ import java.util.Locale
 import com.example.cattasticpos.domain.usecase.CalculateCartUseCase
 import com.example.cattasticpos.domain.usecase.CheckoutUseCase
 import com.example.cattasticpos.domain.usecase.GetMenuUseCase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 import com.example.cattasticpos.domain.repository.AppConfigRepository
 import com.example.cattasticpos.domain.repository.ExpenseRepository
@@ -222,32 +224,31 @@ class DashboardViewModel(
     fun confirmCheckout(paymentMethod: String, paymentReference: String?) {
         val currentCart = _uiState.value.activeCart
         val currentStrategy = _uiState.value.selectedDiscountStrategy
-        if (currentCart.isEmpty()) return
-        
+        if (currentCart.isEmpty() || _uiState.value.isCheckoutProcessing) return
+
         viewModelScope.launch {
             val state = _uiState.value
             val cashierName = state.cashiers.find { it.id == state.selectedCashierId }?.name
-            val result = checkoutUseCase(
-                currentCart,
-                currentStrategy,
-                paymentMethod,
-                paymentReference,
-                cashierId = state.selectedCashierId,
-                cashierName = cashierName,
-                tableLabel = resolveCheckoutTableLabel(state.activeTableLabel, state.paymentDialogState)
-            )
+            _uiState.update { it.copy(isCheckoutProcessing = true) }
+
+            val result = withContext(Dispatchers.IO) {
+                checkoutUseCase(
+                    currentCart,
+                    currentStrategy,
+                    paymentMethod,
+                    paymentReference,
+                    cashierId = state.selectedCashierId,
+                    cashierName = cashierName,
+                    tableLabel = resolveCheckoutTableLabel(state.activeTableLabel, state.paymentDialogState)
+                )
+            }
+
             if (result.isSuccess) {
                 result.getOrNull()?.let { order ->
-                    val printerResult = receiptPrinterService.printReceipt(order)
-                    val message = buildString {
-                        append("Order placed successfully!")
-                        if (printerResult.isFailure) {
-                            append("\nPrinter: ${printerResult.exceptionOrNull()?.message}")
-                        }
-                    }
-                    _uiState.update { state ->
-                        val freshCalculation = calculateCartUseCase(emptyList(), state.selectedDiscountStrategy)
-                        state.copy(
+                    _uiState.update { ui ->
+                        val freshCalculation = calculateCartUseCase(emptyList(), ui.selectedDiscountStrategy)
+                        ui.copy(
+                            isCheckoutProcessing = false,
                             activeCart = emptyList(),
                             currentQueueId = null,
                             selectedDiscountStrategy = NoDiscountStrategy(),
@@ -258,13 +259,26 @@ class DashboardViewModel(
                             showPaymentDialog = false,
                             paymentDialogState = PaymentDialogState(),
                             activeTableLabel = null,
-                            snackbarMessage = message
+                            snackbarMessage = "Order placed successfully!"
                         )
+                    }
+                    viewModelScope.launch {
+                        val printerResult = receiptPrinterService.printReceipt(order)
+                        if (printerResult.isFailure) {
+                            _uiState.update {
+                                it.copy(
+                                    snackbarMessage = "Printer: ${printerResult.exceptionOrNull()?.message}"
+                                )
+                            }
+                        }
                     }
                 }
             } else {
-                _uiState.update { state ->
-                    state.copy(snackbarMessage = "Checkout failed: ${result.exceptionOrNull()?.message}")
+                _uiState.update {
+                    it.copy(
+                        isCheckoutProcessing = false,
+                        snackbarMessage = "Checkout failed: ${result.exceptionOrNull()?.message}"
+                    )
                 }
             }
         }

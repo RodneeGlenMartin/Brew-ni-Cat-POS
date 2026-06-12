@@ -54,6 +54,7 @@ data class DashboardUiState(
     val gcashAccounts: List<GcashAccount> = emptyList(),
     val selectedCashierId: String = "cashier_default",
     val showPaymentDialog: Boolean = false,
+    val isCheckoutProcessing: Boolean = false,
     val paymentDialogState: PaymentDialogState = PaymentDialogState(),
     val showExpenseDialog: Boolean = false,
     val inventory: List<InventoryItem> = emptyList(),

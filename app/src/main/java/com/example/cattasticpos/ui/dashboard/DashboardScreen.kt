@@ -313,6 +313,7 @@ fun DashboardScreen(
                 finalTotal = uiState.total,
                 paymentState = uiState.paymentDialogState,
                 gcashAccounts = uiState.gcashAccounts,
+                isProcessing = uiState.isCheckoutProcessing,
                 onPaymentStateChange = { viewModel.setPaymentDialogState(it) },
                 onConfirmPayment = { method, ref ->
                     viewModel.confirmCheckout(method, ref)
@@ -1031,6 +1032,7 @@ fun PaymentCheckoutDialog(
     finalTotal: Double,
     paymentState: PaymentDialogState,
     gcashAccounts: List<com.example.cattasticpos.domain.model.GcashAccount>,
+    isProcessing: Boolean = false,
     onPaymentStateChange: (PaymentDialogState) -> Unit,
     onConfirmPayment: (String, String?) -> Unit,
     onDismiss: () -> Unit
@@ -1044,7 +1046,7 @@ fun PaymentCheckoutDialog(
     val isReady = if (isCash) amountTendered >= finalTotal else paymentState.receivingAccount.isNotBlank()
 
     AdaptiveGlassDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isProcessing) onDismiss() },
         surfaceAlpha = 0.93f,
         title = {
             Row(
@@ -1061,7 +1063,9 @@ fun PaymentCheckoutDialog(
                 )
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isProcessing) { Text("Cancel") }
+        },
         confirmButton = {
             PosPrimaryButton(
                 onClick = {
@@ -1077,13 +1081,21 @@ fun PaymentCheckoutDialog(
                         onConfirmPayment("GCASH", ref)
                     }
                 },
-                enabled = isReady
+                enabled = isReady && !isProcessing
             ) {
-                Text(
-                    text = "Confirm & Pay",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Bold
-                )
+                if (isProcessing) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "Confirm & Pay",
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         },
         content = {

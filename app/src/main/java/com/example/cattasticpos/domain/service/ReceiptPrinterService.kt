@@ -8,6 +8,7 @@ import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.ZReadingSummary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import java.io.IOException
 import java.io.OutputStream
 import java.text.SimpleDateFormat
@@ -65,12 +66,14 @@ class ReceiptPrinterService(private val context: Context) {
                     ""
                 }
                 name.contains("printer") || name.contains("pos") || name.contains("pt-")
-            } ?: pairedDevices.first()
+            } ?: return Result.failure(Exception("No paired receipt printer found."))
 
             var socket: BluetoothSocket? = null
             try {
                 socket = printerDevice.createRfcommSocketToServiceRecord(standardSerialPortServiceId)
-                socket.connect()
+                withTimeout(3_000) {
+                    socket.connect()
+                }
                 block(socket.outputStream)
                 Result.success(Unit)
             } catch (e: Exception) {

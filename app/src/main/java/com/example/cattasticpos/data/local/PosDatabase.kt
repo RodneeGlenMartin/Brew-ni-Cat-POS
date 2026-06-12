@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
         AppConfigEntity::class,
         VoidRecordEntity::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class PosDatabase : RoomDatabase() {
@@ -81,7 +81,8 @@ abstract class PosDatabase : RoomDatabase() {
                     MIGRATION_9_10,
                     MIGRATION_10_11,
                     MIGRATION_11_12,
-                    MIGRATION_10_12
+                    MIGRATION_10_12,
+                    MIGRATION_12_13
                 )
                 .addCallback(PosDatabaseCallback(scope))
                 .addCallback(MigrationSuccessCallback(appContext))
@@ -115,6 +116,12 @@ abstract class PosDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 DatabaseMigrationUtils.migrate10To11(db)
                 DatabaseMigrationUtils.migrate11To12(db)
+            }
+        }
+
+        val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_orders_timestamp ON orders(timestamp)")
             }
         }
     }
