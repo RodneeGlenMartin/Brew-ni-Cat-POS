@@ -55,6 +55,7 @@ class CheckoutUseCase(
             cashierId = cashierId,
             cashierName = cashierName,
             tableLabel = tableLabel,
+            isServed = true,
             items = orderItems
         )
         return try {
