@@ -277,7 +277,7 @@ class DashboardViewModel(
                             showPaymentDialog = false,
                             paymentDialogState = PaymentDialogState(),
                             activeTableLabel = null,
-                            snackbarMessage = "Order placed successfully!"
+                            snackbarMessage = "Order #${String.format("%04d", order.id)} placed successfully!"
                         )
                     }
                     viewModelScope.launch {

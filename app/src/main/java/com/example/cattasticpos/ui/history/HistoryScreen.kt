@@ -17,8 +17,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -149,7 +147,7 @@ fun HistoryScreen(
             }
         }
     ) { innerPadding ->
-        val scrollState = rememberScrollState()
+        val context = LocalContext.current
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -157,15 +155,6 @@ fun HistoryScreen(
                 .background(MaterialTheme.colorScheme.background)
         ) {
             AdaptiveAmbientGlows(Modifier.fillMaxSize())
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .liquidGlassSource(hazeState)
-                    .verticalScroll(scrollState)
-                    .collapsingNestedScroll(headerState)
-                    .padding(16.dp)
-            ) {
-            val context = LocalContext.current
             var isZReadingExpanded by remember { mutableStateOf(false) }
             var isExpenseTimelineExpanded by remember { mutableStateOf(true) }
             var isOrderTimelineExpanded by remember { mutableStateOf(true) }
@@ -173,6 +162,7 @@ fun HistoryScreen(
 
             LaunchedEffect(Unit) {
                 startAnimation = true
+                viewModel.onHistoryScreenVisible()
             }
 
             val todayStart = remember {
@@ -212,10 +202,19 @@ fun HistoryScreen(
                 label = "zReadingScale"
             )
 
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .liquidGlassSource(hazeState)
+                    .collapsingNestedScroll(headerState)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                item {
             ObsidianGlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp)
+                    .padding(bottom = 6.dp)
                     .scale(zReadingScale),
                 onClick = { isZReadingExpanded = !isZReadingExpanded }
             ) {
@@ -489,15 +488,16 @@ fun HistoryScreen(
                     }
                 }
             }
+                }
 
             if (orders.isEmpty() && expensesList.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 48.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         SleepingCatGraphic(
                             modifier = Modifier.size(64.dp),
                             color = MaterialTheme.colorScheme.onSurface
@@ -512,48 +512,33 @@ fun HistoryScreen(
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    if (expensesList.isNotEmpty()) {
-                        item {
-                            CollapsibleTimelineHeader(
-                                title = "Expense Timeline",
-                                expanded = isExpenseTimelineExpanded,
-                                onToggle = { isExpenseTimelineExpanded = !isExpenseTimelineExpanded }
-                            )
-                        }
-                        if (isExpenseTimelineExpanded) {
-                            items(expensesList, key = { "exp_${it.id}" }) { expense ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp)).padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(expense.description, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onErrorContainer)
-                                        Text("By: ${expense.recordedBy}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f))
-                                    }
-                                    Text("- ₱${String.format("%.0f", expense.amount)}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
+                if (expensesList.isNotEmpty()) {
+                    item {
+                        CollapsibleTimelineHeader(
+                            title = "Expense Timeline",
+                            expanded = isExpenseTimelineExpanded,
+                            onToggle = { isExpenseTimelineExpanded = !isExpenseTimelineExpanded }
+                        )
+                    }
+                    if (isExpenseTimelineExpanded) {
+                        items(expensesList, key = { "exp_${it.id}" }) { expense ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(8.dp)).padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(expense.description, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onErrorContainer)
+                                    Text("By: ${expense.recordedBy}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f))
                                 }
+                                Text("- ₱${String.format("%.0f", expense.amount)}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.error)
                             }
                         }
-                        if (orders.isNotEmpty()) {
-                            item {
-                                Spacer(modifier = Modifier.height(8.dp))
-                                HorizontalDivider()
-                                CollapsibleTimelineHeader(
-                                    title = "Order Timeline",
-                                    expanded = isOrderTimelineExpanded,
-                                    onToggle = { isOrderTimelineExpanded = !isOrderTimelineExpanded }
-                                )
-                            }
-                        }
-                    } else if (orders.isNotEmpty()) {
+                    }
+                    if (orders.isNotEmpty()) {
                         item {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            HorizontalDivider()
                             CollapsibleTimelineHeader(
                                 title = "Order Timeline",
                                 expanded = isOrderTimelineExpanded,
@@ -561,30 +546,39 @@ fun HistoryScreen(
                             )
                         }
                     }
-
-                    if (isOrderTimelineExpanded) {
-                        items(orders, key = { "order_${it.id}" }) { order ->
-                            OrderHistoryCard(
-                                order = order,
-                                onShare = { shareOrderReceipt(context, order) },
-                                onEdit = { receiptPreviewOrder = order },
-                                onDelete = { pendingVoidOrderId = order.id },
-                                onToggleServed = { viewModel.toggleOrderServed(order.id) }
-                            )
-                        }
+                } else if (orders.isNotEmpty()) {
+                    item {
+                        CollapsibleTimelineHeader(
+                            title = "Order Timeline",
+                            expanded = isOrderTimelineExpanded,
+                            onToggle = { isOrderTimelineExpanded = !isOrderTimelineExpanded }
+                        )
                     }
+                }
 
-                    if (isOrderTimelineExpanded && canLoadMore) {
-                        item {
-                            OutlinedButton(
-                                onClick = { viewModel.loadMoreOrders() },
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
-                            ) {
-                                Text("Load More Orders")
-                            }
+                if (isOrderTimelineExpanded) {
+                    items(orders, key = { "order_${it.id}" }) { order ->
+                        OrderHistoryCard(
+                            order = order,
+                            onShare = { shareOrderReceipt(context, order) },
+                            onEdit = { receiptPreviewOrder = order },
+                            onDelete = { pendingVoidOrderId = order.id },
+                            onToggleServed = { viewModel.toggleOrderServed(order.id) }
+                        )
+                    }
+                }
+
+                if (isOrderTimelineExpanded && canLoadMore) {
+                    item {
+                        OutlinedButton(
+                            onClick = { viewModel.loadMoreOrders() },
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
+                        ) {
+                            Text("Load More Orders")
                         }
                     }
                 }
+            }
             }
 
             if (showDateRangeDialog) {
@@ -705,7 +699,6 @@ fun HistoryScreen(
                         shareOrderReceipt(context, previewOrder)
                     }
                 )
-            }
             }
         }
     }

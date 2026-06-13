@@ -89,7 +89,11 @@ class HistoryViewModel(
 
     val ordersState: StateFlow<List<Order>> = combine(firstPageOrders, _extraOrderPages) { first, extra ->
         first + extra
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    fun onHistoryScreenVisible() {
+        _extraOrderPages.value = emptyList()
+    }
 
     init {
         viewModelScope.launch {

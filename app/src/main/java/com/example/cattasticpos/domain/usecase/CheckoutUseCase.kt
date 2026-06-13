@@ -6,14 +6,12 @@ import com.example.cattasticpos.domain.model.CartItem
 import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.OrderItem
 import com.example.cattasticpos.domain.repository.OrderRepository
-import com.example.cattasticpos.domain.repository.TransactionProvider
 import com.example.cattasticpos.domain.strategy.DiscountStrategy
 
 class CheckoutUseCase(
     private val orderRepository: OrderRepository,
     private val inventoryRepository: InventoryRepository,
     private val recipeRepository: RecipeRepository,
-    private val transactionProvider: TransactionProvider,
     private val calculateCartUseCase: CalculateCartUseCase = CalculateCartUseCase()
 ) {
     suspend operator fun invoke(
@@ -62,9 +60,9 @@ class CheckoutUseCase(
             val mappingsByMenu = recipeRepository.getAllMappingsOnce()
                 .groupBy { it.menuItemId }
 
-            val savedOrder = transactionProvider.runAsTransaction {
-                val persisted = orderRepository.saveOrder(order)
+            val savedOrder = orderRepository.saveOrder(order)
 
+            try {
                 items.forEach { cartItem ->
                     val components = ComboBundleResolver.expandFromCartItem(cartItem)
                     components.forEach { component ->
@@ -82,7 +80,12 @@ class CheckoutUseCase(
                         }
                     }
                 }
-                persisted
+            } catch (inventoryError: Exception) {
+                android.util.Log.w(
+                    "CheckoutUseCase",
+                    "Inventory deduction failed for order ${savedOrder.id}; order kept",
+                    inventoryError
+                )
             }
 
             Result.success(savedOrder)

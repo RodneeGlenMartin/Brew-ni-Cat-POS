@@ -132,7 +132,7 @@ fun DashboardScreen(
 
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { message ->
-            if (message.contains("Order placed", ignoreCase = true)) {
+            if (message.contains("placed successfully", ignoreCase = true)) {
                 performFeedback(FeedbackEvent(BionicHaptic.Success, PosSound.Checkout))
             }
             snackbarHostState.showSnackbar(message)

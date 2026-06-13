@@ -160,7 +160,7 @@ class AppContainerImpl(
     }
 
     override val checkoutUseCase: CheckoutUseCase by lazy {
-        CheckoutUseCase(orderRepository, inventoryRepository, recipeRepository, transactionProvider, calculateCartUseCase)
+        CheckoutUseCase(orderRepository, inventoryRepository, recipeRepository, calculateCartUseCase)
     }
 
     override val expenseRepository: ExpenseRepository by lazy {
