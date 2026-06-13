@@ -1297,6 +1297,12 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
         base + ProductAddOnCatalog.surcharge(item.id, selectedAddOnIds)
     }
     val scrollState = rememberScrollState()
+    val configuration = LocalConfiguration.current
+    val maxBodyHeight = (configuration.screenHeightDp * 0.72f).dp
+
+    LaunchedEffect(currentStep, item.id) {
+        scrollState.scrollTo(0)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1308,14 +1314,13 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight(0.92f)
                 .windowInsetsPadding(WindowInsets.safeDrawing)
                 .padding(horizontal = 16.dp)
         ) {
             Column(
                 modifier = Modifier
-                    .weight(1f, fill = false)
                     .fillMaxWidth()
+                    .heightIn(max = maxBodyHeight)
                     .verticalScroll(scrollState)
             ) {
             AnimatedContent(

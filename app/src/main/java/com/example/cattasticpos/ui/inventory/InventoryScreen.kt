@@ -203,45 +203,57 @@ fun InventoryStockTab(
                             }
                         }
 
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedTextField(
                                 value = amountStr,
                                 onValueChange = { amountStr = it },
-                                label = { Text("Amount") },
+                                placeholder = { Text("Amount") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f)
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            PosPrimaryButton(
-                                onClick = {
-                                    val amt = amountStr.toDoubleOrNull()
-                                    if (amt != null && amt > 0) {
-                                        onAdd(item.id, amt)
-                                        amountStr = ""
-                                    }
-                                },
-                                enabled = amountStr.toDoubleOrNull() != null && (amountStr.toDoubleOrNull() ?: 0.0) > 0,
-                                modifier = Modifier.height(44.dp)
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(text = "+ Add", color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp)
-                            }
-                            OutlinedButton(
-                                onClick = {
-                                    val amt = amountStr.toDoubleOrNull()
-                                    if (amt != null && amt > 0) {
-                                        onReduce(item.id, amt)
-                                        amountStr = ""
-                                    }
-                                },
-                                enabled = amountStr.toDoubleOrNull() != null && (amountStr.toDoubleOrNull() ?: 0.0) > 0,
-                                modifier = Modifier.height(44.dp)
-                            ) {
-                                Text(text = "− Reduce", fontSize = 12.sp)
-                            }
-                            OutlinedButton(
-                                onClick = { onEdit(item) },
-                                modifier = Modifier.height(44.dp)
-                            ) {
-                                Text(text = "Edit", fontSize = 12.sp)
+                                PosPrimaryButton(
+                                    onClick = {
+                                        val amt = amountStr.toDoubleOrNull()
+                                        if (amt != null && amt > 0) {
+                                            onAdd(item.id, amt)
+                                            amountStr = ""
+                                        }
+                                    },
+                                    enabled = amountStr.toDoubleOrNull() != null && (amountStr.toDoubleOrNull() ?: 0.0) > 0,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                ) {
+                                    Text(text = "+ Add", color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp)
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        val amt = amountStr.toDoubleOrNull()
+                                        if (amt != null && amt > 0) {
+                                            onReduce(item.id, amt)
+                                            amountStr = ""
+                                        }
+                                    },
+                                    enabled = amountStr.toDoubleOrNull() != null && (amountStr.toDoubleOrNull() ?: 0.0) > 0,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                ) {
+                                    Text(text = "− Reduce", fontSize = 12.sp)
+                                }
+                                OutlinedButton(
+                                    onClick = { onEdit(item) },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(44.dp)
+                                ) {
+                                    Text(text = "Edit", fontSize = 12.sp)
+                                }
                             }
                         }
                     }
