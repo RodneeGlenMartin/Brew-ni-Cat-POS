@@ -12,9 +12,24 @@ internal object MenuBoardCatalog {
         takoyakiItem(),
         friesItem(),
         nachosItem(),
+        catFeineItem(),
+        oreoDrinkItem(),
+        matchaDrinkItem(),
         sodaItem(),
-        coffeeItem(),
-        comboMealsItem()
+        comboSinglePawItem(),
+        comboCoupleCatsItem(),
+        comboAssociationItem()
+    )
+
+    /** Drinks + combos only — used by the section-split DB patch. */
+    fun drinkAndComboMenuItems(): List<ItemEntity> = listOf(
+        catFeineItem(),
+        oreoDrinkItem(),
+        matchaDrinkItem(),
+        sodaItem(),
+        comboSinglePawItem(),
+        comboCoupleCatsItem(),
+        comboAssociationItem()
     )
 
     fun shrimpTakoyakiRecipeMappings(): List<RecipeMappingEntity> = listOf(
@@ -22,6 +37,12 @@ internal object MenuBoardCatalog {
         RecipeMappingEntity("r_shrimp_8", "bite_takoyaki", "8pcs|Shrimp Whisker", "inv_shrimp", 8.0),
         RecipeMappingEntity("r_shrimp_12", "bite_takoyaki", "12pcs|Shrimp Whisker", "inv_shrimp", 12.0),
         RecipeMappingEntity("r_shrimp_16", "bite_takoyaki", "16pcs|Shrimp Whisker", "inv_shrimp", 16.0)
+    )
+
+    fun coffeeCupRecipeMappings(): List<RecipeMappingEntity> = listOf(
+        RecipeMappingEntity("r_coffee_cat_feine", "drink_cat_feine", null, "inv_cups", 1.0),
+        RecipeMappingEntity("r_coffee_oreo", "drink_oreo", null, "inv_cups", 1.0),
+        RecipeMappingEntity("r_coffee_matcha", "drink_matcha", null, "inv_cups", 1.0)
     )
 
     fun takoyakiItem(): ItemEntity = ItemEntity(
@@ -68,6 +89,38 @@ internal object MenuBoardCatalog {
         """.trimIndent()
     )
 
+    private fun coffeeSizeVariantsJson(): String = """
+        [
+          {"id":"12oz","name":"12oz","basePrice":49.0,"priceByFlavor":{}},
+          {"id":"16oz","name":"16oz","basePrice":59.0,"priceByFlavor":{}},
+          {"id":"22oz","name":"22oz","basePrice":79.0,"priceByFlavor":{}}
+        ]
+    """.trimIndent()
+
+    private fun catFeineItem(): ItemEntity = ItemEntity(
+        id = "drink_cat_feine",
+        categoryId = "cat_drinks",
+        name = "Cat-Feine (Classic Coffee)",
+        flavors = "Salted Caramel Tail|Vanilla Iced Whisker|Caramel Meow-chiato|Hazelnut Hairball|Salted Caramel Paws|Siamese Latte",
+        variantsJson = coffeeSizeVariantsJson()
+    )
+
+    private fun oreoDrinkItem(): ItemEntity = ItemEntity(
+        id = "drink_oreo",
+        categoryId = "cat_drinks",
+        name = "Oreo (The Tuxedo Cat)",
+        flavors = "Caramel Oreo Kitten|Oreo Iced Paw-tte|Vanilla Oreo Whisker",
+        variantsJson = coffeeSizeVariantsJson()
+    )
+
+    private fun matchaDrinkItem(): ItemEntity = ItemEntity(
+        id = "drink_matcha",
+        categoryId = "cat_drinks",
+        name = "Matcha (The Lucky Green Neko)",
+        flavors = "Dirty Neko|Vanilla Matcha Meow|Caramel Matcha Tail|Salted Caramel Meow-cha",
+        variantsJson = coffeeSizeVariantsJson()
+    )
+
     private fun sodaItem(): ItemEntity = ItemEntity(
         id = "drink_soda",
         categoryId = "cat_drinks",
@@ -82,36 +135,44 @@ internal object MenuBoardCatalog {
         """.trimIndent()
     )
 
-    private fun coffeeItem(): ItemEntity = ItemEntity(
-        id = "drink_coffee",
-        categoryId = "cat_drinks",
-        name = "Cat-Feine (Coffee)",
-        flavors = "Classic: Salted Caramel Tail|Classic: Vanilla Iced Whisker|Classic: Caramel Meow-chiato|Classic: Hazelnut Hairball|Classic: Salted Caramel Paws|Classic: Siamese Latte|Oreo: Caramel Oreo Kitten|Oreo: Oreo Iced Paw-tte|Oreo: Vanilla Oreo Whisker|Matcha: Dirty Neko|Matcha: Vanilla Matcha Meow|Matcha: Caramel Matcha Tail|Matcha: Salted Caramel Meow-cha",
-        variantsJson = """
-            [
-              {"id":"12oz","name":"12oz","basePrice":49.0,"priceByFlavor":{}},
-              {"id":"16oz","name":"16oz","basePrice":59.0,"priceByFlavor":{}},
-              {"id":"22oz","name":"22oz","basePrice":79.0,"priceByFlavor":{}}
-            ]
-        """.trimIndent()
-    )
-
-    private fun comboMealsItem(): ItemEntity = ItemEntity(
-        id = "combo_meals",
+    private fun comboSinglePawItem(): ItemEntity = ItemEntity(
+        id = "combo_single_paw",
         categoryId = "combos",
-        name = "Combo Meals",
+        name = "Single-Paw-rtner Combos",
         flavors = "",
         variantsJson = """
             [
               {"id":"combo_1","name":"Classy Cat Combo","basePrice":105.0,"priceByFlavor":{},"description":"4pcs Cheese Takoyaki + 16oz coffee (Any flavor)"},
               {"id":"combo_2","name":"Fizzy Kitten Combo","basePrice":65.0,"priceByFlavor":{},"description":"Small Fries (Any flavor) + 12oz soda (Any flavor)"},
               {"id":"combo_3","name":"Persian Combo","basePrice":175.0,"priceByFlavor":{},"description":"Nachos + Veggies + Meat + 16oz coffee (Any flavor)"},
-              {"id":"combo_4","name":"Kasper Combo","basePrice":90.0,"priceByFlavor":{},"description":"4pcs Squid Takoyaki + 12oz soda (Any flavor)"},
+              {"id":"combo_4","name":"Kasper Combo","basePrice":90.0,"priceByFlavor":{},"description":"4pcs Squid Takoyaki + 12oz soda (Any flavor)"}
+            ]
+        """.trimIndent()
+    )
+
+    private fun comboCoupleCatsItem(): ItemEntity = ItemEntity(
+        id = "combo_couple_cats",
+        categoryId = "combos",
+        name = "Couple of Cats",
+        flavors = "",
+        variantsJson = """
+            [
               {"id":"combo_5","name":"Two Tail","basePrice":205.0,"priceByFlavor":{},"description":"8pcs Squid Takoyaki + 2pcs 16oz soda (Any flavor)"},
               {"id":"combo_6","name":"Two Paw","basePrice":145.0,"priceByFlavor":{},"description":"Medium Fries (Any flavor) + 2pcs 12oz coffee (Any flavor)"},
               {"id":"combo_7","name":"Latte & Luna","basePrice":175.0,"priceByFlavor":{},"description":"Nachos + meat + veggies + 2pcs 12oz soda (Any flavor)"},
               {"id":"combo_8","name":"Sweet Kittens","basePrice":205.0,"priceByFlavor":{},"description":"8pcs Cheese Takoyaki + 1pc 16oz soda (Any flavor) + 1pc 16oz coffee (Any flavor)"},
-              {"id":"combo_9","name":"Duo Siamese","basePrice":195.0,"priceByFlavor":{},"description":"8pcs Veggie Takoyaki + 2pcs 16oz coffee (Any flavor)"},
+              {"id":"combo_9","name":"Duo Siamese","basePrice":195.0,"priceByFlavor":{},"description":"8pcs Veggie Takoyaki + 2pcs 16oz coffee (Any flavor)"}
+            ]
+        """.trimIndent()
+    )
+
+    private fun comboAssociationItem(): ItemEntity = ItemEntity(
+        id = "combo_association",
+        categoryId = "combos",
+        name = "Cat Association",
+        flavors = "",
+        variantsJson = """
+            [
               {"id":"combo_10","name":"Scaredy Cats","basePrice":450.0,"priceByFlavor":{},"description":"16pcs Veggie Takoyaki + Jumbo Fries (Any flavor) + 4pcs 12oz soda"},
               {"id":"combo_11","name":"Lazy Cats","basePrice":340.0,"priceByFlavor":{},"description":"12pcs Cheese Takoyaki + 2pcs 16oz soda (Any flavor) + 2pcs 16oz coffee (Any flavor)"},
               {"id":"combo_12","name":"Grumpy Cats","basePrice":480.0,"priceByFlavor":{},"description":"Jumbo fries (Any flavor) + nachos + meat + veggies + 4pcs 16oz coffee (Any flavor)"},

@@ -39,4 +39,7 @@ interface RecipeDao {
 
     @Query("DELETE FROM recipe_mappings WHERE inventoryItemId = :inventoryItemId")
     suspend fun deleteMappingsForInventory(inventoryItemId: String)
+
+    @Query("DELETE FROM recipe_mappings WHERE menuItemId = :menuItemId")
+    suspend fun deleteMappingsForMenuItem(menuItemId: String)
 }

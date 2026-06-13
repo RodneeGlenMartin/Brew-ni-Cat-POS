@@ -95,7 +95,7 @@ internal object DatabaseSeeder {
                     RecipeMappingEntity("r_soda_all", "drink_soda", null, "inv_cups", 1.0),
                     RecipeMappingEntity("r_soda_nata", "drink_soda", "Nata de coco", "inv_nata_coco", 1.0),
                     RecipeMappingEntity("r_soda_rainbow", "drink_soda", "Rainbow Jelly", "inv_rainbow_jelly", 1.0),
-                    RecipeMappingEntity("r_coffee_all", "drink_coffee", null, "inv_cups", 1.0)
+                    *MenuBoardCatalog.coffeeCupRecipeMappings().toTypedArray()
                 )
             )
         } catch (e: Exception) {

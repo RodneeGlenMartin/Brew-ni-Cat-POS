@@ -27,4 +27,7 @@ interface MenuDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItems(items: List<ItemEntity>)
+
+    @Query("DELETE FROM items WHERE id IN (:ids)")
+    suspend fun deleteItemsByIds(ids: List<String>)
 }

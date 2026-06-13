@@ -117,7 +117,25 @@ class DashboardViewModel(
     }
 
     private fun filterItemsByCategoryId(items: List<Item>, categoryId: String): List<Item> {
-        return if (categoryId.isBlank()) items else items.filter { it.categoryId == categoryId }
+        val filtered = if (categoryId.isBlank()) items else items.filter { it.categoryId == categoryId }
+        return filtered.sortedBy { item -> menuItemSortIndex(item.id) }
+    }
+
+    private fun menuItemSortIndex(itemId: String): Int {
+        val order = listOf(
+            "bite_takoyaki",
+            "bite_fries",
+            "bite_nachos",
+            "drink_cat_feine",
+            "drink_oreo",
+            "drink_matcha",
+            "drink_soda",
+            "combo_single_paw",
+            "combo_couple_cats",
+            "combo_association"
+        )
+        val index = order.indexOf(itemId)
+        return if (index >= 0) index else order.size
     }
 
     fun selectCategory(categoryId: String) {

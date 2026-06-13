@@ -20,6 +20,7 @@ internal object MenuContentUpdater {
         ensureShrimpInfrastructure(inventoryDao, recipeDao)
         ensureAddOnInfrastructure(inventoryDao, recipeDao)
         applyMenuBoard2026Patch(menuDao, recipeDao)
+        applyMenuSectionSplitPatch(menuDao, recipeDao)
     }
 
     private suspend fun ensureAddOnInfrastructure(
@@ -75,6 +76,18 @@ internal object MenuContentUpdater {
 
         menuDao.insertItems(MenuBoardCatalog.allMenuItems())
         recipeDao.insertMappings(MenuBoardCatalog.shrimpTakoyakiRecipeMappings())
+    }
+
+    private suspend fun applyMenuSectionSplitPatch(menuDao: MenuDao, recipeDao: RecipeDao) {
+        val splitApplied = menuDao.getItemById("drink_cat_feine") != null &&
+            menuDao.getItemById("drink_coffee") == null &&
+            menuDao.getItemById("combo_meals") == null
+        if (splitApplied) return
+
+        menuDao.insertItems(MenuBoardCatalog.drinkAndComboMenuItems())
+        menuDao.deleteItemsByIds(listOf("drink_coffee", "combo_meals"))
+        recipeDao.deleteMappingsForMenuItem("drink_coffee")
+        recipeDao.insertMappings(MenuBoardCatalog.coffeeCupRecipeMappings())
     }
 
     private fun isMenuBoard2026Applied(combo: ItemEntity): Boolean {

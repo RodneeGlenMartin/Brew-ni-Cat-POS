@@ -1240,7 +1240,14 @@ private enum class ProductConfigStep {
     CoffeeOption
 }
 
-private fun isCoffeeItem(item: Item): Boolean = item.id == "drink_coffee"
+private val COFFEE_DRINK_IDS = setOf(
+    "drink_cat_feine",
+    "drink_oreo",
+    "drink_matcha",
+    "drink_coffee"
+)
+
+private fun isCoffeeItem(item: Item): Boolean = item.id in COFFEE_DRINK_IDS
 
 private fun hasAddOnStep(item: Item): Boolean = ProductAddOnCatalog.supportsAddOns(item.id)
 
