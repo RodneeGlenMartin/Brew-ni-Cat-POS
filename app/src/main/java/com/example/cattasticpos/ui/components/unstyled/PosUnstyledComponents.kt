@@ -85,13 +85,15 @@ fun PosFilterChip(
     selected: Boolean,
     onClick: () -> Unit,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null
 ) {
     CupertinoSegmentChip(
         selected = selected,
         onClick = onClick,
         label = label,
-        modifier = modifier
+        modifier = modifier,
+        icon = icon
     )
 }
 

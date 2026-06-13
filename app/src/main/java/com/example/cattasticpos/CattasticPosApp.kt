@@ -109,6 +109,7 @@ class CattasticPosApp : Application(), Configuration.Provider {
 
 interface AppContainer {
     val database: PosDatabase
+    val feedbackPreferences: com.example.cattasticpos.data.local.FeedbackPreferences
     val menuRepository: MenuRepository
     val orderRepository: OrderRepository
     val getMenuUseCase: GetMenuUseCase
@@ -136,6 +137,10 @@ class AppContainerImpl(
 
     override val database: PosDatabase by lazy {
         PosDatabase.getDatabase(context, scope)
+    }
+
+    override val feedbackPreferences: com.example.cattasticpos.data.local.FeedbackPreferences by lazy {
+        com.example.cattasticpos.data.local.FeedbackPreferences(context)
     }
 
     override val menuRepository: MenuRepository by lazy {

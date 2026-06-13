@@ -927,7 +927,7 @@ private fun OrderHistoryCardContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     FluentIcon(
-                        imageVector = if (isExpanded) FluentIcons.ChevronDown else FluentIcons.ChevronUp,
+                        imageVector = if (isExpanded) FluentIcons.ChevronUp else FluentIcons.ChevronDown,
                         contentDescription = if (isExpanded) "Collapse order" else "Expand order",
                         size = 18.dp,
                         tint = MaterialTheme.colorScheme.primary
@@ -1184,6 +1184,12 @@ fun EditConfigDialog(
     var newGcashLabel by remember { mutableStateOf("") }
     val selectedAccent = AppThemeAccent.fromId(initialThemeAccentId)
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val feedbackPrefs = remember {
+        (context.applicationContext as com.example.cattasticpos.CattasticPosApp).container.feedbackPreferences
+    }
+    var hapticsEnabled by remember { mutableStateOf(feedbackPrefs.hapticsEnabled) }
+    var soundsEnabled by remember { mutableStateOf(feedbackPrefs.soundsEnabled) }
 
     AdaptiveGlassDialog(
         onDismissRequest = onDismiss,
@@ -1234,6 +1240,27 @@ fun EditConfigDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                CupertinoSection(header = "Feedback") {
+                    CupertinoFormRow(label = "Haptic feedback") {
+                        Switch(
+                            checked = hapticsEnabled,
+                            onCheckedChange = {
+                                hapticsEnabled = it
+                                feedbackPrefs.hapticsEnabled = it
+                            }
+                        )
+                    }
+                    CupertinoFormRow(label = "Sound effects", showDivider = false) {
+                        Switch(
+                            checked = soundsEnabled,
+                            onCheckedChange = {
+                                soundsEnabled = it
+                                feedbackPrefs.soundsEnabled = it
+                            }
+                        )
+                    }
+                }
+
                 CupertinoSection(header = "Business Goals") {
                     CupertinoFormRow(label = "Target Sales") {
                         OutlinedTextField(

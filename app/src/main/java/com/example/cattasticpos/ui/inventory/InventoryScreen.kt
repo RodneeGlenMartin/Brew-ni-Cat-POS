@@ -94,12 +94,32 @@ fun InventoryScreen(
                 Tab(
                     selected = selectedTabIndex == 0,
                     onClick = { selectedTabIndex = 0 },
-                    text = { Text("Raw Materials", fontWeight = FontWeight.Bold) }
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FluentIcon(
+                                imageVector = FluentIcons.Box,
+                                contentDescription = null,
+                                size = 16.dp,
+                                useGlassGradient = selectedTabIndex == 0
+                            )
+                            Text("Raw Materials", fontWeight = FontWeight.Bold)
+                        }
+                    }
                 )
                 Tab(
                     selected = selectedTabIndex == 1,
                     onClick = { selectedTabIndex = 1 },
-                    text = { Text("Product Recipes", fontWeight = FontWeight.Bold) }
+                    text = {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            FluentIcon(
+                                imageVector = FluentIcons.List,
+                                contentDescription = null,
+                                size = 16.dp,
+                                useGlassGradient = selectedTabIndex == 1
+                            )
+                            Text("Product Recipes", fontWeight = FontWeight.Bold)
+                        }
+                    }
                 )
             }
 

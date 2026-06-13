@@ -1,13 +1,7 @@
 package com.example.cattasticpos.ui.adaptive
 
-import android.view.HapticFeedbackConstants
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -39,21 +33,8 @@ enum class BionicHaptic {
     Light,
     Selection,
     Confirm,
-    Snap
-}
-
-@Composable
-fun rememberBionicHaptic(): (BionicHaptic) -> Unit {
-    val haptic = LocalHapticFeedback.current
-    val view = LocalView.current
-    return remember(haptic, view) {
-        { type ->
-            when (type) {
-                BionicHaptic.Light -> haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                BionicHaptic.Selection -> haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                BionicHaptic.Confirm -> haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                BionicHaptic.Snap -> view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-            }
-        }
-    }
+    Snap,
+    Success,
+    Error,
+    Add
 }

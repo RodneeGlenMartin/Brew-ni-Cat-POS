@@ -50,10 +50,15 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import com.example.cattasticpos.ui.adaptive.CupertinoSection
 import com.example.cattasticpos.ui.adaptive.BionicHaptic
 import com.example.cattasticpos.ui.adaptive.CupertinoSegmentChip
-import com.example.cattasticpos.ui.adaptive.rememberBionicHaptic
+import com.example.cattasticpos.ui.adaptive.FeedbackEvent
+import com.example.cattasticpos.ui.adaptive.PosSound
+import com.example.cattasticpos.ui.adaptive.SelectableOptionRow
+import com.example.cattasticpos.ui.adaptive.rememberPosFeedback
 import com.example.cattasticpos.ui.components.unstyled.PosFilterChip
 import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
+import com.example.cattasticpos.ui.icons.PosIconBadge
+import com.example.cattasticpos.ui.icons.PosIconSize
 import kotlinx.coroutines.launch
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -123,8 +128,13 @@ fun DashboardScreen(
         }
     }
 
+    val performFeedback = rememberPosFeedback()
+
     LaunchedEffect(uiState.snackbarMessage) {
         uiState.snackbarMessage?.let { message ->
+            if (message.contains("Order placed", ignoreCase = true)) {
+                performFeedback(FeedbackEvent(BionicHaptic.Success, PosSound.Checkout))
+            }
             snackbarHostState.showSnackbar(message)
             viewModel.clearSnackbarMessage()
         }
@@ -627,9 +637,9 @@ private fun DashboardCheckoutPanel(
             animationSpec = iOSSpringSpec,
             label = "cartChevronRotation"
         )
-        val performHaptic = rememberBionicHaptic()
+        val performFeedback = rememberPosFeedback()
         val toggleCart: () -> Unit = {
-            performHaptic(BionicHaptic.Selection)
+            performFeedback(FeedbackEvent(BionicHaptic.Selection, PosSound.Select))
             onCartExpandedChange(!isCartExpanded)
         }
 
@@ -896,7 +906,8 @@ fun CategorySelector(categories: List<com.example.cattasticpos.domain.model.Cate
             PosFilterChip(
                 selected = category.id == selectedCategoryId,
                 onClick = { onCategorySelected(category.id) },
-                label = category.name
+                label = category.name,
+                icon = FluentIcons.categoryIcon(category.id)
             )
         }
     }
@@ -910,29 +921,29 @@ fun ItemCard(
     modifier: Modifier = Modifier,
     searchMatchLabel: String? = null
 ) {
+    val performFeedback = rememberPosFeedback()
+
     ObsidianGlassCard(
-        modifier = modifier.fillMaxWidth().height(128.dp),
-        onClick = onClick
+        modifier = modifier
+            .fillMaxWidth()
+            .height(128.dp),
+        onClick = {
+            performFeedback(FeedbackEvent(BionicHaptic.Selection, PosSound.Tap))
+            onClick()
+        }
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    FluentIcon(
-                        imageVector = FluentIcons.categoryIcon(item.categoryId),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        size = 20.dp
-                    )
-                }
+                PosIconBadge(
+                    imageVector = FluentIcons.menuItemIcon(item.id),
+                    contentDescription = null,
+                    emphasized = false,
+                    error = isLowStock,
+                    iconSize = PosIconSize.Medium
+                )
                 Column {
                     Text(
                         item.name,
@@ -1120,6 +1131,7 @@ fun PaymentCheckoutDialog(
                         selected = paymentState.serviceType == OrderServiceType.DINE_IN,
                         onClick = { onPaymentStateChange(paymentState.copy(serviceType = OrderServiceType.DINE_IN)) },
                         label = "Dine In",
+                        icon = FluentIcons.Utensils,
                         modifier = Modifier.weight(1f)
                     )
                     CupertinoSegmentChip(
@@ -1133,6 +1145,7 @@ fun PaymentCheckoutDialog(
                             )
                         },
                         label = "Take Out",
+                        icon = FluentIcons.ShoppingBag,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -1159,12 +1172,14 @@ fun PaymentCheckoutDialog(
                         selected = paymentState.selectedTabIndex == 0,
                         onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 0)) },
                         label = "Cash",
+                        icon = FluentIcons.Wallet,
                         modifier = Modifier.weight(1f)
                     )
                     CupertinoSegmentChip(
                         selected = paymentState.selectedTabIndex == 1,
                         onClick = { onPaymentStateChange(paymentState.copy(selectedTabIndex = 1)) },
                         label = "GCash",
+                        icon = FluentIcons.Receipt,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -1275,6 +1290,7 @@ private fun initialProductConfigStep(item: Item): ProductConfigStep = when {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Variant, String?) -> Unit) {
+    val performFeedback = rememberPosFeedback()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var currentStep by remember(item.id) { mutableStateOf(initialProductConfigStep(item)) }
     var selectedFlavorGroup by remember(item.id) { mutableStateOf<String?>(null) }
@@ -1356,6 +1372,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                         FlavorOptionRow(
                                             label = group,
                                             isSelected = selectedFlavorGroup == group,
+                                            leadingIcon = FluentIcons.menuItemIcon(item.id),
                                             onSelect = {
                                                 selectedFlavorGroup = group
                                                 selectedFlavor = null
@@ -1395,6 +1412,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                         FlavorOptionRow(
                                             label = flavor.substringAfter(": ").trim(),
                                             isSelected = selectedFlavor == flavor,
+                                            leadingIcon = FluentIcons.menuItemIcon(item.id),
                                             onSelect = {
                                                 selectedFlavor = flavor
                                                 selectedVariant = null
@@ -1600,6 +1618,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                             PosPrimaryButton(
                                 onClick = {
                                     val variant = selectedVariant ?: return@PosPrimaryButton
+                                    performFeedback(FeedbackEvent(BionicHaptic.Add, PosSound.AddToCart))
                                     onAddToCart(
                                         variant,
                                         buildCartFlavor(item.id, selectedFlavor, selectedCoffeeOption, selectedAddOnIds)
@@ -1682,63 +1701,15 @@ private fun ProductConfigStepHeader(
 private fun FlavorOptionRow(
     label: String,
     isSelected: Boolean,
-    onSelect: () -> Unit
+    onSelect: () -> Unit,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
 ) {
-    val darkTheme = isSystemInDarkTheme()
-    val labelColor = if (isSelected) {
-        if (darkTheme) Color.White else MaterialTheme.colorScheme.onSurface
-    } else {
-        adaptiveBodyMuted(darkTheme)
-    }
-    val optionShape = RoundedCornerShape(16.dp)
-    val performHaptic = rememberBionicHaptic()
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .clip(optionShape)
-            .then(
-                if (isSelected) {
-                    Modifier.background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
-                        shape = optionShape
-                    )
-                } else {
-                    Modifier.background(
-                        brush = adaptiveGlassBrush(darkTheme),
-                        shape = optionShape
-                    )
-                }
-            )
-            .border(
-                width = 1.dp,
-                color = if (isSelected) {
-                    MaterialTheme.colorScheme.primary
-                } else if (darkTheme) {
-                    Color.White.copy(alpha = 0.05f)
-                } else {
-                    Color.Black.copy(alpha = 0.05f)
-                },
-                shape = optionShape
-            )
-            .clickable {
-                performHaptic(BionicHaptic.Selection)
-                onSelect()
-            }
-    ) {
-        Text(
-            text = label,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-            color = labelColor
-        )
-    }
+    SelectableOptionRow(
+        label = label,
+        isSelected = isSelected,
+        onSelect = onSelect,
+        leadingIcon = leadingIcon
+    )
 }
 
 @Composable
@@ -1750,77 +1721,13 @@ private fun VariantOptionRow(
     onSelect: () -> Unit
 ) {
     val priceLabel = formatVariantPriceLabel(variant, item, selectedFlavor)
-    val darkTheme = isSystemInDarkTheme()
-    val labelColor = if (isSelected) {
-        if (darkTheme) Color.White else MaterialTheme.colorScheme.onSurface
-    } else {
-        adaptiveBodyMuted(darkTheme)
-    }
-    val optionShape = RoundedCornerShape(16.dp)
-    val performHaptic = rememberBionicHaptic()
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .clip(optionShape)
-            .then(
-                if (isSelected) {
-                    Modifier.background(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.20f),
-                        shape = optionShape
-                    )
-                } else {
-                    Modifier.background(
-                        brush = adaptiveGlassBrush(darkTheme),
-                        shape = optionShape
-                    )
-                }
-            )
-            .border(
-                width = 1.dp,
-                color = if (isSelected) {
-                    MaterialTheme.colorScheme.primary
-                } else if (darkTheme) {
-                    Color.White.copy(alpha = 0.05f)
-                } else {
-                    Color.Black.copy(alpha = 0.05f)
-                },
-                shape = optionShape
-            )
-            .clickable {
-                performHaptic(BionicHaptic.Selection)
-                onSelect()
-            }
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = variant.name,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(end = 12.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = labelColor
-            )
-            Text(
-                text = priceLabel,
-                maxLines = 1,
-                overflow = TextOverflow.Clip,
-                fontWeight = FontWeight.Bold,
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
+    SelectableOptionRow(
+        label = variant.name,
+        isSelected = isSelected,
+        onSelect = onSelect,
+        leadingIcon = FluentIcons.menuItemIcon(item.id),
+        trailing = priceLabel
+    )
 }
 
 private fun formatVariantPriceLabel(variant: Variant, item: Item, selectedFlavor: String?): String {

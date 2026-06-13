@@ -5,15 +5,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -26,6 +22,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.example.cattasticpos.ui.icons.FluentIcon
 import com.example.cattasticpos.ui.icons.FluentIcons
+import com.example.cattasticpos.ui.icons.PosIconSize
 import com.example.cattasticpos.ui.theme.adaptiveBodyMuted
 import com.example.cattasticpos.ui.theme.adaptiveGlassBrush
 import com.example.cattasticpos.ui.theme.adaptiveGlassContentColor
@@ -65,17 +62,17 @@ fun GlassSearchBar(
                 imageVector = FluentIcons.Search,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
-                size = if (compact) 16.dp else 20.dp
+                size = if (compact) PosIconSize.Small else PosIconSize.Medium
             )
         },
         trailingIcon = if (onClose != null) {
             {
                 IconButton(onClick = onClose, modifier = Modifier.size(if (compact) 32.dp else 40.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
+                    FluentIcon(
+                        imageVector = FluentIcons.Close,
                         contentDescription = "Close search",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(if (compact) 16.dp else 20.dp)
+                        size = if (compact) PosIconSize.Small else PosIconSize.Medium
                     )
                 }
             }

@@ -31,9 +31,12 @@ import com.example.cattasticpos.ui.components.PinScreen
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.cattasticpos.ui.adaptive.AdaptiveTheme
 import com.example.cattasticpos.ui.adaptive.BionicHaptic
+import com.example.cattasticpos.ui.adaptive.FeedbackEvent
 import com.example.cattasticpos.ui.adaptive.ParallaxNavHost
+import com.example.cattasticpos.ui.adaptive.PosSound
+import com.example.cattasticpos.ui.adaptive.ProvidePosFeedback
 import com.example.cattasticpos.ui.adaptive.isPushNavigation
-import com.example.cattasticpos.ui.adaptive.rememberBionicHaptic
+import com.example.cattasticpos.ui.adaptive.rememberPosFeedback
 import com.example.cattasticpos.ui.theme.AdaptiveSystemBarStyle
 
 @Composable
@@ -85,18 +88,21 @@ class MainActivity : ComponentActivity() {
             val accent = AppThemeAccent.fromId(appConfig?.themeAccentId)
 
             CattasticTheme(accent = accent) {
+                ProvidePosFeedback(preferences = app.container.feedbackPreferences) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
                     var currentScreen by remember { mutableStateOf("dashboard") }
                     var isPushing by remember { mutableStateOf(true) }
-                    val performHaptic = rememberBionicHaptic()
+                    val performFeedback = rememberPosFeedback()
 
                     fun navigateTo(target: String) {
                         isPushing = isPushNavigation(currentScreen, target)
                         if (isPushing) {
-                            performHaptic(BionicHaptic.Light)
+                            performFeedback(FeedbackEvent(BionicHaptic.Light, PosSound.Tap))
+                        } else {
+                            performFeedback(FeedbackEvent(BionicHaptic.Light, PosSound.Tap))
                         }
                         currentScreen = target
                     }
@@ -137,6 +143,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                }
                 }
             }
         }
