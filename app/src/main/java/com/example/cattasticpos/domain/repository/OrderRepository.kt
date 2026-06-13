@@ -17,4 +17,5 @@ interface OrderRepository {
     fun getGcashSalesForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>
     fun observeCashierSalesForDay(startOfDay: Long, endOfDay: Long): Flow<Map<String, Double>>
     suspend fun deleteOrder(orderId: Long)
+    suspend fun setOrderServed(orderId: Long, isServed: Boolean)
 }

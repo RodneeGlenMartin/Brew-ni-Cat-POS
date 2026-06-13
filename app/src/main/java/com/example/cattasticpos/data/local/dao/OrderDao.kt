@@ -114,6 +114,9 @@ interface OrderDao {
         deleteOrderEntity(orderId)
     }
 
+    @Query("UPDATE orders SET isServed = :isServed WHERE id = :orderId")
+    suspend fun setOrderServed(orderId: Long, isServed: Boolean)
+
     @Update
     suspend fun updateOrderEntity(order: OrderEntity)
 

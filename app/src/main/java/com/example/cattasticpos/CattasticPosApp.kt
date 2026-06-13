@@ -25,6 +25,8 @@ import com.example.cattasticpos.data.local.RoomTransactionProvider
 import com.example.cattasticpos.domain.usecase.CalculateCartUseCase
 import com.example.cattasticpos.domain.usecase.CheckoutUseCase
 import com.example.cattasticpos.domain.usecase.RestockItemUseCase
+import com.example.cattasticpos.domain.usecase.AdjustInventoryUseCase
+import com.example.cattasticpos.domain.usecase.UpdateInventoryItemUseCase
 import com.example.cattasticpos.domain.usecase.GetMenuUseCase
 import com.example.cattasticpos.domain.usecase.ExportDataUseCase
 import com.example.cattasticpos.domain.usecase.UpdateOrderUseCase
@@ -121,6 +123,8 @@ interface AppContainer {
     val voidOrderUseCase: VoidOrderUseCase
     val updateOrderUseCase: UpdateOrderUseCase
     val restockItemUseCase: RestockItemUseCase
+    val adjustInventoryUseCase: AdjustInventoryUseCase
+    val updateInventoryItemUseCase: UpdateInventoryItemUseCase
     val receiptPrinterService: ReceiptPrinterService
     val transactionProvider: TransactionProvider
 }
@@ -188,6 +192,14 @@ class AppContainerImpl(
 
     override val restockItemUseCase: RestockItemUseCase by lazy {
         RestockItemUseCase(inventoryRepository)
+    }
+
+    override val adjustInventoryUseCase: AdjustInventoryUseCase by lazy {
+        AdjustInventoryUseCase(inventoryRepository)
+    }
+
+    override val updateInventoryItemUseCase: UpdateInventoryItemUseCase by lazy {
+        UpdateInventoryItemUseCase(inventoryRepository)
     }
 
     override val receiptPrinterService: ReceiptPrinterService by lazy {

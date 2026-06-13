@@ -27,20 +27,43 @@ object RecipeDeductionResolver {
         sizeVariantName: String?,
         flavor: String?
     ): List<RecipeMapping> {
-        val flavorKey = flavor?.substringBefore(" —")?.trim()?.takeIf { it.isNotEmpty() }
+        val flavorKey = flavor
+            ?.substringBefore(" +")
+            ?.substringBefore(" —")
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+
+        val addOnLabels = flavor
+            ?.substringAfter(" + ", missingDelimiterValue = "")
+            ?.takeIf { it.isNotBlank() }
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            .orEmpty()
 
         val compositeMatches = mappings.filter { mapping ->
             val target = mapping.variantName
             target != null && target.contains('|') && compositeTargetMatches(target, sizeVariantName, flavorKey)
         }
-        if (compositeMatches.isNotEmpty()) return compositeMatches
-
-        return mappings.filter { mapping ->
-            when (val target = mapping.variantName) {
-                null -> true
-                else -> !target.contains('|') && targetMatches(target, sizeVariantName, flavorKey)
+        val baseMatches = if (compositeMatches.isNotEmpty()) {
+            compositeMatches
+        } else {
+            mappings.filter { mapping ->
+                when (val target = mapping.variantName) {
+                    null -> true
+                    else -> !target.contains('|') && targetMatches(target, sizeVariantName, flavorKey)
+                }
             }
         }
+
+        if (addOnLabels.isEmpty()) return baseMatches
+
+        val addOnMappings = mappings.filter { mapping ->
+            val target = mapping.variantName ?: return@filter false
+            if (target.contains('|')) return@filter false
+            addOnLabels.any { label -> flavorMatches(target, label) }
+        }
+        return baseMatches + addOnMappings
     }
 
     private fun compositeTargetMatches(

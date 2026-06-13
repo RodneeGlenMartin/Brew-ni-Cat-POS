@@ -24,10 +24,14 @@ data class CartItem(
     val id: String get() = key.displayId()
 
     val unitPrice: Double
-        get() = try {
-            variant.getPrice(flavor)
-        } catch (e: Exception) {
-            variant.basePrice
+        get() {
+            val selection = CartLineSelection.parse(flavor, item.id)
+            val basePrice = try {
+                variant.getPrice(selection.baseFlavor)
+            } catch (e: Exception) {
+                variant.basePrice
+            }
+            return basePrice + selection.addOnSurcharge(item.id)
         }
 
     val totalPrice: Double

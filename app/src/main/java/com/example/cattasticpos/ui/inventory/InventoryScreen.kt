@@ -107,7 +107,9 @@ fun InventoryScreen(
                 InventoryStockTab(
                     inventoryItems = uiState.inventoryItems,
                     scrollBehavior = scrollBehavior,
-                    onRestock = { itemId, qty -> viewModel.restockItem(itemId, qty) },
+                    onAdd = { itemId, qty -> viewModel.restockItem(itemId, qty) },
+                    onReduce = { itemId, qty -> viewModel.reduceItem(itemId, qty) },
+                    onEdit = { viewModel.setEditingInventoryItem(it) },
                     onDelete = { viewModel.deleteInventoryItem(it) }
                 )
             } else {
@@ -138,6 +140,16 @@ fun InventoryScreen(
                 onDismiss = { viewModel.setShowLinkIngredientDialog(false) }
             )
         }
+
+        uiState.editingInventoryItem?.let { item ->
+            EditRawMaterialDialog(
+                item = item,
+                onSave = { name, unit, stock, thresh ->
+                    viewModel.updateInventoryItem(item.id, name, unit, stock, thresh)
+                },
+                onDismiss = { viewModel.setEditingInventoryItem(null) }
+            )
+        }
     }
 }
 
@@ -146,7 +158,9 @@ fun InventoryScreen(
 fun InventoryStockTab(
     inventoryItems: List<InventoryItem>,
     scrollBehavior: androidx.compose.material3.TopAppBarScrollBehavior? = null,
-    onRestock: (String, Double) -> Unit,
+    onAdd: (String, Double) -> Unit,
+    onReduce: (String, Double) -> Unit,
+    onEdit: (InventoryItem) -> Unit,
     onDelete: (String) -> Unit
 ) {
     if (inventoryItems.isEmpty()) {
@@ -195,31 +209,39 @@ fun InventoryStockTab(
                                 onValueChange = { amountStr = it },
                                 label = { Text("Amount") },
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.width(100.dp)
+                                modifier = Modifier.weight(1f)
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
                             PosPrimaryButton(
                                 onClick = {
                                     val amt = amountStr.toDoubleOrNull()
                                     if (amt != null && amt > 0) {
-                                        onRestock(item.id, amt)
+                                        onAdd(item.id, amt)
                                         amountStr = ""
                                     }
                                 },
                                 enabled = amountStr.toDoubleOrNull() != null && (amountStr.toDoubleOrNull() ?: 0.0) > 0,
-                                modifier = Modifier.height(50.dp)
+                                modifier = Modifier.height(44.dp)
                             ) {
-                                FluentIcon(
-                                    imageVector = FluentIcons.Add,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    size = 16.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Restock",
-                                    color = MaterialTheme.colorScheme.onPrimary
-                                )
+                                Text(text = "+ Add", color = MaterialTheme.colorScheme.onPrimary, fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    val amt = amountStr.toDoubleOrNull()
+                                    if (amt != null && amt > 0) {
+                                        onReduce(item.id, amt)
+                                        amountStr = ""
+                                    }
+                                },
+                                enabled = amountStr.toDoubleOrNull() != null && (amountStr.toDoubleOrNull() ?: 0.0) > 0,
+                                modifier = Modifier.height(44.dp)
+                            ) {
+                                Text(text = "− Reduce", fontSize = 12.sp)
+                            }
+                            OutlinedButton(
+                                onClick = { onEdit(item) },
+                                modifier = Modifier.height(44.dp)
+                            ) {
+                                Text(text = "Edit", fontSize = 12.sp)
                             }
                         }
                     }
@@ -514,6 +536,43 @@ private fun InventoryVariantTargetRow(
             color = labelColor
         )
     }
+}
+
+@Composable
+fun EditRawMaterialDialog(
+    item: InventoryItem,
+    onSave: (String, String, Double, Double) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember(item.id) { mutableStateOf(item.itemName) }
+    var unit by remember(item.id) { mutableStateOf(item.unit) }
+    var stockStr by remember(item.id) { mutableStateOf(item.currentStock.toString()) }
+    var threshStr by remember(item.id) { mutableStateOf(item.reorderThreshold.toString()) }
+
+    AdaptiveGlassDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Edit Raw Material", fontWeight = FontWeight.Bold) },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        confirmButton = {
+            Button(onClick = {
+                val stock = stockStr.toDoubleOrNull() ?: 0.0
+                val thresh = threshStr.toDoubleOrNull() ?: 0.0
+                if (name.isNotBlank() && unit.isNotBlank()) {
+                    onSave(name, unit, stock, thresh)
+                }
+            }) {
+                Text("Save")
+            }
+        },
+        content = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Item Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = unit, onValueChange = { unit = it }, label = { Text("Unit (e.g. pcs, grams)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = stockStr, onValueChange = { stockStr = it }, label = { Text("Current Stock") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(value = threshStr, onValueChange = { threshStr = it }, label = { Text("Reorder Threshold") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), singleLine = true, modifier = Modifier.fillMaxWidth())
+            }
+        }
+    )
 }
 
 @Composable

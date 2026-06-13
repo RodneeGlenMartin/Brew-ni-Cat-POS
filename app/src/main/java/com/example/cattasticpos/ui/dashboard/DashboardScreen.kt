@@ -74,7 +74,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cattasticpos.domain.catalog.ProductAddOnCatalog
 import com.example.cattasticpos.domain.model.CartItem
+import com.example.cattasticpos.domain.model.CartLineSelection
 import com.example.cattasticpos.domain.model.Item
 import dev.chrisbanes.haze.HazeState
 import com.example.cattasticpos.domain.model.Variant
@@ -984,10 +986,15 @@ fun CartItemRow(cartItem: CartItem, onQuantityChange: (String, Int) -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                val variantFlavorText = if (cartItem.flavor.isNullOrBlank()) {
-                    cartItem.variant.name
-                } else {
-                    "${cartItem.variant.name}/${cartItem.flavor.substringAfter(": ").trim()}"
+                val selection = CartLineSelection.parse(cartItem.flavor, cartItem.item.id)
+                val flavorLabel = selection.baseFlavor?.substringAfter(": ")?.trim()
+                    ?: selection.baseFlavor
+                val addOnText = selection.addOnLabels.takeIf { it.isNotEmpty() }?.joinToString(", ")
+                val variantFlavorText = when {
+                    flavorLabel.isNullOrBlank() && addOnText.isNullOrBlank() -> cartItem.variant.name
+                    addOnText.isNullOrBlank() -> "${cartItem.variant.name}/$flavorLabel"
+                    flavorLabel.isNullOrBlank() -> "${cartItem.variant.name}/+$addOnText"
+                    else -> "${cartItem.variant.name}/$flavorLabel + $addOnText"
                 }
                 Text(
                     "${cartItem.quantity}x ${cartItem.item.name} ($variantFlavorText) - ₱${String.format("%.0f", cartItem.totalPrice)}",
@@ -1229,19 +1236,20 @@ private enum class ProductConfigStep {
     FlavorGroup,
     Flavor,
     Size,
+    AddOns,
     CoffeeOption
 }
 
-private fun isDrinkItem(item: Item): Boolean = item.categoryId == "cat_drinks"
+private fun isCoffeeItem(item: Item): Boolean = item.id == "drink_coffee"
 
-private fun buildCartFlavor(baseFlavor: String?, coffeeOption: String?): String? =
-    buildString {
-        if (!baseFlavor.isNullOrBlank()) append(baseFlavor)
-        if (!coffeeOption.isNullOrBlank()) {
-            if (isNotEmpty()) append(" — ")
-            append(coffeeOption)
-        }
-    }.takeIf { it.isNotBlank() }
+private fun hasAddOnStep(item: Item): Boolean = ProductAddOnCatalog.supportsAddOns(item.id)
+
+private fun buildCartFlavor(
+    itemId: String,
+    baseFlavor: String?,
+    coffeeOption: String?,
+    addOnIds: List<String>
+): String? = CartLineSelection.encode(baseFlavor, coffeeOption, addOnIds, itemId)
 
 private fun itemHasGroupedFlavors(item: Item): Boolean =
     item.flavors.any { it.contains(":") }
@@ -1266,15 +1274,18 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
     var selectedVariant by remember(item.id) { mutableStateOf<Variant?>(null) }
     var selectedFlavor by remember(item.id) { mutableStateOf<String?>(null) }
     var selectedCoffeeOption by remember(item.id) { mutableStateOf<String?>(null) }
-    val isDrink = isDrinkItem(item)
+    var selectedAddOnIds by remember(item.id) { mutableStateOf<List<String>>(emptyList()) }
+    val isCoffee = isCoffeeItem(item)
+    val hasAddOns = hasAddOnStep(item)
     val hasComboDescriptions = item.variants.any { !it.description.isNullOrBlank() }
     val showCheckoutFooter = when {
-        isDrink -> currentStep == ProductConfigStep.CoffeeOption
+        isCoffee -> currentStep == ProductConfigStep.CoffeeOption
+        hasAddOns -> currentStep == ProductConfigStep.AddOns
         else -> currentStep == ProductConfigStep.Size
     }
     val displayPrice = run {
         val variant = selectedVariant ?: return@run 0.0
-        if (selectedFlavor == null && variant.basePrice == 0.0) {
+        val base = if (selectedFlavor == null && variant.basePrice == 0.0) {
             0.0
         } else {
             try {
@@ -1283,6 +1294,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                 0.0
             }
         }
+        base + ProductAddOnCatalog.surcharge(item.id, selectedAddOnIds)
     }
 
     ModalBottomSheet(
@@ -1411,9 +1423,12 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                             isSelected = selectedVariant?.id == variant.id,
                                             onSelect = {
                                                 selectedVariant = variant
-                                                if (isDrink) {
-                                                    selectedCoffeeOption = null
-                                                    currentStep = ProductConfigStep.CoffeeOption
+                                                selectedCoffeeOption = null
+                                                selectedAddOnIds = emptyList()
+                                                currentStep = when {
+                                                    isCoffee -> ProductConfigStep.CoffeeOption
+                                                    hasAddOns -> ProductConfigStep.AddOns
+                                                    else -> ProductConfigStep.Size
                                                 }
                                             }
                                         )
@@ -1445,6 +1460,54 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                     }
                                 }
                             }
+                        }
+
+                        ProductConfigStep.AddOns -> {
+                            val addOnOptions = ProductAddOnCatalog.addOnsForItem(item.id)
+                            ProductConfigStepHeader(
+                                title = item.name,
+                                subtitle = listOfNotNull(
+                                    selectedFlavor?.substringAfter(": ")?.trim() ?: selectedFlavor,
+                                    selectedVariant?.name
+                                ).joinToString(" · ").ifBlank { "Add-ons (optional)" },
+                                onBack = {
+                                    selectedAddOnIds = emptyList()
+                                    currentStep = ProductConfigStep.Size
+                                }
+                            )
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                addOnOptions.forEach { addOn ->
+                                    key(addOn.id) {
+                                        val isSelected = selectedAddOnIds.contains(addOn.id)
+                                        FlavorOptionRow(
+                                            label = "${addOn.label} (+₱${String.format("%.0f", addOn.price)})",
+                                            isSelected = isSelected,
+                                            onSelect = {
+                                                selectedAddOnIds = if (ProductAddOnCatalog.allowsMultiple(item.id)) {
+                                                    if (isSelected) {
+                                                        selectedAddOnIds - addOn.id
+                                                    } else {
+                                                        selectedAddOnIds + addOn.id
+                                                    }
+                                                } else {
+                                                    if (isSelected) emptyList() else listOf(addOn.id)
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = "Tap to add optional extras, or add to order below",
+                                modifier = Modifier.fillMaxWidth(),
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
                         }
 
                         ProductConfigStep.CoffeeOption -> {
@@ -1516,11 +1579,14 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                             PosPrimaryButton(
                                 onClick = {
                                     val variant = selectedVariant ?: return@PosPrimaryButton
-                                    onAddToCart(variant, buildCartFlavor(selectedFlavor, selectedCoffeeOption))
+                                    onAddToCart(
+                                        variant,
+                                        buildCartFlavor(item.id, selectedFlavor, selectedCoffeeOption, selectedAddOnIds)
+                                    )
                                 },
                                 enabled = selectedVariant != null &&
                                     !(item.flavors.isNotEmpty() && selectedFlavor == null) &&
-                                    (!isDrink || selectedCoffeeOption != null),
+                                    (!isCoffee || selectedCoffeeOption != null),
                                 modifier = Modifier.defaultMinSize(minWidth = 0.dp)
                             ) {
                                 PosButtonIconLabel(

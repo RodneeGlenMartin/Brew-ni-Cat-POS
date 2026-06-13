@@ -71,7 +71,9 @@ internal object DatabaseSeeder {
                     InventoryEntity("inv_takoyaki", "Takoyaki Balls", "pcs", 100.0, 20.0),
                     InventoryEntity("inv_shrimp", "Shrimp Takoyaki", "pcs", 100.0, 20.0),
                     InventoryEntity("inv_fries", "Potato Fries", "grams", 100.0, 10.0),
-                    InventoryEntity("inv_nachos", "Nacho Chips", "grams", 100.0, 10.0)
+                    InventoryEntity("inv_nachos", "Nacho Chips", "grams", 100.0, 10.0),
+                    InventoryEntity("inv_nata_coco", "Nata de coco", "pcs", 100.0, 20.0),
+                    InventoryEntity("inv_rainbow_jelly", "Rainbow Jelly", "pcs", 100.0, 20.0)
                 )
             )
         } catch (e: Exception) {
@@ -87,10 +89,12 @@ internal object DatabaseSeeder {
                     RecipeMappingEntity("r_tako_8", "bite_takoyaki", "8pcs", "inv_takoyaki", 8.0),
                     RecipeMappingEntity("r_tako_12", "bite_takoyaki", "12pcs", "inv_takoyaki", 12.0),
                     RecipeMappingEntity("r_tako_16", "bite_takoyaki", "16pcs", "inv_takoyaki", 16.0),
-                    *MenuContentUpdater.shrimpTakoyakiRecipeMappings().toTypedArray(),
+                    *MenuBoardCatalog.shrimpTakoyakiRecipeMappings().toTypedArray(),
                     RecipeMappingEntity("r_fries_all", "bite_fries", null, "inv_fries", 150.0),
                     RecipeMappingEntity("r_nachos_all", "bite_nachos", null, "inv_nachos", 150.0),
                     RecipeMappingEntity("r_soda_all", "drink_soda", null, "inv_cups", 1.0),
+                    RecipeMappingEntity("r_soda_nata", "drink_soda", "Nata de coco", "inv_nata_coco", 1.0),
+                    RecipeMappingEntity("r_soda_rainbow", "drink_soda", "Rainbow Jelly", "inv_rainbow_jelly", 1.0),
                     RecipeMappingEntity("r_coffee_all", "drink_coffee", null, "inv_cups", 1.0)
                 )
             )
@@ -99,80 +103,5 @@ internal object DatabaseSeeder {
         }
     }
 
-    private fun defaultMenuItems(): List<ItemEntity> = listOf(
-        MenuContentUpdater.takoyakiItemWithShrimp(),
-        ItemEntity(
-            id = "bite_fries",
-            categoryId = "cat_bites",
-            name = "Fries (Cat Claws)",
-            flavors = "BBQ Scratch|Cheesy Purr|Sour & Cream Mew|Spicy Claw",
-            variantsJson = """
-                [
-                  {"id":"small","name":"Small","basePrice":30.0,"priceByFlavor":{}},
-                  {"id":"medium","name":"Medium","basePrice":50.0,"priceByFlavor":{}},
-                  {"id":"large","name":"Large","basePrice":70.0,"priceByFlavor":{}},
-                  {"id":"barkada_overload","name":"Barkada Overload","basePrice":150.0,"priceByFlavor":{}}
-                ]
-            """.trimIndent()
-        ),
-        ItemEntity(
-            id = "bite_nachos",
-            categoryId = "cat_bites",
-            name = "Nachos (Kitty Litter Crisps)",
-            flavors = "",
-            variantsJson = """
-                [
-                  {"id":"nachos_veggies","name":"Nachos+Veggies","basePrice":59.0,"priceByFlavor":{}},
-                  {"id":"nachos_meat","name":"Nachos+Meat","basePrice":79.0,"priceByFlavor":{}},
-                  {"id":"nachos_fries","name":"Nachos+Fries","basePrice":59.0,"priceByFlavor":{}},
-                  {"id":"triple_purr","name":"The Triple Purr","basePrice":99.0,"priceByFlavor":{}},
-                  {"id":"garden_cat","name":"Garden Cat","basePrice":89.0,"priceByFlavor":{}},
-                  {"id":"meaty_meow","name":"Meaty Meow","basePrice":99.0,"priceByFlavor":{}}
-                ]
-            """.trimIndent()
-        ),
-        ItemEntity(
-            id = "drink_soda",
-            categoryId = "cat_drinks",
-            name = "Soda (Fizzy Felines)",
-            flavors = "Yogurt Yarn|Honey Peach Paws|Passion Fruit Purr|Kiwi Kitten|Strawberry Scratch|Lychee Litter|Blueberry Bite|Grumpy Grapes|Green Apple Alley Cat",
-            variantsJson = """
-                [
-                  {"id":"12oz","name":"12oz","basePrice":39.0,"priceByFlavor":{}},
-                  {"id":"16oz","name":"16oz","basePrice":49.0,"priceByFlavor":{}},
-                  {"id":"22oz","name":"22oz","basePrice":69.0,"priceByFlavor":{}}
-                ]
-            """.trimIndent()
-        ),
-        ItemEntity(
-            id = "drink_coffee",
-            categoryId = "cat_drinks",
-            name = "Cat-Feine (Coffee)",
-            flavors = "Classic: Salted Caramel Latte|Classic: Vanilla Iced Latte|Classic: Hazelnut Latte|Classic: Caramel Macchiato|Classic: Salted Caramel Hazelnut|Oreo: Caramel Oreo Coffee|Oreo: Oreo Iced Latte|Oreo: Vanilla Oreo Latte|Matcha: Dirty Matcha|Matcha: Vanilla Matcha Latte|Matcha: Caramel Matcha|Sweet Filipino: Condensed Milk Coffee|Sweet Filipino: Sea Salt Caramel Coffee",
-            variantsJson = """
-                [
-                  {"id":"12oz","name":"12oz","basePrice":49.0,"priceByFlavor":{}},
-                  {"id":"16oz","name":"16oz","basePrice":59.0,"priceByFlavor":{}},
-                  {"id":"22oz","name":"22oz","basePrice":79.0,"priceByFlavor":{}}
-                ]
-            """.trimIndent()
-        ),
-        ItemEntity(
-            id = "combo_meals",
-            categoryId = "combos",
-            name = "Combo Meals",
-            flavors = "",
-            variantsJson = """
-                [
-                  {"id":"combo_1","name":"The Classy Cat Combo","basePrice":104.0,"priceByFlavor":{},"description":"Food: 4pcs Cheesy Calico (Cheese) Takoyaki\nDrink: 16oz Salted Caramel Tail (Classic Coffee)"},
-                  {"id":"combo_2","name":"The Fizzy Kitten","basePrice":89.0,"priceByFlavor":{},"description":"Food: Medium BBQ Scratch Fries\nDrink: 12oz Kiwi Kitten Soda"},
-                  {"id":"combo_3","name":"The Sweet Puspin","basePrice":138.0,"priceByFlavor":{},"description":"Food: Nachos + Meat\nDrink: 16oz Condensed Milk Meow (Sweet Filipino Style Coffee)"},
-                  {"id":"combo_4","name":"The Two-Tail","basePrice":228.0,"priceByFlavor":{},"description":"Food: 8pcs Octo-Paws (Octobits) Takoyaki\nDrinks: Two 16oz Oreo Coffee Drinks (e.g., Oreo Iced Paw-tte)"},
-                  {"id":"combo_5","name":"Matcha Made in Heaven","basePrice":217.0,"priceByFlavor":{},"description":"Food: The Triple Purr Nachos (Nachos + Fries + Meat) to share\nDrinks: Two 16oz Matcha Coffee Drinks (e.g., Dirty Neko)"},
-                  {"id":"combo_6","name":"Litter Box Feast","basePrice":300.0,"priceByFlavor":{},"description":"Food: * 16pcs Veggie Whiskers Takoyaki\n* 1 Barkada Overload Fries (Choice of flavor)\nDrinks: Four 16oz Fizzy Feline Sodas (Any flavor)"},
-                  {"id":"combo_7","name":"Ultimate Alley Cat Party","basePrice":725.0,"priceByFlavor":{},"description":"Food: * 12pcs Octo-Paws Takoyaki\n* 1 Barkada Overload Fries\n* 1 Meaty Meow Nachos\nDrinks: Four 22oz Cat-Feine Coffees (Any style)"}
-                ]
-            """.trimIndent()
-        )
-    )
+    private fun defaultMenuItems(): List<ItemEntity> = MenuBoardCatalog.allMenuItems()
 }

@@ -9,8 +9,10 @@ import com.example.cattasticpos.domain.model.Item
 import com.example.cattasticpos.domain.model.RecipeMapping
 import com.example.cattasticpos.domain.repository.RecipeRepository
 import com.example.cattasticpos.domain.repository.InventoryRepository
+import com.example.cattasticpos.domain.usecase.AdjustInventoryUseCase
 import com.example.cattasticpos.domain.usecase.GetMenuUseCase
 import com.example.cattasticpos.domain.usecase.RestockItemUseCase
+import com.example.cattasticpos.domain.usecase.UpdateInventoryItemUseCase
 import com.example.cattasticpos.domain.model.InventoryItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,7 +22,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -28,7 +29,9 @@ class InventoryViewModel(
     private val inventoryRepository: InventoryRepository,
     private val recipeRepository: RecipeRepository,
     private val getMenuUseCase: GetMenuUseCase,
-    private val restockItemUseCase: RestockItemUseCase
+    private val restockItemUseCase: RestockItemUseCase,
+    private val adjustInventoryUseCase: AdjustInventoryUseCase,
+    private val updateInventoryItemUseCase: UpdateInventoryItemUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(InventoryUiState())
@@ -63,6 +66,29 @@ class InventoryViewModel(
         viewModelScope.launch {
             restockItemUseCase(itemId, amount)
         }
+    }
+
+    fun reduceItem(itemId: String, amount: Double) {
+        viewModelScope.launch {
+            adjustInventoryUseCase(itemId, amount)
+        }
+    }
+
+    fun updateInventoryItem(
+        itemId: String,
+        itemName: String,
+        unit: String,
+        currentStock: Double,
+        reorderThreshold: Double
+    ) {
+        viewModelScope.launch {
+            updateInventoryItemUseCase(itemId, itemName, unit, currentStock, reorderThreshold)
+            _uiState.update { it.copy(editingInventoryItem = null) }
+        }
+    }
+
+    fun setEditingInventoryItem(item: InventoryItem?) {
+        _uiState.update { it.copy(editingInventoryItem = item) }
     }
 
     fun addNewRawMaterial(name: String, unit: String, startingStock: Double, threshold: Double) {
@@ -136,7 +162,9 @@ class InventoryViewModel(
                     application.container.inventoryRepository,
                     application.container.recipeRepository,
                     application.container.getMenuUseCase,
-                    application.container.restockItemUseCase
+                    application.container.restockItemUseCase,
+                    application.container.adjustInventoryUseCase,
+                    application.container.updateInventoryItemUseCase
                 ) as T
             }
         }

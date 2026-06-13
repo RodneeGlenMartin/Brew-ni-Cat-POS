@@ -16,6 +16,9 @@ interface InventoryDao {
     @Query("SELECT COUNT(*) FROM inventory")
     suspend fun getInventoryCount(): Int
 
+    @Query("SELECT * FROM inventory WHERE id = :itemId LIMIT 1")
+    suspend fun getInventoryItemById(itemId: String): InventoryEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInventoryItems(items: List<InventoryEntity>)
 

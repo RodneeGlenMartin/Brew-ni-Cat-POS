@@ -13,16 +13,12 @@ class InventoryRepositoryImpl(
 
     override fun getAllInventory(): Flow<List<InventoryItem>> {
         return inventoryDao.getAllInventory().map { entities ->
-            entities.map { entity ->
-                InventoryItem(
-                    id = entity.id,
-                    itemName = entity.itemName,
-                    unit = entity.unit,
-                    currentStock = entity.currentStock,
-                    reorderThreshold = entity.reorderThreshold
-                )
-            }
+            entities.map { entity -> entity.toDomain() }
         }
+    }
+
+    override suspend fun getInventoryItemById(itemId: String): InventoryItem? {
+        return inventoryDao.getInventoryItemById(itemId)?.toDomain()
     }
 
     override suspend fun insertInventoryItems(items: List<InventoryItem>) {
@@ -38,6 +34,18 @@ class InventoryRepositoryImpl(
         inventoryDao.insertInventoryItems(entities)
     }
 
+    override suspend fun updateInventoryItem(item: InventoryItem) {
+        inventoryDao.updateInventoryItem(
+            InventoryEntity(
+                id = item.id,
+                itemName = item.itemName,
+                unit = item.unit,
+                currentStock = item.currentStock,
+                reorderThreshold = item.reorderThreshold
+            )
+        )
+    }
+
     override suspend fun decrementStock(inventoryId: String, amount: Double) {
         inventoryDao.decrementStock(inventoryId, amount)
     }
@@ -49,4 +57,12 @@ class InventoryRepositoryImpl(
     override suspend fun deleteInventoryItem(itemId: String) {
         inventoryDao.deleteInventoryItem(itemId)
     }
+
+    private fun InventoryEntity.toDomain() = InventoryItem(
+        id = id,
+        itemName = itemName,
+        unit = unit,
+        currentStock = currentStock,
+        reorderThreshold = reorderThreshold
+    )
 }

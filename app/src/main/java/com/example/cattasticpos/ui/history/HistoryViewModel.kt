@@ -412,6 +412,13 @@ class HistoryViewModel(
         }
     }
 
+    fun toggleOrderServed(orderId: Long) {
+        viewModelScope.launch {
+            val order = orderRepository.getOrderById(orderId) ?: return@launch
+            orderRepository.setOrderServed(orderId, !order.isServed)
+        }
+    }
+
     fun updateOrder(orderId: Long, cartItems: List<CartItem>, discountStrategy: DiscountStrategy) {
         viewModelScope.launch {
             val result = updateOrderUseCase(orderId, cartItems, discountStrategy)

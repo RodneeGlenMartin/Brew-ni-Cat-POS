@@ -11,5 +11,6 @@ data class InventoryUiState(
     val selectedVariantName: String? = null,
     val currentRecipeMappings: List<RecipeMapping> = emptyList(),
     val showAddRawMaterialDialog: Boolean = false,
-    val showLinkIngredientDialog: Boolean = false
+    val showLinkIngredientDialog: Boolean = false,
+    val editingInventoryItem: InventoryItem? = null
 )

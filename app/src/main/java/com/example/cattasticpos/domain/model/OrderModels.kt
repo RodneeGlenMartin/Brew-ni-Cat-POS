@@ -14,6 +14,7 @@ data class Order(
     val cashierId: String? = null,
     val cashierName: String? = null,
     val tableLabel: String? = null,
+    val isServed: Boolean = false,
     val items: List<OrderItem>
 ) {
     val receiptNumber: String

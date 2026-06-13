@@ -19,5 +19,6 @@ data class OrderEntity(
     val paymentReference: String?,
     val cashierId: String? = null,
     val cashierName: String? = null,
-    val tableLabel: String? = null
+    val tableLabel: String? = null,
+    val isServed: Boolean = false
 )

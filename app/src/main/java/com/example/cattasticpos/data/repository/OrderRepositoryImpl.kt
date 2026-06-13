@@ -53,7 +53,8 @@ class OrderRepositoryImpl(
             paymentReference = order.paymentReference,
             cashierId = order.cashierId,
             cashierName = order.cashierName,
-            tableLabel = order.tableLabel
+            tableLabel = order.tableLabel,
+            isServed = order.isServed
         )
         val itemEntities = order.items.map { item ->
             OrderItemEntity(
@@ -86,7 +87,8 @@ class OrderRepositoryImpl(
             paymentReference = order.paymentReference,
             cashierId = order.cashierId,
             cashierName = order.cashierName,
-            tableLabel = order.tableLabel
+            tableLabel = order.tableLabel,
+            isServed = order.isServed
         )
         val itemEntities = order.items.map { item ->
             OrderItemEntity(
@@ -152,6 +154,10 @@ class OrderRepositoryImpl(
         }
     }
 
+    override suspend fun setOrderServed(orderId: Long, isServed: Boolean) {
+        orderDao.setOrderServed(orderId, isServed)
+    }
+
     private fun OrderWithItems.toDomain(): Order {
         return Order(
             id = order.id,
@@ -165,6 +171,7 @@ class OrderRepositoryImpl(
             cashierId = order.cashierId,
             cashierName = order.cashierName,
             tableLabel = order.tableLabel,
+            isServed = order.isServed,
             items = items.map { item ->
                 OrderItem(
                     id = item.id,
