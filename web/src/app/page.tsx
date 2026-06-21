@@ -345,7 +345,7 @@ export default function Dashboard() {
   const exportCSV = () => {
     const filtered = getFilteredOrders();
     let csvContent = 'data:text/csv;charset=utf-8,';
-    csvContent += 'Order ID,Receipt Number,Device ID,Timestamp,Date,Subtotal,Discount Deduction,Discount Label,Total,Payment Method,Payment Reference,Cashier,Table Label,Served\n';
+    csvContent += 'Order ID,Receipt Number,Device ID,Timestamp,Date,Subtotal,Discount Deduction,Discount Label,Total,Payment Method,Payment Reference,Cashier,Name,Served\n';
 
     filtered.forEach(o => {
       const displayId = o.id >= 1000000000 ? o.id % 1000000000 : o.id;
@@ -812,7 +812,7 @@ export default function Dashboard() {
                               <div className="flex items-center gap-2.5">
                                 <span className="text-sm font-black text-emerald-400">#{String(displayId).padStart(4, '0')}</span>
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-300">
-                                  {order.table_label ? `Table ${order.table_label}` : 'Take Out'}
+                                  {order.table_label ? order.table_label : 'Take Out'}
                                 </span>
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${order.payment_method === 'CASH' ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400' : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'}`}>
                                   {order.payment_method}
@@ -1022,7 +1022,7 @@ export default function Dashboard() {
                                 </span>
                               )}
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 border border-white/10 ${o.is_voided ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
-                                {o.table_label ? `Table ${o.table_label}` : 'Take Out'}
+                                {o.table_label ? o.table_label : 'Take Out'}
                               </span>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${o.payment_method === 'CASH' ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400' : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'}`}>
                                 {o.payment_method}
@@ -1068,7 +1068,7 @@ export default function Dashboard() {
                                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Edit & Sync Order Details</h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
                                   <div className="flex flex-col gap-1.5">
-                                    <label className="text-[10px] uppercase font-bold text-slate-500">Table / Type</label>
+                                    <label className="text-[10px] uppercase font-bold text-slate-500">Name / Type</label>
                                     <input
                                       type="text"
                                       value={editTableLabels[o.id] !== undefined ? editTableLabels[o.id] : (o.table_label || '')}

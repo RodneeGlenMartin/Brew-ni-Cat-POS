@@ -315,8 +315,8 @@ class DashboardViewModel(
         heldLabel?.trim()?.takeIf { it.isNotBlank() }?.let { return it }
         return when (payment.serviceType) {
             OrderServiceType.DINE_IN -> {
-                val table = payment.tableNumber.trim()
-                if (table.isNotEmpty()) "Dine In - Table $table" else "Dine In"
+                val name = payment.tableNumber.trim()
+                if (name.isNotEmpty()) name else "Dine In"
             }
             OrderServiceType.TAKE_OUT -> "Take Out"
         }

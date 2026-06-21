@@ -48,7 +48,7 @@ fun formatReceiptShareText(order: Order): String {
         add("Date: $dateStr")
         add("Payment: ${order.paymentMethod}")
         if (!order.tableLabel.isNullOrBlank()) {
-            add("Label: ${order.tableLabel}")
+            add("Name: ${order.tableLabel}")
         }
         add(RECEIPT_DIVIDER)
         order.items.forEach { item ->

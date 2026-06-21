@@ -216,7 +216,7 @@ fun DashboardScreen(
         ) {
             if (!uiState.activeTableLabel.isNullOrBlank() && cartItemCount > 0) {
                 Text(
-                    text = "Label: ${uiState.activeTableLabel}",
+                    text = "Name: ${uiState.activeTableLabel}",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.secondary,
@@ -1265,8 +1265,8 @@ fun PaymentCheckoutDialog(
                     OutlinedTextField(
                         value = paymentState.tableNumber,
                         onValueChange = { onPaymentStateChange(paymentState.copy(tableNumber = it)) },
-                        label = { Text("Table # (optional)") },
-                        placeholder = { Text("e.g. Table 3") },
+                        label = { Text("Name (optional)") },
+                        placeholder = { Text("e.g. Juan") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -1983,8 +1983,8 @@ fun HoldOrderDialog(onHold: (String?) -> Unit, onDismiss: () -> Unit) {
                 OutlinedTextField(
                     value = tableLabel,
                     onValueChange = { tableLabel = it },
-                    label = { Text("Table / Label (Optional)") },
-                    placeholder = { Text("e.g. Table 3, Take-out #5") },
+                    label = { Text("Name (Optional)") },
+                    placeholder = { Text("e.g. Juan") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
