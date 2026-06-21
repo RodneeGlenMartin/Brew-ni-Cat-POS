@@ -107,18 +107,45 @@ class AppConfigRepositoryImpl(
             paymentConfig.cashiers.any { it.id == id }
         } ?: paymentConfig.cashiers.firstOrNull()?.id
 
+        val defaultUrl = "https://hyeotyohpdpmmvquotnd.supabase.co"
+        val defaultKey = "sb_publishable_orak9Nk7HGB_qFHgXMdIzA_11T8NfYQ"
+        
+        var shouldUpdate = false
+        var updatedEntity = entity
+        
         val actualDeviceId = if (entity.deviceId.isBlank()) {
             val newUuid = java.util.UUID.randomUUID().toString()
-            GlobalScope.launch(Dispatchers.IO) {
-                try {
-                    dao.insertConfig(entity.copy(deviceId = newUuid))
-                } catch (e: Exception) {
-                    android.util.Log.e("AppConfigRepositoryImpl", "Failed to update deviceId", e)
-                }
-            }
+            updatedEntity = updatedEntity.copy(deviceId = newUuid)
+            shouldUpdate = true
             newUuid
         } else {
             entity.deviceId
+        }
+
+        val actualUrl = if (entity.supabaseUrl.isBlank()) {
+            updatedEntity = updatedEntity.copy(supabaseUrl = defaultUrl)
+            shouldUpdate = true
+            defaultUrl
+        } else {
+            entity.supabaseUrl
+        }
+
+        val actualKey = if (entity.supabaseAnonKey.isBlank()) {
+            updatedEntity = updatedEntity.copy(supabaseAnonKey = defaultKey)
+            shouldUpdate = true
+            defaultKey
+        } else {
+            entity.supabaseAnonKey
+        }
+
+        if (shouldUpdate) {
+            GlobalScope.launch(Dispatchers.IO) {
+                try {
+                    dao.insertConfig(updatedEntity)
+                } catch (e: Exception) {
+                    android.util.Log.e("AppConfigRepositoryImpl", "Failed to update configs", e)
+                }
+            }
         }
 
         return AppConfig(
@@ -129,8 +156,8 @@ class AppConfigRepositoryImpl(
             gcashAccounts = paymentConfig.gcashAccounts,
             themeAccentId = paymentConfig.themeAccentId,
             activeCashierId = resolvedActiveId,
-            supabaseUrl = entity.supabaseUrl,
-            supabaseAnonKey = entity.supabaseAnonKey,
+            supabaseUrl = actualUrl,
+            supabaseAnonKey = actualKey,
             deviceId = actualDeviceId
         )
     }

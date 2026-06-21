@@ -41,8 +41,8 @@ internal object DatabaseSeeder {
                     startingCashFloat = AppConfigEntity.DEFAULT_STARTING_CASH_FLOAT,
                     pinHash = "otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0=",
                     cashiersJson = AppConfigEntity.DEFAULT_CASHIERS_JSON,
-                    supabaseUrl = "",
-                    supabaseAnonKey = "",
+                    supabaseUrl = "https://hyeotyohpdpmmvquotnd.supabase.co",
+                    supabaseAnonKey = "sb_publishable_orak9Nk7HGB_qFHgXMdIzA_11T8NfYQ",
                     deviceId = java.util.UUID.randomUUID().toString()
                 )
             )
