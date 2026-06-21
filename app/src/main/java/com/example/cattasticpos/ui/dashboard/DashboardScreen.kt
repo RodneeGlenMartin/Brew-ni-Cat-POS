@@ -121,13 +121,23 @@ fun DashboardScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var isCartExpanded by remember { mutableStateOf(false) }
     val cartItemCount = uiState.activeCart.sumOf { it.quantity }
+    // On a wide screen (Redmi Pad 2 tablet) keep the running order visible by default, the
+    // way the old side panel did — the cart is still a bottom-sheet, just expanded. Phones
+    // keep the collapsed-by-default behaviour so the sheet doesn't cover the catalog.
+    val isWideScreen = LocalConfiguration.current.screenWidthDp >= 540
+    var isCartExpanded by remember { mutableStateOf(isWideScreen) }
+    var wasCartEmpty by remember { mutableStateOf(cartItemCount == 0) }
 
     LaunchedEffect(cartItemCount) {
         if (cartItemCount == 0) {
             isCartExpanded = false
+        } else if (wasCartEmpty && isWideScreen) {
+            // First item of a new sale rung up on a tablet — surface the order automatically
+            // so the cashier can verify it, but don't re-expand on every later quantity tap.
+            isCartExpanded = true
         }
+        wasCartEmpty = cartItemCount == 0
     }
 
     val performFeedback = rememberPosFeedback()
@@ -223,7 +233,6 @@ fun DashboardScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-            val isTablet = LocalConfiguration.current.screenWidthDp >= 540
             val darkTheme = isSystemInDarkTheme()
             val checkoutBorder = if (darkTheme) {
                 BorderStroke(1.dp, specularBorderBrush())
@@ -231,159 +240,45 @@ fun DashboardScreen(
                 BorderStroke(1.dp, AlabasterPalette.RingBorder)
             }
 
-            if (isTablet) {
-                var isCartVisible by rememberSaveable { mutableStateOf(true) }
-                var checkoutWidthFraction by rememberSaveable { mutableStateOf(0.38f) }
-
-                BoxWithConstraints(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                ) {
-                    val totalWidthPx = constraints.maxWidth
-                    Row(modifier = Modifier.fillMaxSize()) {
-                        StorefrontCatalogPane(
-                            modifier = Modifier.weight(if (isCartVisible) 1f - checkoutWidthFraction else 1f),
-                            uiState = uiState,
-                            hazeState = hazeState,
-                            headerState = headerState,
-                            searchQuery = searchQuery,
-                            isSearchExpanded = isSearchExpanded,
-                            onSearchQueryChange = { searchQuery = it },
-                            onSearchExpandedChange = { isSearchExpanded = it },
-                            onCategorySelected = { viewModel.selectCategory(it) },
-                            onItemClick = { viewModel.showConfigurationSheet(it) },
-                            compactGlows = false
-                        )
-                        
-                        if (isCartVisible) {
-                            // Draggable divider handle (12.dp wide for easy touch targets)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxHeight()
-                                    .width(12.dp)
-                                    .pointerInput(Unit) {
-                                        detectDragGestures(
-                                            onDragEnd = {
-                                                // If dragged too close to the right edge, collapse the panel
-                                                if (checkoutWidthFraction < 0.28f) {
-                                                    isCartVisible = false
-                                                    checkoutWidthFraction = 0.38f
-                                                }
-                                            },
-                                            onDrag = { change, dragAmount ->
-                                                change.consume()
-                                                val totalWidth = if (totalWidthPx > 0) totalWidthPx else 1000
-                                                val deltaFraction = dragAmount.x / totalWidth
-                                                checkoutWidthFraction = (checkoutWidthFraction - deltaFraction).coerceIn(0.20f, 0.60f)
-                                            }
-                                        )
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .width(1.dp)
-                                        .background(MaterialTheme.colorScheme.outlineVariant)
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .size(4.dp, 40.dp)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
-                                )
-                            }
-
-                            DashboardCheckoutPanel(
-                                modifier = Modifier
-                                    .weight(checkoutWidthFraction)
-                                    .fillMaxHeight()
-                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.05f)),
-                                uiState = uiState,
-                                cartItemCount = cartItemCount,
-                                isCartExpanded = true,
-                                onCartExpandedChange = { isCartExpanded = it },
-                                checkoutBorder = checkoutBorder,
-                                darkTheme = darkTheme,
-                                onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
-                                onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
-                                onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
-                                onSelectDiscount = { viewModel.selectDiscount(it) },
-                                forceExpanded = true,
-                                useBottomSheetStyle = false,
-                                onCollapseCart = { isCartVisible = false }
-                            )
-                        }
-                    }
-                    if (!isCartVisible) {
-                        FloatingActionButton(
-                            onClick = { isCartVisible = true },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(16.dp)
-                        ) {
-                            BadgedBox(
-                                badge = {
-                                    if (cartItemCount > 0) {
-                                        Badge(
-                                            containerColor = MaterialTheme.colorScheme.error,
-                                            contentColor = MaterialTheme.colorScheme.onError
-                                        ) {
-                                            Text(cartItemCount.toString())
-                                        }
-                                    }
-                                }
-                            ) {
-                                FluentIcon(
-                                    imageVector = FluentIcons.ShoppingBag,
-                                    contentDescription = "Show Cart",
-                                    useGlassGradient = false,
-                                    tint = MaterialTheme.colorScheme.onPrimary
-                                )
-                            }
-                        }
-                    }
-                }
-            } else {
-                val cartBottomPadding by animateDpAsState(
-                    targetValue = if (isCartExpanded) 380.dp else 120.dp,
-                    animationSpec = iOSSpringDp,
-                    label = "cartPadding"
+            // Cart stays at the bottom as a bottom-sheet on every form factor — phone and
+            // tablet alike. On the Redmi Pad 2 this keeps the primary action (cart +
+            // checkout) anchored in the bottom thumb-reach zone instead of off in a side
+            // panel, while the catalog still spans the full width with its multi-column grid.
+            val cartBottomPadding by animateDpAsState(
+                targetValue = if (isCartExpanded) 380.dp else 120.dp,
+                animationSpec = iOSSpringDp,
+                label = "cartPadding"
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                StorefrontCatalogPane(
+                    modifier = Modifier.weight(1f),
+                    uiState = uiState,
+                    hazeState = hazeState,
+                    headerState = headerState,
+                    searchQuery = searchQuery,
+                    isSearchExpanded = isSearchExpanded,
+                    onSearchQueryChange = { searchQuery = it },
+                    onSearchExpandedChange = { isSearchExpanded = it },
+                    onCategorySelected = { viewModel.selectCategory(it) },
+                    onItemClick = { viewModel.showConfigurationSheet(it) },
+                    compactGlows = true,
+                    bottomContentPadding = cartBottomPadding
                 )
-                Column(modifier = Modifier.weight(1f)) {
-                    StorefrontCatalogPane(
-                        modifier = Modifier.weight(1f),
-                        uiState = uiState,
-                        hazeState = hazeState,
-                        headerState = headerState,
-                        searchQuery = searchQuery,
-                        isSearchExpanded = isSearchExpanded,
-                        onSearchQueryChange = { searchQuery = it },
-                        onSearchExpandedChange = { isSearchExpanded = it },
-                        onCategorySelected = { viewModel.selectCategory(it) },
-                        onItemClick = { viewModel.showConfigurationSheet(it) },
-                        compactGlows = true,
-                        bottomContentPadding = cartBottomPadding
-                    )
-                    DashboardCheckoutPanel(
-                        modifier = Modifier.fillMaxWidth(),
-                        uiState = uiState,
-                        cartItemCount = cartItemCount,
-                        isCartExpanded = isCartExpanded,
-                        onCartExpandedChange = { isCartExpanded = it },
-                        checkoutBorder = checkoutBorder,
-                        darkTheme = darkTheme,
-                        onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
-                        onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
-                        onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
-                        onSelectDiscount = { viewModel.selectDiscount(it) },
-                        forceExpanded = false,
-                        useBottomSheetStyle = true
-                    )
-                }
+                DashboardCheckoutPanel(
+                    modifier = Modifier.fillMaxWidth(),
+                    uiState = uiState,
+                    cartItemCount = cartItemCount,
+                    isCartExpanded = isCartExpanded,
+                    onCartExpandedChange = { isCartExpanded = it },
+                    checkoutBorder = checkoutBorder,
+                    darkTheme = darkTheme,
+                    onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
+                    onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
+                    onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
+                    onSelectDiscount = { viewModel.selectDiscount(it) },
+                    forceExpanded = false,
+                    useBottomSheetStyle = true
+                )
             }
         }
 
@@ -437,13 +332,13 @@ private fun DashboardHeaderIconButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = Modifier.size(36.dp)
+        modifier = Modifier.size(44.dp)
     ) {
         FluentIcon(
             imageVector = icon,
             contentDescription = contentDescription,
             tint = tint,
-            size = 20.dp
+            size = 22.dp
         )
     }
 }
@@ -791,7 +686,7 @@ private fun DashboardCheckoutPanel(
                         TextButton(
                             onClick = onHoldOrder,
                             enabled = uiState.activeCart.isNotEmpty(),
-                            modifier = Modifier.height(32.dp)
+                            modifier = Modifier.height(40.dp)
                         ) {
                             FluentIcon(
                                 imageVector = FluentIcons.Pause,
@@ -852,7 +747,7 @@ private fun DashboardCheckoutPanel(
                     if (onCollapseCart != null) {
                         IconButton(
                             onClick = onCollapseCart,
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(44.dp)
                         ) {
                             FluentIcon(
                                 imageVector = FluentIcons.Close,
@@ -871,7 +766,7 @@ private fun DashboardCheckoutPanel(
                 TextButton(
                     onClick = onHoldOrder,
                     enabled = uiState.activeCart.isNotEmpty(),
-                    modifier = Modifier.height(32.dp)
+                    modifier = Modifier.height(40.dp)
                 ) {
                     FluentIcon(
                         imageVector = FluentIcons.Pause,
@@ -1098,6 +993,7 @@ fun ItemCard(
 @Composable
 fun CartItemRow(cartItem: CartItem, onQuantityChange: (String, Int) -> Unit) {
     val lineColor = adaptiveGlassContentColor()
+    val performFeedback = rememberPosFeedback()
     ObsidianGlassSurface(
         modifier = Modifier.fillMaxWidth(),
         cornerRadius = 12.dp
@@ -1105,7 +1001,7 @@ fun CartItemRow(cartItem: CartItem, onQuantityChange: (String, Int) -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+                .padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -1129,15 +1025,47 @@ fun CartItemRow(cartItem: CartItem, onQuantityChange: (String, Int) -> Unit) {
                     lineHeight = 16.sp
                 )
             }
+            // Quantity steppers: 44.dp touch targets (Fitts's Law — was 24.dp, half the
+            // 48.dp minimum) with haptic + audio feedback so every tap confirms itself.
             Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { onQuantityChange(cartItem.id, -1) }, modifier = Modifier.size(24.dp)) {
-                    FluentIcon(imageVector = FluentIcons.Subtract, contentDescription = null, size = 14.dp, useGlassGradient = false)
+                IconButton(
+                    onClick = {
+                        performFeedback(FeedbackEvent(BionicHaptic.Light, PosSound.Tap))
+                        onQuantityChange(cartItem.id, -1)
+                    },
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    FluentIcon(imageVector = FluentIcons.Subtract, contentDescription = "Decrease quantity", size = 18.dp, useGlassGradient = false)
                 }
-                IconButton(onClick = { onQuantityChange(cartItem.id, 1) }, modifier = Modifier.size(24.dp)) {
-                    FluentIcon(imageVector = FluentIcons.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, size = 14.dp)
+                IconButton(
+                    onClick = {
+                        performFeedback(FeedbackEvent(BionicHaptic.Light, PosSound.Tap))
+                        onQuantityChange(cartItem.id, 1)
+                    },
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    FluentIcon(imageVector = FluentIcons.Add, contentDescription = "Increase quantity", tint = MaterialTheme.colorScheme.primary, size = 18.dp)
                 }
-                IconButton(onClick = { onQuantityChange(cartItem.id, -cartItem.quantity) }, modifier = Modifier.size(24.dp)) {
-                    FluentIcon(imageVector = FluentIcons.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error, size = 14.dp)
+                // Separate the destructive "remove line" action from the +/- steppers so a
+                // mis-tap can't wipe a line item (error prevention — Norman's constraints).
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp)
+                        .height(24.dp)
+                        .width(1.dp)
+                        .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                )
+                IconButton(
+                    onClick = {
+                        // Snap haptic gives the removal a distinct, stronger tactile cue, but
+                        // keep a neutral Tap sound — Error is the app's failure chime and this
+                        // is a deliberate, valid action, not a failure.
+                        performFeedback(FeedbackEvent(BionicHaptic.Snap, PosSound.Tap))
+                        onQuantityChange(cartItem.id, -cartItem.quantity)
+                    },
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    FluentIcon(imageVector = FluentIcons.Delete, contentDescription = "Remove item", tint = MaterialTheme.colorScheme.error, size = 18.dp)
                 }
             }
         }
@@ -1152,8 +1080,8 @@ fun DiscountButton(label: String, isSelected: Boolean, onClick: () -> Unit, modi
         border = BorderStroke(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 2.dp),
         shape = RoundedCornerShape(8.dp),
-        modifier = modifier.height(32.dp)
-    ) { Text(label, fontSize = 10.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+        modifier = modifier.height(40.dp)
+    ) { Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
