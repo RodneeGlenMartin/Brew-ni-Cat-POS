@@ -77,6 +77,21 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE id = :orderId")
     suspend fun getOrderWithItems(orderId: Long): OrderWithItems?
 
+    @Transaction
+    @Query("SELECT * FROM orders WHERE remoteId = :remoteId LIMIT 1")
+    suspend fun getOrderByRemoteId(remoteId: Long): OrderWithItems?
+
+    @Query("UPDATE orders SET remoteId = :remoteId WHERE id = :id")
+    suspend fun setRemoteId(id: Long, remoteId: Long)
+
+    /**
+     * Orders awaiting upload. Unlike [getOrdersPage] this intentionally does NOT filter out
+     * voided rows, so a locally-voided order still propagates its void to the cloud.
+     */
+    @Transaction
+    @Query("SELECT * FROM orders WHERE syncStatus = 'PENDING'")
+    suspend fun getPendingSyncOrders(): List<OrderWithItems>
+
     @Query("SELECT itemName, SUM(quantity) as totalQuantity FROM order_items JOIN orders ON order_items.orderId = orders.id WHERE orders.timestamp >= :startOfDay AND orders.timestamp <= :endOfDay AND orders.isVoided = 0 GROUP BY itemName ORDER BY totalQuantity DESC LIMIT 1")
     fun getTopSellingItemForDay(startOfDay: Long, endOfDay: Long): Flow<TopSellingItemResult?>
 

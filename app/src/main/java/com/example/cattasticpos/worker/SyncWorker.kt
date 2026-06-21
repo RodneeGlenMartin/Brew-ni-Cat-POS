@@ -315,22 +315,52 @@ class SyncWorker(
             }
 
             // ==========================================
-            // UPLOAD: Sync Local Pending Orders to Cloud
+            // UPLOAD: Push Local Pending Orders to Cloud
             // ==========================================
             try {
-                val unsyncedOrders = database.orderDao().getOrdersPage(0L, Long.MAX_VALUE, Long.MAX_VALUE, 100)
-                    .filter { it.order.syncStatus == "PENDING" }
+                val pendingOrders = database.orderDao().getPendingSyncOrders()
 
-                if (unsyncedOrders.isNotEmpty()) {
-                    Log.i(TAG, "Found ${unsyncedOrders.size} pending orders to upload.")
+                if (pendingOrders.isNotEmpty()) {
+                    Log.i(TAG, "Found ${pendingOrders.size} pending orders to upload.")
 
-                    for (orderWithItems in unsyncedOrders) {
+                    for (orderWithItems in pendingOrders) {
                         val order = orderWithItems.order
                         val items = orderWithItems.items
 
+                        if (order.remoteId != null) {
+                            // Already present in the cloud (an own order re-synced, or a foreign
+                            // order voided locally). Only push the mutable status fields so we
+                            // never clobber the original device_id / totals / item rows.
+                            val patchJson = JSONObject().apply {
+                                put("is_voided", order.isVoided)
+                                put("is_served", order.isServed)
+                            }
+                            val patchRequest = Request.Builder()
+                                .url("$supabaseUrl/rest/v1/orders?id=eq.${order.remoteId}")
+                                .patch(patchJson.toString().toRequestBody(JSON_MEDIA_TYPE))
+                                .header("apikey", supabaseKey)
+                                .header("Authorization", "Bearer $supabaseKey")
+                                .header("Content-Type", "application/json")
+                                .build()
+                            val patchResponse = client.newCall(patchRequest).execute()
+                            if (!patchResponse.isSuccessful) {
+                                val body = patchResponse.body?.string() ?: ""
+                                Log.e(TAG, "Failed to patch order ${order.id} (remote ${order.remoteId}): ${patchResponse.code} - $body")
+                                patchResponse.close()
+                                continue
+                            }
+                            patchResponse.close()
+
+                            database.orderDao().updateOrderEntity(
+                                order.copy(syncStatus = "SYNCED", lastSyncedAt = System.currentTimeMillis())
+                            )
+                            Log.d(TAG, "Patched order ${order.id} status to cloud (remote ${order.remoteId}).")
+                            continue
+                        }
+
+                        // Brand-new own order -> POST full record under a globally-unique id.
                         val supabaseOrderId = getSupabaseOrderId(deviceId, order.id)
 
-                        // 1. Sync Order Header
                         val orderJson = JSONObject().apply {
                             put("id", supabaseOrderId)
                             put("device_id", deviceId)
@@ -366,7 +396,6 @@ class SyncWorker(
                         }
                         orderResponse.close()
 
-                        // 2. Sync Order Items
                         if (items.isNotEmpty()) {
                             val itemsArray = JSONArray()
                             items.forEachIndexed { index, item ->
@@ -404,11 +433,15 @@ class SyncWorker(
                             itemsResponse.close()
                         }
 
-                        // 3. Mark as SYNCED locally
+                        // Mark SYNCED and remember the global id so future syncs PATCH, not re-POST.
                         database.orderDao().updateOrderEntity(
-                            order.copy(syncStatus = "SYNCED", lastSyncedAt = System.currentTimeMillis())
+                            order.copy(
+                                syncStatus = "SYNCED",
+                                lastSyncedAt = System.currentTimeMillis(),
+                                remoteId = supabaseOrderId
+                            )
                         )
-                        Log.d(TAG, "Successfully synced order ${order.id} (Supabase ID: $supabaseOrderId)")
+                        Log.d(TAG, "Uploaded new order ${order.id} (Supabase ID: $supabaseOrderId)")
                     }
                 } else {
                     Log.d(TAG, "No pending orders to upload.")
@@ -418,12 +451,14 @@ class SyncWorker(
             }
 
             // ==========================================
-            // DOWNLOAD: Historical Sync - Fetch All Orders from Cloud
+            // DOWNLOAD: Catch-up sync for orders created/voided on other devices
+            // (or while this device was offline). Merges through OrderSyncMerger so the
+            // local-id mapping is identical to the realtime and historical-pull paths.
             // ==========================================
             try {
-                Log.d(TAG, "Starting historical order sync from Supabase...")
+                Log.d(TAG, "Starting catch-up order sync from Supabase...")
                 val getOrdersRequest = Request.Builder()
-                    .url("$supabaseUrl/rest/v1/orders?select=*")
+                    .url("$supabaseUrl/rest/v1/orders?select=*,order_items(*)&order=timestamp.desc&limit=500")
                     .get()
                     .header("apikey", supabaseKey)
                     .header("Authorization", "Bearer $supabaseKey")
@@ -434,109 +469,18 @@ class SyncWorker(
                         val body = response.body?.string()
                         if (!body.isNullOrEmpty()) {
                             val arr = JSONArray(body)
-                            Log.d(TAG, "Downloaded ${arr.length()} orders from Supabase")
-
+                            Log.d(TAG, "Catch-up: examining ${arr.length()} cloud orders")
+                            val recipeRepository = app.container.recipeRepository
+                            val inventoryRepository = app.container.inventoryRepository
                             for (i in 0 until arr.length()) {
-                                val obj = arr.getJSONObject(i)
-                                val supabaseOrderId = obj.getLong("id")
-                                val deviceIdFromCloud = obj.getString("device_id")
-                                val timestamp = obj.getLong("timestamp")
-                                val subtotal = obj.getDouble("subtotal")
-                                val discountDeduction = obj.getDouble("discount_deduction")
-                                val discountLabel = obj.getString("discount_label")
-                                val total = obj.getDouble("total")
-                                val paymentMethod = obj.getString("payment_method")
-                                val paymentReference = if (obj.isNull("payment_reference")) null else obj.getString("payment_reference")
-                                val cashierId = if (obj.isNull("cashier_id")) null else obj.getString("cashier_id")
-                                val cashierName = if (obj.isNull("cashier_name")) null else obj.getString("cashier_name")
-                                val tableLabel = if (obj.isNull("table_label")) null else obj.getString("table_label")
-                                val isServed = obj.optBoolean("is_served", false)
-                                val isVoided = obj.optBoolean("is_voided", false)
-
-                                // Derive local order ID from Supabase ID
-                                val localOrderId = supabaseOrderId % 1_000_000_000L
-
-                                // Check if order already exists locally
-                                val existingOrder = database.orderDao().getOrderWithItems(localOrderId)
-
-                                if (existingOrder == null) {
-                                    // New order from cloud - insert it
-                                    val orderEntity = OrderEntity(
-                                        id = localOrderId,
-                                        timestamp = timestamp,
-                                        subtotal = subtotal,
-                                        discountDeduction = discountDeduction,
-                                        discountLabel = discountLabel,
-                                        total = total,
-                                        paymentMethod = paymentMethod,
-                                        paymentReference = paymentReference,
-                                        cashierId = cashierId,
-                                        cashierName = cashierName,
-                                        tableLabel = tableLabel,
-                                        isServed = isServed,
-                                        deviceId = deviceIdFromCloud,
-                                        syncStatus = "SYNCED",
-                                        isVoided = isVoided,
-                                        lastSyncedAt = System.currentTimeMillis()
-                                    )
-
-                                    // Fetch order items from cloud
-                                    val getOrderItemsRequest = Request.Builder()
-                                        .url("$supabaseUrl/rest/v1/order_items?order_id=eq.$supabaseOrderId")
-                                        .get()
-                                        .header("apikey", supabaseKey)
-                                        .header("Authorization", "Bearer $supabaseKey")
-                                        .build()
-
-                                    client.newCall(getOrderItemsRequest).execute().use { itemsResponse ->
-                                        if (itemsResponse.isSuccessful) {
-                                            val itemsBody = itemsResponse.body?.string()
-                                            val orderItems = mutableListOf<OrderItemEntity>()
-
-                                            if (!itemsBody.isNullOrEmpty()) {
-                                                val itemsArr = JSONArray(itemsBody)
-                                                for (j in 0 until itemsArr.length()) {
-                                                    val itemObj = itemsArr.getJSONObject(j)
-                                                    val itemEntity = OrderItemEntity(
-                                                        id = itemObj.getLong("id"),
-                                                        orderId = localOrderId,
-                                                        itemId = itemObj.getString("item_id"),
-                                                        itemName = itemObj.getString("item_name"),
-                                                        variantId = itemObj.getString("variant_id"),
-                                                        variantName = itemObj.getString("variant_name"),
-                                                        flavor = if (itemObj.isNull("flavor")) null else itemObj.getString("flavor"),
-                                                        quantity = itemObj.getInt("quantity"),
-                                                        unitPrice = itemObj.getDouble("unit_price"),
-                                                        totalPrice = itemObj.getDouble("total_price")
-                                                    )
-                                                    orderItems.add(itemEntity)
-                                                }
-                                            }
-
-                                            database.orderDao().insertOrderWithItems(orderEntity, orderItems)
-                                            Log.d(TAG, "Inserted historical order $localOrderId from cloud")
-                                        }
-                                    }
-                                } else {
-                                    // Update existing order if cloud state differs
-                                    val needsUpdate = existingOrder.order.let { local ->
-                                        local.isVoided != isVoided ||
-                                        local.isServed != isServed ||
-                                        local.syncStatus != "SYNCED"
-                                    }
-
-                                    if (needsUpdate) {
-                                        database.orderDao().updateOrderEntity(
-                                            existingOrder.order.copy(
-                                                isVoided = isVoided,
-                                                isServed = isServed,
-                                                syncStatus = "SYNCED",
-                                                lastSyncedAt = System.currentTimeMillis()
-                                            )
-                                        )
-                                        Log.d(TAG, "Updated historical order $localOrderId from cloud")
-                                    }
-                                }
+                                com.example.cattasticpos.data.sync.OrderSyncMerger.mergeRemoteOrder(
+                                    database = database,
+                                    recipeRepository = recipeRepository,
+                                    inventoryRepository = inventoryRepository,
+                                    orderJson = arr.getJSONObject(i),
+                                    localDeviceId = deviceId,
+                                    restoreInventoryOnVoid = false
+                                )
                             }
                         }
                     } else {
@@ -544,7 +488,7 @@ class SyncWorker(
                     }
                 }
             } catch (he: Exception) {
-                Log.e(TAG, "Historical sync error", he)
+                Log.e(TAG, "Catch-up sync error", he)
             }
 
             return Result.success()
