@@ -11,6 +11,7 @@ import com.example.cattasticpos.domain.model.OrderItem
 import com.example.cattasticpos.domain.repository.OrderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class OrderRepositoryImpl(
     private val database: PosDatabase
@@ -159,6 +160,50 @@ class OrderRepositoryImpl(
         database.withTransaction {
             orderDao.deleteOrderItemsForOrder(orderId)
             orderDao.deleteOrderEntity(orderId)
+        }
+
+        // Asynchronously delete from Supabase if configured
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            try {
+                val config = database.appConfigDao().getAppConfigOnce()
+                if (config != null) {
+                    val supabaseUrl = config.supabaseUrl.trim()
+                    val supabaseKey = config.supabaseAnonKey.trim()
+                    val deviceId = config.deviceId.trim()
+
+                    if (supabaseUrl.isNotEmpty() && supabaseKey.isNotEmpty() && deviceId.isNotEmpty()) {
+                        val deviceHash = kotlin.math.abs(deviceId.hashCode()) % 1_000_000L
+                        val globalOrderId = (deviceHash * 1_000_000_000L) + orderId
+
+                        val client = okhttp3.OkHttpClient.Builder()
+                            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                            .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                            .build()
+
+                        // Delete order items
+                        val deleteItemsReq = okhttp3.Request.Builder()
+                            .url("$supabaseUrl/rest/v1/order_items?order_id=eq.$globalOrderId")
+                            .delete()
+                            .header("apikey", supabaseKey)
+                            .header("Authorization", "Bearer $supabaseKey")
+                            .build()
+                        client.newCall(deleteItemsReq).execute().close()
+
+                        // Delete order
+                        val deleteOrderReq = okhttp3.Request.Builder()
+                            .url("$supabaseUrl/rest/v1/orders?id=eq.$globalOrderId")
+                            .delete()
+                            .header("apikey", supabaseKey)
+                            .header("Authorization", "Bearer $supabaseKey")
+                            .build()
+                        client.newCall(deleteOrderReq).execute().close()
+
+                        android.util.Log.i("OrderRepositoryImpl", "Successfully deleted order $globalOrderId from Supabase.")
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("OrderRepositoryImpl", "Failed to delete order $orderId from Supabase", e)
+            }
         }
     }
 

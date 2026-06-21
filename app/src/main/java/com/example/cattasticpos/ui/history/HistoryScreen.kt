@@ -1412,27 +1412,6 @@ fun EditConfigDialog(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
-                CupertinoSection(header = "Supabase Cloud Sync") {
-                    CupertinoFormRow(label = "Supabase URL") {
-                        OutlinedTextField(
-                            value = supabaseUrl,
-                            onValueChange = { supabaseUrl = it },
-                            label = { Text("https://your-project.supabase.co") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                    }
-                    CupertinoFormRow(label = "Anon Key", showDivider = false) {
-                        OutlinedTextField(
-                            value = supabaseAnonKey,
-                            onValueChange = { supabaseAnonKey = it },
-                            label = { Text("your-supabase-anon-key") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                    }
-                }
             }
         }
     )

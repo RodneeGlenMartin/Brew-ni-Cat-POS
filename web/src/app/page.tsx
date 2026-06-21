@@ -446,9 +446,9 @@ export default function Dashboard() {
       cashSales: zReading.cashSales,
       gcashSales: zReading.gcashSales,
       startingFloat: 1000.0,
-      expenses: 50.0,
-      drawerBalance: zReading.cashSales + 1000.0 - 50.0,
-      profits: zReading.netSales - 50.0,
+      expenses: 0.0,
+      drawerBalance: zReading.cashSales + 1000.0,
+      profits: zReading.netSales,
       orderCount: zReading.count,
       timestamp: Date.now()
     });
@@ -642,7 +642,7 @@ export default function Dashboard() {
                   <div className="bg-[#0c0c0e]/60 border border-white/5 rounded-3xl p-6 flex flex-col justify-between h-36 relative overflow-hidden backdrop-blur-xl shadow-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]">
                     <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl"></div>
                     <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Today&apos;s Net Profit</span>
-                    <span className="text-3xl font-black text-emerald-400 tracking-tight mt-1">{formatPrice(zReading.netSales - 50)}</span>
+                    <span className="text-3xl font-black text-emerald-400 tracking-tight mt-1">{formatPrice(zReading.netSales)}</span>
                     <span className="text-[10px] text-slate-500 flex items-center gap-1 font-semibold mt-2">
                       <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> Aggregated net flow
                     </span>
@@ -768,17 +768,17 @@ export default function Dashboard() {
 
                         <div className="flex justify-between border-b border-white/5 pb-3.5 text-sm">
                           <span className="text-slate-400 font-semibold">Operating Expenses</span>
-                          <span className="font-bold text-red-400">-₱50.00</span>
+                          <span className="font-bold text-red-400">₱0.00</span>
                         </div>
 
                         {/* Cash Drawer Status clone */}
                         <div className="flex flex-col gap-1 border-b border-white/5 pb-3.5">
                           <div className="flex justify-between text-sm">
                             <span className="text-slate-300 font-bold">Estimated Drawer Balance</span>
-                            <span className="font-black text-emerald-400 text-base">{formatPrice(zReading.cashSales + 1000.0 - 50.0)}</span>
+                            <span className="font-black text-emerald-400 text-base">{formatPrice(zReading.cashSales + 1000.0)}</span>
                           </div>
                           <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
-                            <span>(Float: ₱1,000.00 + Cash: {formatPrice(zReading.cashSales)} - Expenses: ₱50.00)</span>
+                            <span>(Float: ₱1,000.00 + Cash: {formatPrice(zReading.cashSales)})</span>
                           </div>
                         </div>
 
