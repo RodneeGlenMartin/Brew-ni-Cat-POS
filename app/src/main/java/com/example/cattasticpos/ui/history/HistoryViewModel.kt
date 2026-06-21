@@ -43,6 +43,7 @@ data class DateRangeApplyResult(
 )
 
 class HistoryViewModel(
+    private val application: android.app.Application,
     private val orderRepository: OrderRepository,
     private val expenseRepository: ExpenseRepository,
     private val exportDataUseCase: ExportDataUseCase,
@@ -353,6 +354,7 @@ class HistoryViewModel(
     fun updateSyncConfig(supabaseUrl: String, supabaseAnonKey: String) {
         viewModelScope.launch {
             appConfigRepository.updateSyncConfig(supabaseUrl, supabaseAnonKey)
+            com.example.cattasticpos.worker.SyncWorker.triggerImmediateSync(application)
         }
     }
 
@@ -479,6 +481,7 @@ class HistoryViewModel(
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as CattasticPosApp
                 return HistoryViewModel(
+                    application,
                     application.container.orderRepository,
                     application.container.expenseRepository,
                     application.container.exportDataUseCase,

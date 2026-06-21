@@ -34,6 +34,15 @@ class SyncWorker(
         fun getSupabaseOrderItemId(supabaseOrderId: Long, itemIndex: Int): Long {
             return (supabaseOrderId * 1000L) + itemIndex
         }
+
+        fun triggerImmediateSync(context: Context) {
+            val request = androidx.work.OneTimeWorkRequestBuilder<SyncWorker>().build()
+            androidx.work.WorkManager.getInstance(context).enqueueUniqueWork(
+                "immediate_sync_upload",
+                androidx.work.ExistingWorkPolicy.REPLACE,
+                request
+            )
+        }
     }
 
     private val client = OkHttpClient.Builder()

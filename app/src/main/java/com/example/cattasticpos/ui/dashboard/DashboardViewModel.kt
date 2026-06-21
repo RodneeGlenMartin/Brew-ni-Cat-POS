@@ -32,6 +32,7 @@ import com.example.cattasticpos.domain.model.Expense
 import java.util.UUID
 
 class DashboardViewModel(
+    private val application: android.app.Application,
     private val getMenuUseCase: GetMenuUseCase,
     private val calculateCartUseCase: CalculateCartUseCase,
     private val checkoutUseCase: CheckoutUseCase,
@@ -263,6 +264,7 @@ class DashboardViewModel(
 
             if (result.isSuccess) {
                 result.getOrNull()?.let { order ->
+                    com.example.cattasticpos.worker.SyncWorker.triggerImmediateSync(application)
                     _uiState.update { ui ->
                         val freshCalculation = calculateCartUseCase(emptyList(), ui.selectedDiscountStrategy)
                         ui.copy(
@@ -447,6 +449,7 @@ class DashboardViewModel(
             override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
                 val application = checkNotNull(extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]) as CattasticPosApp
                 return DashboardViewModel(
+                    application,
                     application.container.getMenuUseCase,
                     application.container.calculateCartUseCase,
                     application.container.checkoutUseCase,
