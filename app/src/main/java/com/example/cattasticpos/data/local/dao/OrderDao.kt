@@ -53,6 +53,7 @@ interface OrderDao {
         SELECT * FROM orders
         WHERE timestamp >= :startDate AND timestamp <= :endDate
         AND timestamp < :beforeTimestamp
+        AND isVoided = 0
         ORDER BY timestamp DESC
         LIMIT :limit
         """
@@ -65,6 +66,7 @@ interface OrderDao {
         SELECT * FROM orders
         WHERE timestamp >= :startDate AND timestamp <= :endDate
         AND timestamp < :beforeTimestamp
+        AND isVoided = 0
         ORDER BY timestamp DESC
         LIMIT :limit
         """
@@ -75,28 +77,28 @@ interface OrderDao {
     @Query("SELECT * FROM orders WHERE id = :orderId")
     suspend fun getOrderWithItems(orderId: Long): OrderWithItems?
 
-    @Query("SELECT itemName, SUM(quantity) as totalQuantity FROM order_items JOIN orders ON order_items.orderId = orders.id WHERE orders.timestamp >= :startOfDay AND orders.timestamp <= :endOfDay GROUP BY itemName ORDER BY totalQuantity DESC LIMIT 1")
+    @Query("SELECT itemName, SUM(quantity) as totalQuantity FROM order_items JOIN orders ON order_items.orderId = orders.id WHERE orders.timestamp >= :startOfDay AND orders.timestamp <= :endOfDay AND orders.isVoided = 0 GROUP BY itemName ORDER BY totalQuantity DESC LIMIT 1")
     fun getTopSellingItemForDay(startOfDay: Long, endOfDay: Long): Flow<TopSellingItemResult?>
 
-    @Query("SELECT SUM(subtotal) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay")
+    @Query("SELECT SUM(subtotal) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND isVoided = 0")
     fun getGrossSalesForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>
 
-    @Query("SELECT SUM(discountDeduction) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay")
+    @Query("SELECT SUM(discountDeduction) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND isVoided = 0")
     fun getDiscountsGivenForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>
 
-    @Query("SELECT SUM(total) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay")
+    @Query("SELECT SUM(total) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND isVoided = 0")
     fun getNetRevenueForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>
 
-    @Query("SELECT SUM(total) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND paymentMethod = 'CASH'")
+    @Query("SELECT SUM(total) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND paymentMethod = 'CASH' AND isVoided = 0")
     fun getCashSalesForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>
 
-    @Query("SELECT SUM(total) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND paymentMethod = 'GCASH'")
+    @Query("SELECT SUM(total) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND paymentMethod = 'GCASH' AND isVoided = 0")
     fun getGcashSalesForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>
 
     @Query(
         """
         SELECT cashierId, SUM(total) as totalSales FROM orders
-        WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay
+        WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND isVoided = 0
         GROUP BY cashierId
         """
     )

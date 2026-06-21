@@ -314,102 +314,237 @@ class SyncWorker(
                 Log.e(TAG, "Catalog sync error", ce)
             }
 
+            // ==========================================
+            // UPLOAD: Sync Local Pending Orders to Cloud
+            // ==========================================
+            try {
+                val unsyncedOrders = database.orderDao().getOrdersPage(0L, Long.MAX_VALUE, Long.MAX_VALUE, 100)
+                    .filter { it.order.syncStatus == "PENDING" }
 
-            // Find unsynced orders
-            val unsyncedOrders = database.orderDao().getOrdersPage(0L, Long.MAX_VALUE, Long.MAX_VALUE, 100)
-                .filter { it.order.syncStatus == "PENDING" }
+                if (unsyncedOrders.isNotEmpty()) {
+                    Log.i(TAG, "Found ${unsyncedOrders.size} pending orders to upload.")
 
-            if (unsyncedOrders.isEmpty()) {
-                Log.d(TAG, "No pending orders to sync.")
-                return Result.success()
+                    for (orderWithItems in unsyncedOrders) {
+                        val order = orderWithItems.order
+                        val items = orderWithItems.items
+
+                        val supabaseOrderId = getSupabaseOrderId(deviceId, order.id)
+
+                        // 1. Sync Order Header
+                        val orderJson = JSONObject().apply {
+                            put("id", supabaseOrderId)
+                            put("device_id", deviceId)
+                            put("timestamp", order.timestamp)
+                            put("subtotal", order.subtotal)
+                            put("discount_deduction", order.discountDeduction)
+                            put("discount_label", order.discountLabel)
+                            put("total", order.total)
+                            put("payment_method", order.paymentMethod)
+                            put("payment_reference", order.paymentReference ?: JSONObject.NULL)
+                            put("cashier_id", order.cashierId ?: JSONObject.NULL)
+                            put("cashier_name", order.cashierName ?: JSONObject.NULL)
+                            put("table_label", order.tableLabel ?: JSONObject.NULL)
+                            put("is_served", order.isServed)
+                            put("is_voided", order.isVoided)
+                        }
+
+                        val orderRequest = Request.Builder()
+                            .url("$supabaseUrl/rest/v1/orders")
+                            .post(orderJson.toString().toRequestBody(JSON_MEDIA_TYPE))
+                            .header("apikey", supabaseKey)
+                            .header("Authorization", "Bearer $supabaseKey")
+                            .header("Prefer", "resolution=merge-duplicates")
+                            .header("Content-Type", "application/json")
+                            .build()
+
+                        val orderResponse = client.newCall(orderRequest).execute()
+                        if (!orderResponse.isSuccessful) {
+                            val body = orderResponse.body?.string() ?: ""
+                            Log.e(TAG, "Failed to upload order header ${order.id}: ${orderResponse.code} - $body")
+                            orderResponse.close()
+                            continue
+                        }
+                        orderResponse.close()
+
+                        // 2. Sync Order Items
+                        if (items.isNotEmpty()) {
+                            val itemsArray = JSONArray()
+                            items.forEachIndexed { index, item ->
+                                val itemJson = JSONObject().apply {
+                                    put("id", getSupabaseOrderItemId(supabaseOrderId, index))
+                                    put("order_id", supabaseOrderId)
+                                    put("item_id", item.itemId)
+                                    put("item_name", item.itemName)
+                                    put("variant_id", item.variantId)
+                                    put("variant_name", item.variantName)
+                                    put("flavor", item.flavor ?: JSONObject.NULL)
+                                    put("quantity", item.quantity)
+                                    put("unit_price", item.unitPrice)
+                                    put("total_price", item.totalPrice)
+                                }
+                                itemsArray.put(itemJson)
+                            }
+
+                            val itemsRequest = Request.Builder()
+                                .url("$supabaseUrl/rest/v1/order_items")
+                                .post(itemsArray.toString().toRequestBody(JSON_MEDIA_TYPE))
+                                .header("apikey", supabaseKey)
+                                .header("Authorization", "Bearer $supabaseKey")
+                                .header("Prefer", "resolution=merge-duplicates")
+                                .header("Content-Type", "application/json")
+                                .build()
+
+                            val itemsResponse = client.newCall(itemsRequest).execute()
+                            if (!itemsResponse.isSuccessful) {
+                                val body = itemsResponse.body?.string() ?: ""
+                                Log.e(TAG, "Failed to upload order items for order ${order.id}: ${itemsResponse.code} - $body")
+                                itemsResponse.close()
+                                continue
+                            }
+                            itemsResponse.close()
+                        }
+
+                        // 3. Mark as SYNCED locally
+                        database.orderDao().updateOrderEntity(
+                            order.copy(syncStatus = "SYNCED", lastSyncedAt = System.currentTimeMillis())
+                        )
+                        Log.d(TAG, "Successfully synced order ${order.id} (Supabase ID: $supabaseOrderId)")
+                    }
+                } else {
+                    Log.d(TAG, "No pending orders to upload.")
+                }
+            } catch (oe: Exception) {
+                Log.e(TAG, "Order upload error", oe)
             }
 
-            Log.i(TAG, "Found ${unsyncedOrders.size} orders to sync.")
-
-            for (orderWithItems in unsyncedOrders) {
-                val order = orderWithItems.order
-                val items = orderWithItems.items
-
-                val supabaseOrderId = getSupabaseOrderId(deviceId, order.id)
-
-                // 1. Sync Order Header
-                val orderJson = JSONObject().apply {
-                    put("id", supabaseOrderId)
-                    put("device_id", deviceId)
-                    put("timestamp", order.timestamp)
-                    put("subtotal", order.subtotal)
-                    put("discount_deduction", order.discountDeduction)
-                    put("discount_label", order.discountLabel)
-                    put("total", order.total)
-                    put("payment_method", order.paymentMethod)
-                    put("payment_reference", order.paymentReference ?: JSONObject.NULL)
-                    put("cashier_id", order.cashierId ?: JSONObject.NULL)
-                    put("cashier_name", order.cashierName ?: JSONObject.NULL)
-                    put("table_label", order.tableLabel ?: JSONObject.NULL)
-                    put("is_served", order.isServed)
-                }
-
-                val orderRequest = Request.Builder()
-                    .url("$supabaseUrl/rest/v1/orders")
-                    .post(orderJson.toString().toRequestBody(JSON_MEDIA_TYPE))
+            // ==========================================
+            // DOWNLOAD: Historical Sync - Fetch All Orders from Cloud
+            // ==========================================
+            try {
+                Log.d(TAG, "Starting historical order sync from Supabase...")
+                val getOrdersRequest = Request.Builder()
+                    .url("$supabaseUrl/rest/v1/orders?select=*")
+                    .get()
                     .header("apikey", supabaseKey)
                     .header("Authorization", "Bearer $supabaseKey")
-                    .header("Prefer", "resolution=merge-duplicates")
-                    .header("Content-Type", "application/json")
                     .build()
 
-                val orderResponse = client.newCall(orderRequest).execute()
-                if (!orderResponse.isSuccessful) {
-                    val body = orderResponse.body?.string() ?: ""
-                    Log.e(TAG, "Failed to upload order header ${order.id}: ${orderResponse.code} - $body")
-                    orderResponse.close()
-                    continue
-                }
-                orderResponse.close()
+                client.newCall(getOrdersRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        if (!body.isNullOrEmpty()) {
+                            val arr = JSONArray(body)
+                            Log.d(TAG, "Downloaded ${arr.length()} orders from Supabase")
 
-                // 2. Sync Order Items
-                if (items.isNotEmpty()) {
-                    val itemsArray = JSONArray()
-                    items.forEachIndexed { index, item ->
-                        val itemJson = JSONObject().apply {
-                            put("id", getSupabaseOrderItemId(supabaseOrderId, index))
-                            put("order_id", supabaseOrderId)
-                            put("item_id", item.itemId)
-                            put("item_name", item.itemName)
-                            put("variant_id", item.variantId)
-                            put("variant_name", item.variantName)
-                            put("flavor", item.flavor ?: JSONObject.NULL)
-                            put("quantity", item.quantity)
-                            put("unit_price", item.unitPrice)
-                            put("total_price", item.totalPrice)
+                            for (i in 0 until arr.length()) {
+                                val obj = arr.getJSONObject(i)
+                                val supabaseOrderId = obj.getLong("id")
+                                val deviceIdFromCloud = obj.getString("device_id")
+                                val timestamp = obj.getLong("timestamp")
+                                val subtotal = obj.getDouble("subtotal")
+                                val discountDeduction = obj.getDouble("discount_deduction")
+                                val discountLabel = obj.getString("discount_label")
+                                val total = obj.getDouble("total")
+                                val paymentMethod = obj.getString("payment_method")
+                                val paymentReference = if (obj.isNull("payment_reference")) null else obj.getString("payment_reference")
+                                val cashierId = if (obj.isNull("cashier_id")) null else obj.getString("cashier_id")
+                                val cashierName = if (obj.isNull("cashier_name")) null else obj.getString("cashier_name")
+                                val tableLabel = if (obj.isNull("table_label")) null else obj.getString("table_label")
+                                val isServed = obj.optBoolean("is_served", false)
+                                val isVoided = obj.optBoolean("is_voided", false)
+
+                                // Derive local order ID from Supabase ID
+                                val localOrderId = supabaseOrderId % 1_000_000_000L
+
+                                // Check if order already exists locally
+                                val existingOrder = database.orderDao().getOrderWithItems(localOrderId)
+
+                                if (existingOrder == null) {
+                                    // New order from cloud - insert it
+                                    val orderEntity = OrderEntity(
+                                        id = localOrderId,
+                                        timestamp = timestamp,
+                                        subtotal = subtotal,
+                                        discountDeduction = discountDeduction,
+                                        discountLabel = discountLabel,
+                                        total = total,
+                                        paymentMethod = paymentMethod,
+                                        paymentReference = paymentReference,
+                                        cashierId = cashierId,
+                                        cashierName = cashierName,
+                                        tableLabel = tableLabel,
+                                        isServed = isServed,
+                                        deviceId = deviceIdFromCloud,
+                                        syncStatus = "SYNCED",
+                                        isVoided = isVoided,
+                                        lastSyncedAt = System.currentTimeMillis()
+                                    )
+
+                                    // Fetch order items from cloud
+                                    val getOrderItemsRequest = Request.Builder()
+                                        .url("$supabaseUrl/rest/v1/order_items?order_id=eq.$supabaseOrderId")
+                                        .get()
+                                        .header("apikey", supabaseKey)
+                                        .header("Authorization", "Bearer $supabaseKey")
+                                        .build()
+
+                                    client.newCall(getOrderItemsRequest).execute().use { itemsResponse ->
+                                        if (itemsResponse.isSuccessful) {
+                                            val itemsBody = itemsResponse.body?.string()
+                                            val orderItems = mutableListOf<OrderItemEntity>()
+
+                                            if (!itemsBody.isNullOrEmpty()) {
+                                                val itemsArr = JSONArray(itemsBody)
+                                                for (j in 0 until itemsArr.length()) {
+                                                    val itemObj = itemsArr.getJSONObject(j)
+                                                    val itemEntity = OrderItemEntity(
+                                                        id = itemObj.getLong("id"),
+                                                        orderId = localOrderId,
+                                                        itemId = itemObj.getString("item_id"),
+                                                        itemName = itemObj.getString("item_name"),
+                                                        variantId = itemObj.getString("variant_id"),
+                                                        variantName = itemObj.getString("variant_name"),
+                                                        flavor = if (itemObj.isNull("flavor")) null else itemObj.getString("flavor"),
+                                                        quantity = itemObj.getInt("quantity"),
+                                                        unitPrice = itemObj.getDouble("unit_price"),
+                                                        totalPrice = itemObj.getDouble("total_price")
+                                                    )
+                                                    orderItems.add(itemEntity)
+                                                }
+                                            }
+
+                                            database.orderDao().insertOrderWithItems(orderEntity, orderItems)
+                                            Log.d(TAG, "Inserted historical order $localOrderId from cloud")
+                                        }
+                                    }
+                                } else {
+                                    // Update existing order if cloud state differs
+                                    val needsUpdate = existingOrder.order.let { local ->
+                                        local.isVoided != isVoided ||
+                                        local.isServed != isServed ||
+                                        local.syncStatus != "SYNCED"
+                                    }
+
+                                    if (needsUpdate) {
+                                        database.orderDao().updateOrderEntity(
+                                            existingOrder.order.copy(
+                                                isVoided = isVoided,
+                                                isServed = isServed,
+                                                syncStatus = "SYNCED",
+                                                lastSyncedAt = System.currentTimeMillis()
+                                            )
+                                        )
+                                        Log.d(TAG, "Updated historical order $localOrderId from cloud")
+                                    }
+                                }
+                            }
                         }
-                        itemsArray.put(itemJson)
+                    } else {
+                        Log.e(TAG, "Failed to download orders: ${response.code}")
                     }
-
-                    val itemsRequest = Request.Builder()
-                        .url("$supabaseUrl/rest/v1/order_items")
-                        .post(itemsArray.toString().toRequestBody(JSON_MEDIA_TYPE))
-                        .header("apikey", supabaseKey)
-                        .header("Authorization", "Bearer $supabaseKey")
-                        .header("Prefer", "resolution=merge-duplicates")
-                        .header("Content-Type", "application/json")
-                        .build()
-
-                    val itemsResponse = client.newCall(itemsRequest).execute()
-                    if (!itemsResponse.isSuccessful) {
-                        val body = itemsResponse.body?.string() ?: ""
-                        Log.e(TAG, "Failed to upload order items for order ${order.id}: ${itemsResponse.code} - $body")
-                        itemsResponse.close()
-                        continue
-                    }
-                    itemsResponse.close()
                 }
-
-                // 3. Mark as SYNCED locally
-                database.orderDao().updateOrderEntity(
-                    order.copy(syncStatus = "SYNCED")
-                )
-                Log.d(TAG, "Successfully synced order ${order.id} (Supabase ID: $supabaseOrderId)")
+            } catch (he: Exception) {
+                Log.e(TAG, "Historical sync error", he)
             }
 
             return Result.success()

@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
         AppConfigEntity::class,
         VoidRecordEntity::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = false
 )
 abstract class PosDatabase : RoomDatabase() {
@@ -87,7 +87,8 @@ abstract class PosDatabase : RoomDatabase() {
                     MIGRATION_10_12,
                     MIGRATION_12_13,
                     MIGRATION_13_14,
-                    MIGRATION_14_15
+                    MIGRATION_14_15,
+                    MIGRATION_15_16
                 )
                 .addCallback(PosDatabaseCallback(appContext, scope))
                 .addCallback(MigrationSuccessCallback(appContext))
@@ -181,6 +182,13 @@ abstract class PosDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE app_config ADD COLUMN supabaseUrl TEXT NOT NULL DEFAULT ''")
                 db.execSQL("ALTER TABLE app_config ADD COLUMN supabaseAnonKey TEXT NOT NULL DEFAULT ''")
                 db.execSQL("ALTER TABLE app_config ADD COLUMN deviceId TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        val MIGRATION_15_16 = object : androidx.room.migration.Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE orders ADD COLUMN isVoided INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE orders ADD COLUMN lastSyncedAt INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

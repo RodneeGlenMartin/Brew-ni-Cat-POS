@@ -22,5 +22,7 @@ data class OrderEntity(
     val tableLabel: String? = null,
     val isServed: Boolean = false,
     val deviceId: String = "",
-    val syncStatus: String = "PENDING"
+    val syncStatus: String = "PENDING",
+    val isVoided: Boolean = false,
+    val lastSyncedAt: Long = 0
 )
