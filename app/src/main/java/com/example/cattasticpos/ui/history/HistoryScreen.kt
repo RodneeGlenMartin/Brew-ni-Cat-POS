@@ -684,6 +684,9 @@ fun HistoryScreen(
             pendingVoidOrderId?.let { orderId ->
                 VoidOrderDialog(
                     onDismiss = { pendingVoidOrderId = null },
+                    onVerifyPin = { pin ->
+                        viewModel.verifyAdminPin(pin)
+                    },
                     onConfirm = { reason ->
                         viewModel.voidOrder(orderId, reason)
                         pendingVoidOrderId = null
@@ -1112,9 +1115,16 @@ fun shareOrderReceipt(context: android.content.Context, order: com.example.catta
 }
 
 @Composable
-fun VoidOrderDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
+fun VoidOrderDialog(
+    onDismiss: () -> Unit,
+    onVerifyPin: suspend (String) -> Boolean,
+    onConfirm: (String) -> Unit
+) {
     val reasons = listOf("Wrong order", "Customer cancelled", "Duplicate entry", "Other")
     var selectedReason by remember { mutableStateOf(reasons.first()) }
+    var pin by remember { mutableStateOf("") }
+    var isPinError by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
 
     AdaptiveGlassDialog(
         onDismissRequest = onDismiss,
@@ -1126,7 +1136,15 @@ fun VoidOrderDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(selectedReason) }) {
+            Button(onClick = {
+                scope.launch {
+                    if (onVerifyPin(pin)) {
+                        onConfirm(selectedReason)
+                    } else {
+                        isPinError = true
+                    }
+                }
+            }) {
                 Text("Void & Restock")
             }
         },
@@ -1147,6 +1165,30 @@ fun VoidOrderDialog(onDismiss: () -> Unit, onConfirm: (String) -> Unit) {
                         )
                         Text(reason)
                     }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text("Enter Manager PIN to authorize:", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = pin,
+                    onValueChange = {
+                        if (it.length <= 4) {
+                            pin = it.filter { char -> char.isDigit() }
+                            isPinError = false
+                        }
+                    },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.NumberPassword
+                    ),
+                    isError = isPinError,
+                    placeholder = { Text("Manager PIN") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (isPinError) {
+                    Text("Incorrect PIN", color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
                 }
             }
         }

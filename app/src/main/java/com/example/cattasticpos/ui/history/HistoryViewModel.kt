@@ -415,6 +415,11 @@ class HistoryViewModel(
         }
     }
 
+    suspend fun verifyAdminPin(pin: String): Boolean {
+        val config = appConfigRepository.getAppConfig().first { it != null } ?: return false
+        return AppConfig.verifyPin(pin.trim(), config.pinHash)
+    }
+
     fun voidOrder(orderId: Long, reason: String) {
         viewModelScope.launch {
             val result = voidOrderUseCase(orderId, reason, cashierId = null)
