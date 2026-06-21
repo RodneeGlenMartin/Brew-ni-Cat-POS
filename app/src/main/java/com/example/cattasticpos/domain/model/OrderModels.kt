@@ -17,6 +17,8 @@ data class Order(
     val isServed: Boolean = false,
     val deviceId: String = "",
     val syncStatus: String = "PENDING",
+    val isVoided: Boolean = false,
+    val lastSyncedAt: Long = 0,
     val items: List<OrderItem>
 ) {
     val receiptNumber: String

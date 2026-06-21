@@ -47,6 +47,7 @@ class OrderRepositoryImpl(
     override suspend fun updateOrder(order: Order): Order {
         val existing = orderDao.getOrderWithItems(order.id)
         val targetDeviceId = existing?.order?.deviceId ?: order.deviceId.takeIf { it.isNotEmpty() } ?: ""
+        val lastSyncedAt = existing?.order?.lastSyncedAt ?: 0L
         val orderEntity = OrderEntity(
             id = order.id,
             timestamp = order.timestamp,
@@ -61,7 +62,9 @@ class OrderRepositoryImpl(
             tableLabel = order.tableLabel,
             isServed = order.isServed,
             deviceId = targetDeviceId,
-            syncStatus = "PENDING"
+            syncStatus = "PENDING",
+            isVoided = order.isVoided,
+            lastSyncedAt = lastSyncedAt
         )
         val itemEntities = order.items.map { item ->
             OrderItemEntity(
@@ -159,9 +162,16 @@ class OrderRepositoryImpl(
     }
 
     override suspend fun deleteOrder(orderId: Long) {
-        database.withTransaction {
-            orderDao.deleteOrderItemsForOrder(orderId)
-            orderDao.deleteOrderEntity(orderId)
+        // Soft delete: Mark order as voided instead of removing it
+        val existingOrder = database.orderDao().getOrderWithItems(orderId)
+        if (existingOrder != null) {
+            database.orderDao().updateOrderEntity(
+                existingOrder.order.copy(
+                    isVoided = true,
+                    syncStatus = "PENDING",
+                    lastSyncedAt = System.currentTimeMillis()
+                )
+            )
         }
 
         // Asynchronously mark as voided in Supabase if configured
@@ -222,6 +232,8 @@ class OrderRepositoryImpl(
             isServed = order.isServed,
             deviceId = order.deviceId,
             syncStatus = order.syncStatus,
+            isVoided = order.isVoided,
+            lastSyncedAt = order.lastSyncedAt,
             items = items.map { item ->
                 OrderItem(
                     id = item.id,
