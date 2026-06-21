@@ -6,6 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import com.example.cattasticpos.domain.model.AppThemeAccent
 import com.example.cattasticpos.ui.theme.AlabasterPalette
 import com.example.cattasticpos.ui.theme.ObsidianPalette
@@ -97,12 +100,27 @@ fun AdaptiveTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) darkColorSchemeFor(accent) else lightColorSchemeFor(accent)
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = adaptiveTypography(darkTheme)
-    ) {
-        CupertinoTheme(accent = accent, darkTheme = darkTheme) {
-            content()
+    // On large tablets (e.g. Redmi Pad 2 in landscape) the UI otherwise renders small on the
+    // high-density panel, so scale text and spacing up a notch for comfortable reading/tapping.
+    val configuration = LocalConfiguration.current
+    val baseDensity = LocalDensity.current
+    val uiScale = when {
+        configuration.screenWidthDp >= 1000 -> 1.20f
+        configuration.screenWidthDp >= 720 -> 1.12f
+        else -> 1f
+    }
+    val scaledDensity = Density(
+        density = baseDensity.density * uiScale,
+        fontScale = baseDensity.fontScale
+    )
+    CompositionLocalProvider(LocalDensity provides scaledDensity) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = adaptiveTypography(darkTheme)
+        ) {
+            CupertinoTheme(accent = accent, darkTheme = darkTheme) {
+                content()
+            }
         }
     }
 }

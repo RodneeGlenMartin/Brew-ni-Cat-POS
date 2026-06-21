@@ -16,7 +16,7 @@ data class AppConfigEntity(
 ) {
     companion object {
         const val DEFAULT_TARGET_SALES = 2000.0
-        const val DEFAULT_STARTING_CASH_FLOAT = 1000.0
+        const val DEFAULT_STARTING_CASH_FLOAT = 1500.0
         const val DEFAULT_CASHIERS_JSON =
             """[{"id":"cashier_default","name":"Popot","pinHash":"otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0="}]"""
     }

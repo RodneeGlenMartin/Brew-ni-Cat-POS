@@ -97,6 +97,8 @@ class ReceiptPrinterService(private val context: Context) {
         val alignLeft = byteArrayOf(ESC, 'a'.code.toByte(), 0)
         val boldOn = byteArrayOf(ESC, 'E'.code.toByte(), 1)
         val boldOff = byteArrayOf(ESC, 'E'.code.toByte(), 0)
+        val sizeDouble = byteArrayOf(GS, '!'.code.toByte(), 0x11) // double width + double height
+        val sizeNormal = byteArrayOf(GS, '!'.code.toByte(), 0x00)
         val cutPaper = byteArrayOf(GS, 'V'.code.toByte(), 66, 0)
 
         outputStream.write(initPrinter)
@@ -104,8 +106,14 @@ class ReceiptPrinterService(private val context: Context) {
         outputStream.write(boldOn)
         outputStream.write("Brew ni Cat\n".toByteArray())
         outputStream.write(boldOff)
+        // Table / customer name printed BIG so servers immediately see where to bring the order.
         if (!order.tableLabel.isNullOrBlank()) {
-            outputStream.write("Table/Label: ${order.tableLabel}\n".toByteArray())
+            outputStream.write("\n".toByteArray())
+            outputStream.write(boldOn)
+            outputStream.write(sizeDouble)
+            outputStream.write("${order.tableLabel}\n".toByteArray())
+            outputStream.write(sizeNormal)
+            outputStream.write(boldOff)
         }
         outputStream.write("Order: #${order.receiptNumber}\n".toByteArray())
         outputStream.write("Payment: ${order.paymentMethod}\n".toByteArray())

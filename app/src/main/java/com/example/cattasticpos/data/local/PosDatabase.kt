@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
         AppConfigEntity::class,
         VoidRecordEntity::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = false
 )
 abstract class PosDatabase : RoomDatabase() {
@@ -89,7 +89,8 @@ abstract class PosDatabase : RoomDatabase() {
                     MIGRATION_13_14,
                     MIGRATION_14_15,
                     MIGRATION_15_16,
-                    MIGRATION_16_17
+                    MIGRATION_16_17,
+                    MIGRATION_17_18
                 )
                 .addCallback(PosDatabaseCallback(appContext, scope))
                 .addCallback(MigrationSuccessCallback(appContext))
@@ -197,6 +198,13 @@ abstract class PosDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE orders ADD COLUMN remoteId INTEGER")
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_orders_remoteId ON orders(remoteId)")
+            }
+        }
+
+        // Standardize the cash-drawer starting float to PHP 1500 (owner's operating standard).
+        val MIGRATION_17_18 = object : androidx.room.migration.Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE app_config SET startingCashFloat = 1500.0")
             }
         }
     }

@@ -162,7 +162,8 @@ export default function Dashboard() {
     }
     fetchData();
 
-    // Subscribe to realtime updates on orders
+    // Subscribe to realtime updates on orders AND catalog/stock so the dashboard stays live
+    // without a manual refresh (stock, menu and category edits from any device).
     const channel = supabase
       .channel('realtime-orders')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
@@ -170,6 +171,15 @@ export default function Dashboard() {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, () => {
         fetchOrdersOnly();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
+        fetchInventory();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'items' }, () => {
+        fetchMenuItems();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
+        fetchCategories();
       })
       .subscribe();
 
@@ -307,6 +317,29 @@ export default function Dashboard() {
 
   const uniqueDevices = Array.from(new Set(orders.map(o => o.device_id)));
   const zReading = calculateZReading();
+
+  // The Live Dashboard is scoped to TODAY (local date), independent of the Audit Log's
+  // date filter. allTimeStats is kept so the manager can also see the running total.
+  const localDateKey = (ts: number) => {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const computeStats = (list: typeof orders) => {
+    let grossSales = 0, discounts = 0, netSales = 0, cashSales = 0, gcashSales = 0, count = 0;
+    list.forEach(o => {
+      if (o.is_voided) return;
+      grossSales += o.subtotal;
+      discounts += o.discount_deduction;
+      netSales += o.total;
+      count++;
+      if (o.payment_method === 'CASH') cashSales += o.total; else gcashSales += o.total;
+    });
+    return { grossSales, discounts, netSales, cashSales, gcashSales, count };
+  };
+  const todayKey = localDateKey(Date.now());
+  const todayStats = computeStats(orders.filter(o => localDateKey(o.timestamp) === todayKey));
+  const allTimeStats = computeStats(orders);
+  const STARTING_FLOAT = 1500.0;
 
   // Export CSV of Orders
   const exportCSV = () => {
@@ -522,16 +555,16 @@ export default function Dashboard() {
   const handlePrintZReading = () => {
     setPrintSummary({
       title: "End of Day Z-Reading Summary",
-      grossSales: zReading.grossSales,
-      discounts: zReading.discounts,
-      netRevenue: zReading.netSales,
-      cashSales: zReading.cashSales,
-      gcashSales: zReading.gcashSales,
-      startingFloat: 1000.0,
+      grossSales: todayStats.grossSales,
+      discounts: todayStats.discounts,
+      netRevenue: todayStats.netSales,
+      cashSales: todayStats.cashSales,
+      gcashSales: todayStats.gcashSales,
+      startingFloat: STARTING_FLOAT,
       expenses: 0.0,
-      drawerBalance: zReading.cashSales + 1000.0,
-      profits: zReading.netSales,
-      orderCount: zReading.count,
+      drawerBalance: todayStats.cashSales + STARTING_FLOAT,
+      profits: todayStats.netSales,
+      orderCount: todayStats.count,
       timestamp: Date.now()
     });
     setShowPrintModal(true);
@@ -585,11 +618,11 @@ export default function Dashboard() {
     );
   }
 
-  // Percentage splits for Z-reading progress bars
-  const totalCollected = zReading.cashSales + zReading.gcashSales;
-  const cashPct = totalCollected > 0 ? (zReading.cashSales / totalCollected) * 100 : 50;
+  // Percentage splits for Z-reading progress bars (today-scoped)
+  const totalCollected = todayStats.cashSales + todayStats.gcashSales;
+  const cashPct = totalCollected > 0 ? (todayStats.cashSales / totalCollected) * 100 : 50;
   const targetSales = 10000.0;
-  const goalProgressPct = Math.min(100, (zReading.netSales / targetSales) * 100);
+  const goalProgressPct = Math.min(100, (todayStats.netSales / targetSales) * 100);
 
   return (
     <div className="flex h-screen bg-[#050507] text-slate-100 font-sans overflow-hidden relative">
@@ -732,31 +765,31 @@ export default function Dashboard() {
                   <div className="bg-[#0c0c0e]/60 border border-white/5 rounded-3xl p-6 flex flex-col justify-between h-36 relative overflow-hidden backdrop-blur-xl shadow-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]">
                     <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl"></div>
                     <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Today&apos;s Net Profit</span>
-                    <span className="text-3xl font-black text-emerald-400 tracking-tight mt-1">{formatPrice(zReading.netSales)}</span>
+                    <span className="text-3xl font-black text-emerald-400 tracking-tight mt-1">{formatPrice(todayStats.netSales)}</span>
                     <span className="text-[10px] text-slate-500 flex items-center gap-1 font-semibold mt-2">
-                      <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> Aggregated net flow
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> All-time: {formatPrice(allTimeStats.netSales)}
                     </span>
                   </div>
 
                   {/* Total Orders Taken */}
                   <div className="bg-[#0c0c0e]/60 border border-white/5 rounded-3xl p-6 flex flex-col justify-between h-36 relative overflow-hidden backdrop-blur-xl shadow-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]">
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Total Orders Taken</span>
-                    <span className="text-3xl font-black text-slate-100 tracking-tight mt-1">{zReading.count}</span>
-                    <span className="text-[10px] text-slate-500 mt-2 font-semibold">From {uniqueDevices.length} active devices</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Today&apos;s Orders</span>
+                    <span className="text-3xl font-black text-slate-100 tracking-tight mt-1">{todayStats.count}</span>
+                    <span className="text-[10px] text-slate-500 mt-2 font-semibold">All-time: {allTimeStats.count} &bull; {uniqueDevices.length} devices</span>
                   </div>
 
                   {/* Cash Sales Split */}
                   <div className="bg-[#0c0c0e]/60 border border-white/5 rounded-3xl p-6 flex flex-col justify-between h-36 backdrop-blur-xl shadow-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]">
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Cash Sales Split</span>
-                    <span className="text-3xl font-black text-sky-400 tracking-tight mt-1">{formatPrice(zReading.cashSales)}</span>
-                    <span className="text-[10px] text-slate-500 mt-2 font-semibold">Physical drawer float</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Today&apos;s Cash Sales</span>
+                    <span className="text-3xl font-black text-sky-400 tracking-tight mt-1">{formatPrice(todayStats.cashSales)}</span>
+                    <span className="text-[10px] text-slate-500 mt-2 font-semibold">All-time: {formatPrice(allTimeStats.cashSales)}</span>
                   </div>
 
                   {/* GCash Sales Split */}
                   <div className="bg-[#0c0c0e]/60 border border-white/5 rounded-3xl p-6 flex flex-col justify-between h-36 backdrop-blur-xl shadow-xl shadow-[inset_0_1px_1px_rgba(255,255,255,0.03)]">
-                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">GCash Sales Split</span>
-                    <span className="text-3xl font-black text-indigo-400 tracking-tight mt-1">{formatPrice(zReading.gcashSales)}</span>
-                    <span className="text-[10px] text-slate-500 mt-2 font-semibold">Direct mobile wallet sync</span>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Today&apos;s GCash Sales</span>
+                    <span className="text-3xl font-black text-indigo-400 tracking-tight mt-1">{formatPrice(todayStats.gcashSales)}</span>
+                    <span className="text-[10px] text-slate-500 mt-2 font-semibold">All-time: {formatPrice(allTimeStats.gcashSales)}</span>
                   </div>
                 </div>
 
@@ -836,13 +869,16 @@ export default function Dashboard() {
                       </div>
 
                       <div className="flex flex-col gap-4">
-                        <div className="flex justify-between border-b border-white/5 pb-3.5 text-sm">
+                        <div className="flex justify-between items-center border-b border-white/5 pb-3.5 text-sm">
                           <span className="text-slate-400 font-semibold">Total Sales (Gross)</span>
-                          <span className="font-bold text-slate-200">{formatPrice(zReading.grossSales)}</span>
+                          <span className="text-right">
+                            <span className="font-bold text-slate-200 block">{formatPrice(todayStats.grossSales)}</span>
+                            <span className="text-[10px] text-slate-500 font-semibold">today &bull; all-time {formatPrice(allTimeStats.grossSales)}</span>
+                          </span>
                         </div>
                         <div className="flex justify-between border-b border-white/5 pb-3.5 text-sm">
-                          <span className="text-slate-400 font-semibold">Discounts Given</span>
-                          <span className="font-bold text-red-400">-{formatPrice(zReading.discounts)}</span>
+                          <span className="text-slate-400 font-semibold">Discounts Given (Today)</span>
+                          <span className="font-bold text-red-400">-{formatPrice(todayStats.discounts)}</span>
                         </div>
                         
                         {/* Goal Progress bar clone */}
@@ -865,10 +901,10 @@ export default function Dashboard() {
                         <div className="flex flex-col gap-1 border-b border-white/5 pb-3.5">
                           <div className="flex justify-between text-sm">
                             <span className="text-slate-300 font-bold">Estimated Drawer Balance</span>
-                            <span className="font-black text-emerald-400 text-base">{formatPrice(zReading.cashSales + 1000.0)}</span>
+                            <span className="font-black text-emerald-400 text-base">{formatPrice(todayStats.cashSales + STARTING_FLOAT)}</span>
                           </div>
                           <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
-                            <span>(Float: ₱1,000.00 + Cash: {formatPrice(zReading.cashSales)})</span>
+                            <span>(Float: {formatPrice(STARTING_FLOAT)} + Today&apos;s Cash: {formatPrice(todayStats.cashSales)})</span>
                           </div>
                         </div>
 
@@ -888,7 +924,7 @@ export default function Dashboard() {
                     </div>
 
                     <span className="text-[10px] text-slate-500 leading-relaxed font-semibold mt-4">
-                      Note: Expenses are aggregated from cashier terminal cash drawer entries. Estimates assume standard ₱1,000 starting cash float.
+                      Note: Figures above are for today. Expenses are aggregated from cashier terminal cash drawer entries. Estimates assume a ₱1,500 starting cash float.
                     </span>
                   </div>
                 </div>

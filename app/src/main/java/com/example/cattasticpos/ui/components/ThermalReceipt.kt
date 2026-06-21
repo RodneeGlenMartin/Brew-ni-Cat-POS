@@ -109,13 +109,21 @@ fun ThermalReceiptCard(
             fontSize = 12.sp,
             color = ink.copy(alpha = 0.75f)
         )
+        if (!order.tableLabel.isNullOrBlank()) {
+            Text(
+                text = order.tableLabel!!,
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                textAlign = TextAlign.Center,
+                fontFamily = mono,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = ink
+            )
+        }
         ReceiptDivider(mono, ink)
         ReceiptMetaLine("Order #", order.receiptNumber, mono, ink)
         ReceiptMetaLine("Date", dateStr, mono, ink)
         ReceiptMetaLine("Payment", order.paymentMethod, mono, ink)
-        if (!order.tableLabel.isNullOrBlank()) {
-            ReceiptMetaLine("Label", order.tableLabel!!, mono, ink)
-        }
         ReceiptDivider(mono, ink)
 
         order.items.forEach { item ->
