@@ -192,9 +192,14 @@ class SyncWorker(
                                 downloadedIds.add(id)
                             }
                             if (downloadedList.isNotEmpty()) {
-                                database.menuDao().insertCategories(downloadedList)
-                                val localCats = database.menuDao().getCategories().first()
-                                val toDelete = localCats.filter { it.id !in downloadedIds }.map { it.id }
+                                // Write only rows that are new or actually changed, so an
+                                // unchanged catalog doesn't invalidate the Flow and flicker the UI.
+                                val localById = database.menuDao().getCategories().first().associateBy { it.id }
+                                val changed = downloadedList.filter { localById[it.id] != it }
+                                if (changed.isNotEmpty()) {
+                                    database.menuDao().insertCategories(changed)
+                                }
+                                val toDelete = localById.keys.filter { it !in downloadedIds }
                                 if (toDelete.isNotEmpty()) {
                                     database.menuDao().deleteCategoriesByIds(toDelete)
                                 }
@@ -228,9 +233,12 @@ class SyncWorker(
                                 downloadedIds.add(id)
                             }
                             if (downloadedList.isNotEmpty()) {
-                                database.menuDao().insertItems(downloadedList)
-                                val localItems = database.menuDao().getItems().first()
-                                val toDelete = localItems.filter { it.id !in downloadedIds }.map { it.id }
+                                val localById = database.menuDao().getItems().first().associateBy { it.id }
+                                val changed = downloadedList.filter { localById[it.id] != it }
+                                if (changed.isNotEmpty()) {
+                                    database.menuDao().insertItems(changed)
+                                }
+                                val toDelete = localById.keys.filter { it !in downloadedIds }
                                 if (toDelete.isNotEmpty()) {
                                     database.menuDao().deleteItemsByIds(toDelete)
                                 }
@@ -264,9 +272,12 @@ class SyncWorker(
                                 downloadedIds.add(id)
                             }
                             if (downloadedList.isNotEmpty()) {
-                                database.inventoryDao().insertInventoryItems(downloadedList)
-                                val localInv = database.inventoryDao().getAllInventory().first()
-                                val toDelete = localInv.filter { it.id !in downloadedIds }.map { it.id }
+                                val localById = database.inventoryDao().getAllInventory().first().associateBy { it.id }
+                                val changed = downloadedList.filter { localById[it.id] != it }
+                                if (changed.isNotEmpty()) {
+                                    database.inventoryDao().insertInventoryItems(changed)
+                                }
+                                val toDelete = localById.keys.filter { it !in downloadedIds }
                                 if (toDelete.isNotEmpty()) {
                                     database.inventoryDao().deleteInventoryItemsByIds(toDelete)
                                 }
@@ -300,9 +311,12 @@ class SyncWorker(
                                 downloadedIds.add(id)
                             }
                             if (downloadedList.isNotEmpty()) {
-                                database.recipeDao().insertMappings(downloadedList)
-                                val localRecipes = database.recipeDao().getAllMappingsOnce()
-                                val toDelete = localRecipes.filter { it.id !in downloadedIds }.map { it.id }
+                                val localById = database.recipeDao().getAllMappingsOnce().associateBy { it.id }
+                                val changed = downloadedList.filter { localById[it.id] != it }
+                                if (changed.isNotEmpty()) {
+                                    database.recipeDao().insertMappings(changed)
+                                }
+                                val toDelete = localById.keys.filter { it !in downloadedIds }
                                 if (toDelete.isNotEmpty()) {
                                     database.recipeDao().deleteMappingsByIds(toDelete)
                                 }
