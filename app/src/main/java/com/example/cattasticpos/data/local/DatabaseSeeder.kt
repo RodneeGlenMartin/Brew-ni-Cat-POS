@@ -27,8 +27,21 @@ internal object DatabaseSeeder {
         if (recipeDao.getMappingCount() == 0) {
             seedRecipes(recipeDao)
         }
-        if (appConfigDao.getAppConfigOnce() == null) {
+        val existingConfig = appConfigDao.getAppConfigOnce()
+        if (existingConfig == null) {
             seedAppConfig(appConfigDao)
+        } else if (existingConfig.supabaseUrl.isBlank() || existingConfig.supabaseAnonKey.isBlank()) {
+            try {
+                appConfigDao.insertConfig(
+                    existingConfig.copy(
+                        supabaseUrl = "https://hyeotyohpdpmmvquotnd.supabase.co",
+                        supabaseAnonKey = "sb_publishable_orak9Nk7HGB_qFHgXMdIzA_11T8NfYQ",
+                        deviceId = existingConfig.deviceId.ifBlank { java.util.UUID.randomUUID().toString() }
+                    )
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("DatabaseSeeder", "Error patching existing app config with Supabase defaults", e)
+            }
         }
     }
 

@@ -108,6 +108,8 @@ class CattasticPosApp : Application(), Configuration.Provider {
             ExistingWorkPolicy.KEEP,
             pullRequest
         )
+
+        SyncWorker.triggerImmediateSync(this)
     }
 
     private fun isCrashProcess(): Boolean {

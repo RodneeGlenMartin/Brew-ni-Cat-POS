@@ -63,6 +63,7 @@ interface Order {
   cashier_name: string | null;
   table_label: string | null;
   is_served: boolean;
+  is_voided?: boolean;
   created_at: string;
   order_items?: OrderItem[];
 }
@@ -123,7 +124,11 @@ export default function Dashboard() {
   const [filterDeviceId, setFilterDeviceId] = useState<string>('all');
   const [filterPayment, setFilterPayment] = useState<string>('all');
   const [expandedOrders, setExpandedOrders] = useState<Record<number, boolean>>({});
-  
+  const [editTableLabels, setEditTableLabels] = useState<Record<number, string>>({});
+  const [editCashierNames, setEditCashierNames] = useState<Record<number, string>>({});
+  const [editPaymentMethods, setEditPaymentMethods] = useState<Record<number, string>>({});
+  const [editReferenceIds, setEditReferenceIds] = useState<Record<number, string>>({});
+
   // Menu Category Filter State (matches app category filtering)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
 
@@ -253,11 +258,14 @@ export default function Dashboard() {
     let netSales = 0;
     let cashSales = 0;
     let gcashSales = 0;
+    let nonVoidedCount = 0;
 
     filtered.forEach(order => {
+      if (order.is_voided) return; // Skip voided orders in financials
       grossSales += order.subtotal;
       discounts += order.discount_deduction;
       netSales += order.total;
+      nonVoidedCount++;
       if (order.payment_method === 'CASH') {
         cashSales += order.total;
       } else {
@@ -265,7 +273,7 @@ export default function Dashboard() {
       }
     });
 
-    return { grossSales, discounts, netSales, cashSales, gcashSales, count: filtered.length };
+    return { grossSales, discounts, netSales, cashSales, gcashSales, count: nonVoidedCount };
   };
 
   const uniqueDevices = Array.from(new Set(orders.map(o => o.device_id)));
@@ -320,6 +328,51 @@ export default function Dashboard() {
       fetchOrdersOnly();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  // Update order details from Audit Log
+  const handleUpdateOrderDetails = async (orderId: number) => {
+    if (!supabase) return;
+    try {
+      const table = editTableLabels[orderId] !== undefined ? editTableLabels[orderId].trim() : undefined;
+      const cashier = editCashierNames[orderId] !== undefined ? editCashierNames[orderId].trim() : undefined;
+      const payment = editPaymentMethods[orderId] !== undefined ? editPaymentMethods[orderId] : undefined;
+      const ref = editReferenceIds[orderId] !== undefined ? editReferenceIds[orderId].trim() : undefined;
+
+      const updates: any = {};
+      if (table !== undefined) updates.table_label = table || null;
+      if (cashier !== undefined) updates.cashier_name = cashier || null;
+      if (payment !== undefined) updates.payment_method = payment;
+      if (ref !== undefined) updates.payment_reference = ref || null;
+
+      const { error } = await supabase
+        .from('orders')
+        .update(updates)
+        .eq('id', orderId);
+
+      if (error) throw error;
+      await fetchOrdersOnly();
+      alert('Order details updated successfully!');
+    } catch (e) {
+      console.error('Error updating order details:', e);
+      alert('Failed to update order details.');
+    }
+  };
+
+  // Toggle order void status
+  const toggleOrderVoid = async (orderId: number, currentVoidStatus: boolean) => {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ is_voided: !currentVoidStatus })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      await fetchOrdersOnly();
+    } catch (e) {
+      console.error('Error toggling void status:', e);
     }
   };
 
@@ -873,7 +926,14 @@ export default function Dashboard() {
                       const formattedTime = new Date(o.timestamp).toLocaleString();
 
                       return (
-                        <div key={o.id} className="bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden transition-all hover:bg-white/[0.03]">
+                        <div
+                          key={o.id}
+                          className={`border rounded-2xl overflow-hidden transition-all duration-300 ${
+                            o.is_voided
+                              ? 'bg-red-500/[0.01] border-red-500/10 opacity-70 hover:opacity-100'
+                              : 'bg-white/[0.02] border-white/5 hover:bg-white/[0.03]'
+                          }`}
+                        >
                           {/* Top Row / Card Header */}
                           <div
                             onClick={() => toggleOrderExpand(o.id)}
@@ -883,7 +943,12 @@ export default function Dashboard() {
                               <span className="text-sm font-black text-emerald-400">
                                 #{String(displayId).padStart(4, '0')}
                               </span>
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-slate-300">
+                              {o.is_voided && (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/25 text-red-400 uppercase tracking-widest animate-pulse">
+                                  Voided
+                                </span>
+                              )}
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 border border-white/10 ${o.is_voided ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
                                 {o.table_label ? `Table ${o.table_label}` : 'Take Out'}
                               </span>
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${o.payment_method === 'CASH' ? 'bg-sky-500/10 border border-sky-500/20 text-sky-400' : 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400'}`}>
@@ -898,7 +963,7 @@ export default function Dashboard() {
                               <span className="text-xs text-slate-400 font-semibold flex items-center gap-1.5">
                                 <User className="w-3.5 h-3.5 text-slate-400" /> {o.cashier_name || 'Popot'}
                               </span>
-                              <span className="text-sm font-black text-slate-200">{formatPrice(o.total)}</span>
+                              <span className={`text-sm font-black ${o.is_voided ? 'text-slate-500 line-through' : 'text-slate-200'}`}>{formatPrice(o.total)}</span>
                               
                               {/* Status Indicator Served/Preparing */}
                               <button
@@ -923,8 +988,74 @@ export default function Dashboard() {
 
                           {/* Accordion content: Receipt details clone */}
                           {isExpanded && (
-                            <div className="bg-[#050507]/40 border-t border-white/5 p-5 flex flex-col gap-4 font-sans">
-                              <div className="flex justify-between border-b border-white/5 pb-2 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                            <div className="bg-[#050507]/40 border-t border-white/5 p-5 flex flex-col gap-5 font-sans">
+                              
+                              {/* Edit details form */}
+                              <div className="bg-white/[0.01] border border-white/5 rounded-2xl p-4 flex flex-col gap-4">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Edit & Sync Order Details</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end">
+                                  <div className="flex flex-col gap-1.5">
+                                    <label className="text-[10px] uppercase font-bold text-slate-500">Table / Type</label>
+                                    <input
+                                      type="text"
+                                      value={editTableLabels[o.id] !== undefined ? editTableLabels[o.id] : (o.table_label || '')}
+                                      onChange={(e) => setEditTableLabels(prev => ({ ...prev, [o.id]: e.target.value }))}
+                                      className="bg-white/[0.03] border border-white/10 px-3 py-2 rounded-xl text-xs text-slate-200 outline-none focus:border-emerald-500/50"
+                                      placeholder="Take Out"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-1.5">
+                                    <label className="text-[10px] uppercase font-bold text-slate-500">Cashier Name</label>
+                                    <input
+                                      type="text"
+                                      value={editCashierNames[o.id] !== undefined ? editCashierNames[o.id] : (o.cashier_name || '')}
+                                      onChange={(e) => setEditCashierNames(prev => ({ ...prev, [o.id]: e.target.value }))}
+                                      className="bg-white/[0.03] border border-white/10 px-3 py-2 rounded-xl text-xs text-slate-200 outline-none focus:border-emerald-500/50"
+                                    />
+                                  </div>
+                                  <div className="flex flex-col gap-1.5">
+                                    <label className="text-[10px] uppercase font-bold text-slate-500">Payment Mode</label>
+                                    <select
+                                      value={editPaymentMethods[o.id] !== undefined ? editPaymentMethods[o.id] : o.payment_method}
+                                      onChange={(e) => setEditPaymentMethods(prev => ({ ...prev, [o.id]: e.target.value }))}
+                                      className="bg-white/[0.03] border border-white/10 px-3 py-2 rounded-xl text-xs text-slate-200 outline-none focus:border-emerald-500/50 font-semibold"
+                                    >
+                                      <option value="CASH">Cash</option>
+                                      <option value="GCASH">GCash</option>
+                                    </select>
+                                  </div>
+                                  <div className="flex flex-col gap-1.5">
+                                    <label className="text-[10px] uppercase font-bold text-slate-500">GCash Ref Reference</label>
+                                    <input
+                                      type="text"
+                                      value={editReferenceIds[o.id] !== undefined ? editReferenceIds[o.id] : (o.payment_reference || '')}
+                                      onChange={(e) => setEditReferenceIds(prev => ({ ...prev, [o.id]: e.target.value }))}
+                                      className="bg-white/[0.03] border border-white/10 px-3 py-2 rounded-xl text-xs text-slate-200 outline-none focus:border-emerald-500/50"
+                                      placeholder="N/A"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex justify-end gap-3 mt-1 pt-3 border-t border-white/5">
+                                  <button
+                                    onClick={() => toggleOrderVoid(o.id, o.is_voided || false)}
+                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                                      o.is_voided
+                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
+                                        : 'bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20'
+                                    }`}
+                                  >
+                                    {o.is_voided ? '🟢 Unvoid Order' : '🔴 Void Order'}
+                                  </button>
+                                  <button
+                                    onClick={() => handleUpdateOrderDetails(o.id)}
+                                    className="px-5 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-black transition-all active:scale-[0.98]"
+                                  >
+                                    💾 Save & Sync to Devices
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="flex justify-between border-b border-white/5 pb-2 text-[10px] uppercase font-bold text-slate-500 tracking-wider mt-2">
                                 <span>Itemized Line Items</span>
                                 <span>Reference: {o.payment_reference || 'None'}</span>
                               </div>

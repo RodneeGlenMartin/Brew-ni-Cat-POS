@@ -12,6 +12,8 @@ import com.example.cattasticpos.domain.repository.OrderRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class OrderRepositoryImpl(
     private val database: PosDatabase
@@ -162,7 +164,7 @@ class OrderRepositoryImpl(
             orderDao.deleteOrderEntity(orderId)
         }
 
-        // Asynchronously delete from Supabase if configured
+        // Asynchronously mark as voided in Supabase if configured
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
                 val config = database.appConfigDao().getAppConfigOnce()
@@ -180,29 +182,22 @@ class OrderRepositoryImpl(
                             .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
                             .build()
 
-                        // Delete order items
-                        val deleteItemsReq = okhttp3.Request.Builder()
-                            .url("$supabaseUrl/rest/v1/order_items?order_id=eq.$globalOrderId")
-                            .delete()
-                            .header("apikey", supabaseKey)
-                            .header("Authorization", "Bearer $supabaseKey")
-                            .build()
-                        client.newCall(deleteItemsReq).execute().close()
-
-                        // Delete order
-                        val deleteOrderReq = okhttp3.Request.Builder()
+                        val mediaType = "application/json; charset=utf-8".toMediaType()
+                        val body = "{\"is_voided\": true}".toRequestBody(mediaType)
+                        val patchOrderReq = okhttp3.Request.Builder()
                             .url("$supabaseUrl/rest/v1/orders?id=eq.$globalOrderId")
-                            .delete()
+                            .patch(body)
                             .header("apikey", supabaseKey)
                             .header("Authorization", "Bearer $supabaseKey")
+                            .header("Content-Type", "application/json")
                             .build()
-                        client.newCall(deleteOrderReq).execute().close()
+                        client.newCall(patchOrderReq).execute().close()
 
-                        android.util.Log.i("OrderRepositoryImpl", "Successfully deleted order $globalOrderId from Supabase.")
+                        android.util.Log.i("OrderRepositoryImpl", "Successfully marked order $globalOrderId as voided on Supabase.")
                     }
                 }
             } catch (e: Exception) {
-                android.util.Log.e("OrderRepositoryImpl", "Failed to delete order $orderId from Supabase", e)
+                android.util.Log.e("OrderRepositoryImpl", "Failed to mark order $orderId as voided on Supabase", e)
             }
         }
     }

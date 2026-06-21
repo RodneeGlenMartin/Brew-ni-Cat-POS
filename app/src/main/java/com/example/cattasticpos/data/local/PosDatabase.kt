@@ -78,6 +78,9 @@ abstract class PosDatabase : RoomDatabase() {
                 "pos_database"
             )
                 .addMigrations(
+                    MIGRATION_6_10,
+                    MIGRATION_7_10,
+                    MIGRATION_8_10,
                     MIGRATION_9_10,
                     MIGRATION_10_11,
                     MIGRATION_11_12,
@@ -89,6 +92,44 @@ abstract class PosDatabase : RoomDatabase() {
                 .addCallback(PosDatabaseCallback(scope))
                 .addCallback(MigrationSuccessCallback(appContext))
                 .build()
+        }
+
+        val MIGRATION_6_10 = object : androidx.room.migration.Migration(6, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Create app_config table
+                db.execSQL("CREATE TABLE IF NOT EXISTS app_config (id INTEGER PRIMARY KEY NOT NULL, targetSales REAL NOT NULL, startingCashFloat REAL NOT NULL, pinHash TEXT NOT NULL DEFAULT 'otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0=')")
+                db.execSQL("INSERT OR IGNORE INTO app_config (id, targetSales, startingCashFloat, pinHash) VALUES (1, 5000.0, 500.0, 'otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0=')")
+
+                // Migrate inventory schema to Double types
+                db.execSQL("CREATE TABLE IF NOT EXISTS inventory_new (id TEXT NOT NULL PRIMARY KEY, itemName TEXT NOT NULL, unit TEXT NOT NULL, currentStock REAL NOT NULL, reorderThreshold REAL NOT NULL)")
+                db.execSQL("INSERT INTO inventory_new (id, itemName, unit, currentStock, reorderThreshold) SELECT id, itemName, unit, CAST(currentStock AS REAL), CAST(reorderThreshold AS REAL) FROM inventory")
+                db.execSQL("DROP TABLE inventory")
+                db.execSQL("ALTER TABLE inventory_new RENAME TO inventory")
+            }
+        }
+
+        val MIGRATION_7_10 = object : androidx.room.migration.Migration(7, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_config ADD COLUMN pinHash TEXT NOT NULL DEFAULT 'otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0='")
+
+                // Migrate inventory schema to Double types
+                db.execSQL("CREATE TABLE IF NOT EXISTS inventory_new (id TEXT NOT NULL PRIMARY KEY, itemName TEXT NOT NULL, unit TEXT NOT NULL, currentStock REAL NOT NULL, reorderThreshold REAL NOT NULL)")
+                db.execSQL("INSERT INTO inventory_new (id, itemName, unit, currentStock, reorderThreshold) SELECT id, itemName, unit, CAST(currentStock AS REAL), CAST(reorderThreshold AS REAL) FROM inventory")
+                db.execSQL("DROP TABLE inventory")
+                db.execSQL("ALTER TABLE inventory_new RENAME TO inventory")
+            }
+        }
+
+        val MIGRATION_8_10 = object : androidx.room.migration.Migration(8, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_config ADD COLUMN pinHash TEXT NOT NULL DEFAULT 'otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0='")
+
+                // Migrate inventory schema to Double types
+                db.execSQL("CREATE TABLE IF NOT EXISTS inventory_new (id TEXT NOT NULL PRIMARY KEY, itemName TEXT NOT NULL, unit TEXT NOT NULL, currentStock REAL NOT NULL, reorderThreshold REAL NOT NULL)")
+                db.execSQL("INSERT INTO inventory_new (id, itemName, unit, currentStock, reorderThreshold) SELECT id, itemName, unit, CAST(currentStock AS REAL), CAST(reorderThreshold AS REAL) FROM inventory")
+                db.execSQL("DROP TABLE inventory")
+                db.execSQL("ALTER TABLE inventory_new RENAME TO inventory")
+            }
         }
 
         val MIGRATION_9_10 = object : androidx.room.migration.Migration(9, 10) {
