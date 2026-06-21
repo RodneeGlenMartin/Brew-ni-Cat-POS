@@ -15,6 +15,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import kotlin.math.absoluteValue
+import kotlinx.coroutines.flow.first
 
 class SyncWorker(
     context: Context,
@@ -65,6 +66,108 @@ class SyncWorker(
         }
 
         try {
+            // Sync Catalog: Categories
+            try {
+                val categories = database.menuDao().getCategories().first()
+                if (categories.isNotEmpty()) {
+                    val catArray = JSONArray()
+                    categories.forEach { cat ->
+                        val catJson = JSONObject().apply {
+                            put("id", cat.id)
+                            put("name", cat.name)
+                        }
+                        catArray.put(catJson)
+                    }
+                    val catRequest = Request.Builder()
+                        .url("$supabaseUrl/rest/v1/categories")
+                        .post(catArray.toString().toRequestBody(JSON_MEDIA_TYPE))
+                        .header("apikey", supabaseKey)
+                        .header("Authorization", "Bearer $supabaseKey")
+                        .header("Prefer", "resolution=merge-duplicates")
+                        .header("Content-Type", "application/json")
+                        .build()
+                    client.newCall(catRequest).execute().close()
+                }
+
+                // Sync Catalog: Items
+                val items = database.menuDao().getItems().first()
+                if (items.isNotEmpty()) {
+                    val itemsArray = JSONArray()
+                    items.forEach { item ->
+                        val itemJson = JSONObject().apply {
+                            put("id", item.id)
+                            put("category_id", item.categoryId)
+                            put("name", item.name)
+                            put("flavors", item.flavors)
+                            put("variants_json", item.variantsJson)
+                            put("is_available", true)
+                        }
+                        itemsArray.put(itemJson)
+                    }
+                    val itemsRequest = Request.Builder()
+                        .url("$supabaseUrl/rest/v1/items")
+                        .post(itemsArray.toString().toRequestBody(JSON_MEDIA_TYPE))
+                        .header("apikey", supabaseKey)
+                        .header("Authorization", "Bearer $supabaseKey")
+                        .header("Prefer", "resolution=merge-duplicates")
+                        .header("Content-Type", "application/json")
+                        .build()
+                    client.newCall(itemsRequest).execute().close()
+                }
+
+                // Sync Catalog: Inventory
+                val inventory = database.inventoryDao().getAllInventory().first()
+                if (inventory.isNotEmpty()) {
+                    val invArray = JSONArray()
+                    inventory.forEach { inv ->
+                        val invJson = JSONObject().apply {
+                            put("id", inv.id)
+                            put("item_name", inv.itemName)
+                            put("unit", inv.unit)
+                            put("current_stock", inv.currentStock)
+                            put("reorder_threshold", inv.reorderThreshold)
+                        }
+                        invArray.put(invJson)
+                    }
+                    val invRequest = Request.Builder()
+                        .url("$supabaseUrl/rest/v1/inventory")
+                        .post(invArray.toString().toRequestBody(JSON_MEDIA_TYPE))
+                        .header("apikey", supabaseKey)
+                        .header("Authorization", "Bearer $supabaseKey")
+                        .header("Prefer", "resolution=merge-duplicates")
+                        .header("Content-Type", "application/json")
+                        .build()
+                    client.newCall(invRequest).execute().close()
+                }
+
+                // Sync Catalog: Recipe Mappings
+                val recipes = database.recipeDao().getAllMappingsOnce()
+                if (recipes.isNotEmpty()) {
+                    val recArray = JSONArray()
+                    recipes.forEach { rec ->
+                        val recJson = JSONObject().apply {
+                            put("id", rec.id)
+                            put("menu_item_id", rec.menuItemId)
+                            put("size_variant_name", rec.variantName ?: JSONObject.NULL)
+                            put("inventory_item_id", rec.inventoryItemId)
+                            put("deduction_quantity", rec.deductionQuantity)
+                        }
+                        recArray.put(recJson)
+                    }
+                    val recRequest = Request.Builder()
+                        .url("$supabaseUrl/rest/v1/recipe_mappings")
+                        .post(recArray.toString().toRequestBody(JSON_MEDIA_TYPE))
+                        .header("apikey", supabaseKey)
+                        .header("Authorization", "Bearer $supabaseKey")
+                        .header("Prefer", "resolution=merge-duplicates")
+                        .header("Content-Type", "application/json")
+                        .build()
+                    client.newCall(recRequest).execute().close()
+                }
+            } catch (ce: Exception) {
+                Log.e(TAG, "Catalog sync error", ce)
+            }
+
             // Find unsynced orders
             val unsyncedOrders = database.orderDao().getOrdersPage(0L, Long.MAX_VALUE, Long.MAX_VALUE, 100)
                 .filter { it.order.syncStatus == "PENDING" }

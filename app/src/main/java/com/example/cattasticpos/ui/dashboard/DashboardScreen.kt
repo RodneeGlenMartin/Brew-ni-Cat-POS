@@ -20,6 +20,8 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -230,42 +232,120 @@ fun DashboardScreen(
             }
 
             if (isTablet) {
-                Row(
+                var isCartVisible by rememberSaveable { mutableStateOf(true) }
+                var checkoutWidthFraction by rememberSaveable { mutableStateOf(0.38f) }
+
+                BoxWithConstraints(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
-                    StorefrontCatalogPane(
-                        modifier = Modifier.weight(0.58f),
-                        uiState = uiState,
-                        hazeState = hazeState,
-                        headerState = headerState,
-                        searchQuery = searchQuery,
-                        isSearchExpanded = isSearchExpanded,
-                        onSearchQueryChange = { searchQuery = it },
-                        onSearchExpandedChange = { isSearchExpanded = it },
-                        onCategorySelected = { viewModel.selectCategory(it) },
-                        onItemClick = { viewModel.showConfigurationSheet(it) },
-                        compactGlows = false
-                    )
-                    DashboardCheckoutPanel(
-                        modifier = Modifier
-                            .weight(0.42f)
-                            .fillMaxHeight()
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.05f)),
-                        uiState = uiState,
-                        cartItemCount = cartItemCount,
-                        isCartExpanded = true,
-                        onCartExpandedChange = { isCartExpanded = it },
-                        checkoutBorder = checkoutBorder,
-                        darkTheme = darkTheme,
-                        onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
-                        onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
-                        onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
-                        onSelectDiscount = { viewModel.selectDiscount(it) },
-                        forceExpanded = true,
-                        useBottomSheetStyle = false
-                    )
+                    val totalWidthPx = constraints.maxWidth
+                    Row(modifier = Modifier.fillMaxSize()) {
+                        StorefrontCatalogPane(
+                            modifier = Modifier.weight(if (isCartVisible) 1f - checkoutWidthFraction else 1f),
+                            uiState = uiState,
+                            hazeState = hazeState,
+                            headerState = headerState,
+                            searchQuery = searchQuery,
+                            isSearchExpanded = isSearchExpanded,
+                            onSearchQueryChange = { searchQuery = it },
+                            onSearchExpandedChange = { isSearchExpanded = it },
+                            onCategorySelected = { viewModel.selectCategory(it) },
+                            onItemClick = { viewModel.showConfigurationSheet(it) },
+                            compactGlows = false
+                        )
+                        
+                        if (isCartVisible) {
+                            // Draggable divider handle (12.dp wide for easy touch targets)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(12.dp)
+                                    .pointerInput(Unit) {
+                                        detectDragGestures(
+                                            onDragEnd = {
+                                                // If dragged too close to the right edge, collapse the panel
+                                                if (checkoutWidthFraction < 0.28f) {
+                                                    isCartVisible = false
+                                                    checkoutWidthFraction = 0.38f
+                                                }
+                                            },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                val totalWidth = if (totalWidthPx > 0) totalWidthPx else 1000
+                                                val deltaFraction = dragAmount.x / totalWidth
+                                                checkoutWidthFraction = (checkoutWidthFraction - deltaFraction).coerceIn(0.20f, 0.60f)
+                                            }
+                                        )
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxHeight()
+                                        .width(1.dp)
+                                        .background(MaterialTheme.colorScheme.outlineVariant)
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(4.dp, 40.dp)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
+                                )
+                            }
+
+                            DashboardCheckoutPanel(
+                                modifier = Modifier
+                                    .weight(checkoutWidthFraction)
+                                    .fillMaxHeight()
+                                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.05f)),
+                                uiState = uiState,
+                                cartItemCount = cartItemCount,
+                                isCartExpanded = true,
+                                onCartExpandedChange = { isCartExpanded = it },
+                                checkoutBorder = checkoutBorder,
+                                darkTheme = darkTheme,
+                                onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
+                                onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
+                                onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
+                                onSelectDiscount = { viewModel.selectDiscount(it) },
+                                forceExpanded = true,
+                                useBottomSheetStyle = false,
+                                onCollapseCart = { isCartVisible = false }
+                            )
+                        }
+                    }
+                    if (!isCartVisible) {
+                        FloatingActionButton(
+                            onClick = { isCartVisible = true },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(16.dp)
+                        ) {
+                            BadgedBox(
+                                badge = {
+                                    if (cartItemCount > 0) {
+                                        Badge(
+                                            containerColor = MaterialTheme.colorScheme.error,
+                                            contentColor = MaterialTheme.colorScheme.onError
+                                        ) {
+                                            Text(cartItemCount.toString())
+                                        }
+                                    }
+                                }
+                            ) {
+                                FluentIcon(
+                                    imageVector = FluentIcons.ShoppingBag,
+                                    contentDescription = "Show Cart",
+                                    useGlassGradient = false,
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+                    }
                 }
             } else {
                 val cartBottomPadding by animateDpAsState(
@@ -627,7 +707,8 @@ private fun DashboardCheckoutPanel(
     onSelectDiscount: (DiscountStrategy) -> Unit,
     modifier: Modifier = Modifier,
     forceExpanded: Boolean = false,
-    useBottomSheetStyle: Boolean = true
+    useBottomSheetStyle: Boolean = true,
+    onCollapseCart: (() -> Unit)? = null
 ) {
     if (useBottomSheetStyle) {
         val cartBarShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
@@ -751,11 +832,29 @@ private fun DashboardCheckoutPanel(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "Current Order ($cartItemCount)",
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleMedium
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (onCollapseCart != null) {
+                        IconButton(
+                            onClick = onCollapseCart,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            FluentIcon(
+                                imageVector = FluentIcons.Close,
+                                contentDescription = "Collapse Cart",
+                                useGlassGradient = false,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Text(
+                        "Current Order ($cartItemCount)",
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
                 TextButton(
                     onClick = onHoldOrder,
                     enabled = uiState.activeCart.isNotEmpty(),
