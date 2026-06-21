@@ -498,6 +498,14 @@ private fun StorefrontCatalogPane(
             }
         }
 
+        // Adaptive menu grid: more columns on wider screens (e.g. Redmi Pad 2 tablet in
+        // landscape) so item cards stay a comfortable size instead of stretching across.
+        val catalogColumns = when {
+            LocalConfiguration.current.screenWidthDp >= 1000 -> 4
+            LocalConfiguration.current.screenWidthDp >= 700 -> 3
+            else -> 2
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             if (isSearchExpanded || isSearching) {
                 GlassSearchBar(
@@ -552,11 +560,12 @@ private fun StorefrontCatalogPane(
                         }
                     } else {
                         items(
-                            items = searchResults.chunked(2),
+                            items = searchResults.chunked(catalogColumns),
                             key = { row -> "search_${row.joinToString("_") { it.item.id }}" }
                         ) { rowHits ->
                             CatalogSearchResultRow(
                                 hits = rowHits,
+                                columns = catalogColumns,
                                 uiState = uiState,
                                 onItemClick = onItemClick
                             )
@@ -574,11 +583,12 @@ private fun StorefrontCatalogPane(
                     } else {
                         browseGroupedItems.forEach { (categoryName, categoryItems) ->
                             items(
-                                items = categoryItems.chunked(2),
+                                items = categoryItems.chunked(catalogColumns),
                                 key = { row -> "browse_${categoryName}_${row.joinToString("_") { it.id }}" }
                             ) { rowProducts ->
                                 CatalogProductRow(
                                     products = rowProducts,
+                                    columns = catalogColumns,
                                     uiState = uiState,
                                     onItemClick = onItemClick
                                 )
@@ -599,6 +609,7 @@ private data class CatalogSearchHit(
 @Composable
 private fun CatalogSearchResultRow(
     hits: List<CatalogSearchHit>,
+    columns: Int,
     uiState: DashboardUiState,
     onItemClick: (Item) -> Unit
 ) {
@@ -624,7 +635,8 @@ private fun CatalogSearchResultRow(
                 modifier = Modifier.weight(1f)
             )
         }
-        if (hits.size == 1) {
+        // Keep cards their natural width on a short final row instead of stretching.
+        repeat(columns - hits.size) {
             Spacer(modifier = Modifier.weight(1f))
         }
     }
@@ -633,6 +645,7 @@ private fun CatalogSearchResultRow(
 @Composable
 private fun CatalogProductRow(
     products: List<Item>,
+    columns: Int,
     uiState: DashboardUiState,
     onItemClick: (Item) -> Unit
 ) {
@@ -657,7 +670,7 @@ private fun CatalogProductRow(
                 modifier = Modifier.weight(1f)
             )
         }
-        if (products.size == 1) {
+        repeat(columns - products.size) {
             Spacer(modifier = Modifier.weight(1f))
         }
     }

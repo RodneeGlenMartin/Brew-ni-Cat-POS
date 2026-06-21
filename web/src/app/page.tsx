@@ -599,8 +599,8 @@ export default function Dashboard() {
       <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none z-0"></div>
       <div className="absolute top-[40%] left-[30%] w-[400px] h-[400px] rounded-full bg-purple-600/3 blur-[110px] pointer-events-none z-0"></div>
 
-      {/* Sidebar Navigation */}
-      <aside className="w-64 bg-[#0c0c0e]/80 backdrop-blur-xl border-r border-white/5 flex flex-col justify-between p-6 z-10">
+      {/* Sidebar Navigation (hidden on mobile — replaced by the bottom tab bar) */}
+      <aside className="hidden md:flex w-64 bg-[#0c0c0e]/80 backdrop-blur-xl border-r border-white/5 flex-col justify-between p-6 z-10">
         <div className="flex flex-col gap-8">
           
           {/* Logo & Brand Wordmark matching app exactly */}
@@ -690,18 +690,26 @@ export default function Dashboard() {
       <main className="flex-1 flex flex-col min-w-0 bg-[#050507]/30 overflow-y-auto z-10 relative">
         
         {/* Glass Header */}
-        <header className="h-20 border-b border-white/5 flex items-center justify-between px-8 bg-[#050507]/40 backdrop-blur-md sticky top-0 z-20">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-black tracking-tight text-slate-100 flex items-center gap-2">
+        <header className="h-20 border-b border-white/5 flex items-center justify-between px-4 md:px-8 bg-[#050507]/40 backdrop-blur-md sticky top-0 z-20">
+          <div className="flex items-center gap-3 min-w-0">
+            <h2 className="text-base md:text-lg font-black tracking-tight text-slate-100 flex items-center gap-2 truncate">
               {activeTab === 'dashboard' && '📊 Live Sales Overview'}
               {activeTab === 'history' && '🧾 Order Audit Log'}
               {activeTab === 'menu' && '🍔 Menu Catalog Editor'}
               {activeTab === 'inventory' && '📦 Aggregated Inventory & Stock'}
             </h2>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)] uppercase tracking-wider">
+            <span className="hidden sm:inline text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)] uppercase tracking-wider">
               Online
             </span>
           </div>
+          {/* Mobile refresh (the sidebar one is hidden on small screens) */}
+          <button
+            onClick={handleRefresh}
+            className="md:hidden p-2 hover:bg-white/5 active:bg-white/10 rounded-xl text-slate-400 hover:text-slate-200 transition-colors border border-transparent hover:border-white/5 shrink-0"
+            title="Refresh database data"
+          >
+            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
         </header>
 
         {loading ? (
@@ -712,7 +720,7 @@ export default function Dashboard() {
             </div>
           </div>
         ) : (
-          <div className="p-8 flex flex-col gap-8 max-w-7xl mx-auto w-full">
+          <div className="p-4 sm:p-6 md:p-8 pb-24 md:pb-8 flex flex-col gap-6 md:gap-8 max-w-7xl mx-auto w-full">
             
             {/* TAB 1: DASHBOARD */}
             {activeTab === 'dashboard' && (
@@ -1589,6 +1597,27 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Mobile bottom tab bar (replaces the sidebar on small screens) */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 flex items-stretch justify-around bg-[#0c0c0e]/95 backdrop-blur-xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
+        {([
+          { id: 'dashboard', label: 'Sales', Icon: TrendingUp },
+          { id: 'history', label: 'Audit', Icon: Receipt },
+          { id: 'menu', label: 'Menu', Icon: Layers },
+          { id: 'inventory', label: 'Stock', Icon: Package },
+        ] as const).map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-bold transition-colors ${
+              activeTab === id ? 'text-emerald-400' : 'text-slate-500 hover:text-slate-300'
+            }`}
+          >
+            <Icon className="w-5 h-5" />
+            {label}
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }
