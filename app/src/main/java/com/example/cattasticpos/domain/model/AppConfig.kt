@@ -13,7 +13,10 @@ data class AppConfig(
     val cashiers: List<Cashier> = Cashier.defaultCashiers(),
     val gcashAccounts: List<GcashAccount> = GcashAccount.defaultAccounts(),
     val themeAccentId: String = AppThemeAccent.DEFAULT_ID,
-    val activeCashierId: String? = null
+    val activeCashierId: String? = null,
+    val supabaseUrl: String = "",
+    val supabaseAnonKey: String = "",
+    val deviceId: String = ""
 ) {
     companion object {
         const val DEFAULT_PIN_HASH = "otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0="

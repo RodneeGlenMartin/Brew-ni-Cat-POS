@@ -40,7 +40,10 @@ internal object DatabaseSeeder {
                     targetSales = AppConfigEntity.DEFAULT_TARGET_SALES,
                     startingCashFloat = AppConfigEntity.DEFAULT_STARTING_CASH_FLOAT,
                     pinHash = "otCBSIxSZkk6vcF7SKwqCw==:Seyex1KVzCA7gLC3+1Vi8AHYtjU7A168GCGRihADbp0=",
-                    cashiersJson = AppConfigEntity.DEFAULT_CASHIERS_JSON
+                    cashiersJson = AppConfigEntity.DEFAULT_CASHIERS_JSON,
+                    supabaseUrl = "",
+                    supabaseAnonKey = "",
+                    deviceId = java.util.UUID.randomUUID().toString()
                 )
             )
         } catch (e: Exception) {

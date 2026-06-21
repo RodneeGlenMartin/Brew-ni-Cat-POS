@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
@@ -178,9 +179,7 @@ fun CollapsingGlassScaffold(
 
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(WindowInsets.safeDrawing),
+            modifier = Modifier.fillMaxSize(),
             snackbarHost = snackbarHost,
             containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = contentWindowInsets
@@ -188,6 +187,7 @@ fun CollapsingGlassScaffold(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .safeDrawingPadding()
                     .padding(scaffoldPadding)
             ) {
                 content(

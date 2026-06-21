@@ -33,6 +33,10 @@ import com.example.cattasticpos.domain.usecase.UpdateOrderUseCase
 import com.example.cattasticpos.domain.usecase.VoidOrderUseCase
 import com.example.cattasticpos.domain.service.ReceiptPrinterService
 import com.example.cattasticpos.worker.LowStockCheckWorker
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.ExistingWorkPolicy
+import com.example.cattasticpos.worker.SyncWorker
+import com.example.cattasticpos.worker.HistoricalPullWorker
 import android.util.Log
 import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
@@ -42,6 +46,7 @@ import java.util.concurrent.TimeUnit
 class CattasticPosApp : Application(), Configuration.Provider {
     
     private val applicationScope = CoroutineScope(SupervisorJob())
+    private lateinit var supabaseRealtimeManager: com.example.cattasticpos.service.SupabaseRealtimeManager
 
     lateinit var container: AppContainer
 
@@ -73,6 +78,10 @@ class CattasticPosApp : Application(), Configuration.Provider {
 
         container = AppContainerImpl(this, applicationScope)
         scheduleLowStockChecks()
+        scheduleSyncTasks()
+
+        supabaseRealtimeManager = com.example.cattasticpos.service.SupabaseRealtimeManager(this)
+        supabaseRealtimeManager.start()
     }
 
     private fun scheduleLowStockChecks() {
@@ -82,6 +91,22 @@ class CattasticPosApp : Application(), Configuration.Provider {
             LowStockCheckWorker.WORK_NAME,
             ExistingPeriodicWorkPolicy.KEEP,
             request
+        )
+    }
+
+    private fun scheduleSyncTasks() {
+        val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(15, TimeUnit.MINUTES).build()
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+            SyncWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            syncRequest
+        )
+
+        val pullRequest = OneTimeWorkRequestBuilder<HistoricalPullWorker>().build()
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            HistoricalPullWorker.WORK_NAME,
+            ExistingWorkPolicy.KEEP,
+            pullRequest
         )
     }
 

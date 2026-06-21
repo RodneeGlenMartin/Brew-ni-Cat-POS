@@ -10,6 +10,9 @@ import com.example.cattasticpos.domain.model.PaymentConfigJson
 import com.example.cattasticpos.domain.repository.AppConfigRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 
 class AppConfigRepositoryImpl(
     private val dao: AppConfigDao
@@ -85,11 +88,39 @@ class AppConfigRepositoryImpl(
         )
     }
 
+    override suspend fun updateSyncConfig(supabaseUrl: String, supabaseAnonKey: String) {
+        val existing = dao.getAppConfigOnce()
+        if (existing != null) {
+            dao.insertConfig(
+                existing.copy(
+                    supabaseUrl = supabaseUrl.trim(),
+                    supabaseAnonKey = supabaseAnonKey.trim()
+                )
+            )
+        }
+    }
+
+    @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
     private fun toAppConfig(entity: AppConfigEntity): AppConfig {
         val paymentConfig = PaymentConfigJson.fromStoredJson(entity.cashiersJson)
         val resolvedActiveId = paymentConfig.activeCashierId?.takeIf { id ->
             paymentConfig.cashiers.any { it.id == id }
         } ?: paymentConfig.cashiers.firstOrNull()?.id
+
+        val actualDeviceId = if (entity.deviceId.isBlank()) {
+            val newUuid = java.util.UUID.randomUUID().toString()
+            GlobalScope.launch(Dispatchers.IO) {
+                try {
+                    dao.insertConfig(entity.copy(deviceId = newUuid))
+                } catch (e: Exception) {
+                    android.util.Log.e("AppConfigRepositoryImpl", "Failed to update deviceId", e)
+                }
+            }
+            newUuid
+        } else {
+            entity.deviceId
+        }
+
         return AppConfig(
             targetSales = entity.targetSales,
             startingCashFloat = entity.startingCashFloat,
@@ -97,7 +128,10 @@ class AppConfigRepositoryImpl(
             cashiers = paymentConfig.cashiers,
             gcashAccounts = paymentConfig.gcashAccounts,
             themeAccentId = paymentConfig.themeAccentId,
-            activeCashierId = resolvedActiveId
+            activeCashierId = resolvedActiveId,
+            supabaseUrl = entity.supabaseUrl,
+            supabaseAnonKey = entity.supabaseAnonKey,
+            deviceId = actualDeviceId
         )
     }
 

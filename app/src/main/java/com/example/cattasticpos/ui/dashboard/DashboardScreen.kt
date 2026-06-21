@@ -221,7 +221,7 @@ fun DashboardScreen(
                     fontWeight = FontWeight.Bold
                 )
             }
-            val isTablet = LocalConfiguration.current.screenWidthDp >= 600
+            val isTablet = LocalConfiguration.current.screenWidthDp >= 540
             val darkTheme = isSystemInDarkTheme()
             val checkoutBorder = if (darkTheme) {
                 BorderStroke(1.dp, specularBorderBrush())
@@ -236,7 +236,7 @@ fun DashboardScreen(
                         .fillMaxWidth()
                 ) {
                     StorefrontCatalogPane(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(0.58f),
                         uiState = uiState,
                         hazeState = hazeState,
                         headerState = headerState,
@@ -250,7 +250,7 @@ fun DashboardScreen(
                     )
                     DashboardCheckoutPanel(
                         modifier = Modifier
-                            .weight(1f)
+                            .weight(0.42f)
                             .fillMaxHeight()
                             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.05f)),
                         uiState = uiState,
@@ -1338,6 +1338,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
             modifier = Modifier
                 .fillMaxWidth()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
+                .navigationBarsPadding()
                 .padding(horizontal = 16.dp)
         ) {
             Column(

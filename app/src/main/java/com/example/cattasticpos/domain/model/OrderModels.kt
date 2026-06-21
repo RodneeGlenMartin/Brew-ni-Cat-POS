@@ -15,10 +15,16 @@ data class Order(
     val cashierName: String? = null,
     val tableLabel: String? = null,
     val isServed: Boolean = false,
+    val deviceId: String = "",
+    val syncStatus: String = "PENDING",
     val items: List<OrderItem>
 ) {
     val receiptNumber: String
-        get() = if (id > 0L) String.format(Locale.US, "%04d", id) else "----"
+        get() {
+            if (id <= 0L) return "----"
+            val displayId = if (id >= 1_000_000_000L) id % 1_000_000_000L else id
+            return String.format(Locale.US, "%04d", displayId)
+        }
 }
 
 data class OrderItem(

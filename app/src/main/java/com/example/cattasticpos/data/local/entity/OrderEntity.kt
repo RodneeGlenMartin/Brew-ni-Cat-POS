@@ -20,5 +20,7 @@ data class OrderEntity(
     val cashierId: String? = null,
     val cashierName: String? = null,
     val tableLabel: String? = null,
-    val isServed: Boolean = false
+    val isServed: Boolean = false,
+    val deviceId: String = "",
+    val syncStatus: String = "PENDING"
 )

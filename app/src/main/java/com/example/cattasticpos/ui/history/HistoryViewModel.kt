@@ -350,6 +350,12 @@ class HistoryViewModel(
         return true
     }
 
+    fun updateSyncConfig(supabaseUrl: String, supabaseAnonKey: String) {
+        viewModelScope.launch {
+            appConfigRepository.updateSyncConfig(supabaseUrl, supabaseAnonKey)
+        }
+    }
+
     fun addCashier(name: String) {
         val trimmed = name.trim()
         if (trimmed.isBlank()) return

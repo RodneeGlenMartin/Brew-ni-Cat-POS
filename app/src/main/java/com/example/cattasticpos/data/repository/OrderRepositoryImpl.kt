@@ -42,6 +42,8 @@ class OrderRepositoryImpl(
     }
 
     override suspend fun updateOrder(order: Order): Order {
+        val existing = orderDao.getOrderWithItems(order.id)
+        val targetDeviceId = existing?.order?.deviceId ?: order.deviceId.takeIf { it.isNotEmpty() } ?: ""
         val orderEntity = OrderEntity(
             id = order.id,
             timestamp = order.timestamp,
@@ -54,7 +56,9 @@ class OrderRepositoryImpl(
             cashierId = order.cashierId,
             cashierName = order.cashierName,
             tableLabel = order.tableLabel,
-            isServed = order.isServed
+            isServed = order.isServed,
+            deviceId = targetDeviceId,
+            syncStatus = "PENDING"
         )
         val itemEntities = order.items.map { item ->
             OrderItemEntity(
@@ -76,6 +80,8 @@ class OrderRepositoryImpl(
     }
 
     override suspend fun saveOrder(order: Order): Order {
+        val appConfig = database.appConfigDao().getAppConfigOnce()
+        val localDeviceId = appConfig?.deviceId.orEmpty()
         val orderEntity = OrderEntity(
             id = 0,
             timestamp = order.timestamp,
@@ -88,7 +94,9 @@ class OrderRepositoryImpl(
             cashierId = order.cashierId,
             cashierName = order.cashierName,
             tableLabel = order.tableLabel,
-            isServed = order.isServed
+            isServed = order.isServed,
+            deviceId = localDeviceId,
+            syncStatus = "PENDING"
         )
         val itemEntities = order.items.map { item ->
             OrderItemEntity(
@@ -172,6 +180,8 @@ class OrderRepositoryImpl(
             cashierName = order.cashierName,
             tableLabel = order.tableLabel,
             isServed = order.isServed,
+            deviceId = order.deviceId,
+            syncStatus = order.syncStatus,
             items = items.map { item ->
                 OrderItem(
                     id = item.id,

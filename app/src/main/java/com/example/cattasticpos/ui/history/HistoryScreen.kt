@@ -663,9 +663,14 @@ fun HistoryScreen(
                     cashierSalesToday = cashierSalesToday,
                     gcashAccounts = appConfig?.gcashAccounts.orEmpty(),
                     initialThemeAccentId = appConfig?.themeAccentId ?: AppThemeAccent.DEFAULT_ID,
+                    initialSupabaseUrl = appConfig?.supabaseUrl.orEmpty(),
+                    initialSupabaseAnonKey = appConfig?.supabaseAnonKey.orEmpty(),
                     onDismiss = { showConfigDialog = false },
                     onSaveWithPin = { target, float, currentPin, newPin ->
                         viewModel.saveConfigWithPinVerification(target, float, currentPin, newPin)
+                    },
+                    onSaveSyncConfig = { url, key ->
+                        viewModel.updateSyncConfig(url, key)
                     },
                     onThemeAccentChange = { viewModel.updateThemeAccent(it) },
                     onSelectActiveCashier = { viewModel.selectActiveCashier(it) },
@@ -1157,8 +1162,11 @@ fun EditConfigDialog(
     cashierSalesToday: Map<String, Double>,
     gcashAccounts: List<GcashAccount>,
     initialThemeAccentId: String,
+    initialSupabaseUrl: String,
+    initialSupabaseAnonKey: String,
     onDismiss: () -> Unit,
     onSaveWithPin: suspend (Double, Double, String, String) -> Boolean,
+    onSaveSyncConfig: (String, String) -> Unit,
     onThemeAccentChange: (String) -> Unit,
     onSelectActiveCashier: (String) -> Unit,
     onAddCashier: (String) -> Unit,
@@ -1168,6 +1176,8 @@ fun EditConfigDialog(
 ) {
     var targetStr by remember { mutableStateOf(if (initialTarget % 1.0 == 0.0) initialTarget.toInt().toString() else initialTarget.toString()) }
     var floatStr by remember { mutableStateOf(if (initialFloat % 1.0 == 0.0) initialFloat.toInt().toString() else initialFloat.toString()) }
+    var supabaseUrl by remember { mutableStateOf(initialSupabaseUrl) }
+    var supabaseAnonKey by remember { mutableStateOf(initialSupabaseAnonKey) }
     var currentPin by remember { mutableStateOf("") }
     var newPin by remember { mutableStateOf("") }
     var isPinError by remember { mutableStateOf(false) }
@@ -1188,7 +1198,7 @@ fun EditConfigDialog(
         onDismissRequest = onDismiss,
         surfaceAlpha = 0.92f,
         fixedFooter = true,
-        contentMaxHeight = 520.dp,
+        contentMaxHeight = 600.dp,
         contentPadding = 24.dp,
         title = { Text("App Settings", fontWeight = FontWeight.Bold) },
         dismissButton = {
@@ -1204,6 +1214,8 @@ fun EditConfigDialog(
                         val f = floatStr.toDoubleOrNull() ?: initialFloat
                         val goalsChanged = t != initialTarget || f != initialFloat
                         val pinChangeRequested = newPin.length == 4
+
+                        onSaveSyncConfig(supabaseUrl, supabaseAnonKey)
 
                         if (!goalsChanged && !pinChangeRequested) {
                             onDismiss()
@@ -1399,6 +1411,28 @@ fun EditConfigDialog(
                         newGcashLabel = ""
                     }
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                CupertinoSection(header = "Supabase Cloud Sync") {
+                    CupertinoFormRow(label = "Supabase URL") {
+                        OutlinedTextField(
+                            value = supabaseUrl,
+                            onValueChange = { supabaseUrl = it },
+                            label = { Text("https://your-project.supabase.co") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                    CupertinoFormRow(label = "Anon Key", showDivider = false) {
+                        OutlinedTextField(
+                            value = supabaseAnonKey,
+                            onValueChange = { supabaseAnonKey = it },
+                            label = { Text("your-supabase-anon-key") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    }
+                }
             }
         }
     )

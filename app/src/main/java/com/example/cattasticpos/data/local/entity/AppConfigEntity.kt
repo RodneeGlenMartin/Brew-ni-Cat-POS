@@ -9,7 +9,10 @@ data class AppConfigEntity(
     val targetSales: Double,
     val startingCashFloat: Double,
     val pinHash: String,
-    val cashiersJson: String = DEFAULT_CASHIERS_JSON
+    val cashiersJson: String = DEFAULT_CASHIERS_JSON,
+    val supabaseUrl: String = "",
+    val supabaseAnonKey: String = "",
+    val deviceId: String = ""
 ) {
     companion object {
         const val DEFAULT_TARGET_SALES = 2000.0
