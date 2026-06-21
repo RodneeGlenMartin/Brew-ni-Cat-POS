@@ -30,4 +30,7 @@ interface MenuDao {
 
     @Query("DELETE FROM items WHERE id IN (:ids)")
     suspend fun deleteItemsByIds(ids: List<String>)
+
+    @Query("DELETE FROM categories WHERE id IN (:ids)")
+    suspend fun deleteCategoriesByIds(ids: List<String>)
 }

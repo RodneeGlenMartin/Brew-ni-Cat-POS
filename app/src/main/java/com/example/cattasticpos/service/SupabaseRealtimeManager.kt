@@ -217,6 +217,41 @@ class SupabaseRealtimeManager(private val context: Context) {
                     remoteOrderId
                 }
 
+                val isVoided = orderJson.optBoolean("is_voided", false)
+                if (isVoided) {
+                    val localOrder = database.orderDao().getOrderWithItems(targetLocalId)
+                    if (localOrder != null) {
+                        try {
+                            val recipeRepository = app.container.recipeRepository
+                            val inventoryRepository = app.container.inventoryRepository
+                            val domainItems = localOrder.items.map { item ->
+                                com.example.cattasticpos.domain.model.OrderItem(
+                                    id = item.id,
+                                    orderId = item.orderId,
+                                    itemId = item.itemId,
+                                    itemName = item.itemName,
+                                    variantId = item.variantId,
+                                    variantName = item.variantName,
+                                    flavor = item.flavor,
+                                    quantity = item.quantity,
+                                    unitPrice = item.unitPrice,
+                                    totalPrice = item.totalPrice
+                                )
+                            }
+                            com.example.cattasticpos.domain.usecase.InventoryRestorationHelper.restoreForOrderItems(
+                                domainItems,
+                                recipeRepository,
+                                inventoryRepository
+                            )
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to restore inventory on remote void", e)
+                        }
+                    }
+                    database.orderDao().deleteOrderWithItems(targetLocalId)
+                    Log.i(TAG, "Successfully processed remote order void/delete for $targetLocalId.")
+                    return@launch
+                }
+
                 val orderEntity = OrderEntity(
                     id = targetLocalId,
                     timestamp = orderJson.getLong("timestamp"),

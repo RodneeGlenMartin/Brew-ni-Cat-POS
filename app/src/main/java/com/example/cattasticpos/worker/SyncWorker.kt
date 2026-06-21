@@ -66,8 +66,9 @@ class SyncWorker(
         }
 
         try {
-            // Sync Catalog: Categories
+            // Sync Catalog: Categories, Items, Inventory, and Recipe Mappings (Two-Way Sync)
             try {
+                // 1. Upload Local Categories
                 val categories = database.menuDao().getCategories().first()
                 if (categories.isNotEmpty()) {
                     val catArray = JSONArray()
@@ -89,7 +90,7 @@ class SyncWorker(
                     client.newCall(catRequest).execute().close()
                 }
 
-                // Sync Catalog: Items
+                // 2. Upload Local Items
                 val items = database.menuDao().getItems().first()
                 if (items.isNotEmpty()) {
                     val itemsArray = JSONArray()
@@ -115,7 +116,7 @@ class SyncWorker(
                     client.newCall(itemsRequest).execute().close()
                 }
 
-                // Sync Catalog: Inventory
+                // 3. Upload Local Inventory
                 val inventory = database.inventoryDao().getAllInventory().first()
                 if (inventory.isNotEmpty()) {
                     val invArray = JSONArray()
@@ -140,7 +141,7 @@ class SyncWorker(
                     client.newCall(invRequest).execute().close()
                 }
 
-                // Sync Catalog: Recipe Mappings
+                // 4. Upload Local Recipe Mappings
                 val recipes = database.recipeDao().getAllMappingsOnce()
                 if (recipes.isNotEmpty()) {
                     val recArray = JSONArray()
@@ -164,9 +165,155 @@ class SyncWorker(
                         .build()
                     client.newCall(recRequest).execute().close()
                 }
+
+                // ==========================================
+                // DOWNLOAD & SYNC CLOUD CHANGES TO DEVICE
+                // ==========================================
+
+                // A. Download & Sync Categories
+                val getCatRequest = Request.Builder()
+                    .url("$supabaseUrl/rest/v1/categories")
+                    .get()
+                    .header("apikey", supabaseKey)
+                    .header("Authorization", "Bearer $supabaseKey")
+                    .build()
+                client.newCall(getCatRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        if (!body.isNullOrEmpty()) {
+                            val arr = JSONArray(body)
+                            val downloadedList = mutableListOf<com.example.cattasticpos.data.local.entity.CategoryEntity>()
+                            val downloadedIds = mutableSetOf<String>()
+                            for (i in 0 until arr.length()) {
+                                val obj = arr.getJSONObject(i)
+                                val id = obj.getString("id")
+                                val name = obj.getString("name")
+                                downloadedList.add(com.example.cattasticpos.data.local.entity.CategoryEntity(id, name))
+                                downloadedIds.add(id)
+                            }
+                            if (downloadedList.isNotEmpty()) {
+                                database.menuDao().insertCategories(downloadedList)
+                                val localCats = database.menuDao().getCategories().first()
+                                val toDelete = localCats.filter { it.id !in downloadedIds }.map { it.id }
+                                if (toDelete.isNotEmpty()) {
+                                    database.menuDao().deleteCategoriesByIds(toDelete)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // B. Download & Sync Items
+                val getItemsRequest = Request.Builder()
+                    .url("$supabaseUrl/rest/v1/items")
+                    .get()
+                    .header("apikey", supabaseKey)
+                    .header("Authorization", "Bearer $supabaseKey")
+                    .build()
+                client.newCall(getItemsRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        if (!body.isNullOrEmpty()) {
+                            val arr = JSONArray(body)
+                            val downloadedList = mutableListOf<com.example.cattasticpos.data.local.entity.ItemEntity>()
+                            val downloadedIds = mutableSetOf<String>()
+                            for (i in 0 until arr.length()) {
+                                val obj = arr.getJSONObject(i)
+                                val id = obj.getString("id")
+                                val categoryId = obj.getString("category_id")
+                                val name = obj.getString("name")
+                                val flavors = obj.optString("flavors", "")
+                                val variantsJson = obj.optString("variants_json", "[]")
+                                downloadedList.add(com.example.cattasticpos.data.local.entity.ItemEntity(id, categoryId, name, flavors, variantsJson))
+                                downloadedIds.add(id)
+                            }
+                            if (downloadedList.isNotEmpty()) {
+                                database.menuDao().insertItems(downloadedList)
+                                val localItems = database.menuDao().getItems().first()
+                                val toDelete = localItems.filter { it.id !in downloadedIds }.map { it.id }
+                                if (toDelete.isNotEmpty()) {
+                                    database.menuDao().deleteItemsByIds(toDelete)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // C. Download & Sync Inventory (Stock)
+                val getInvRequest = Request.Builder()
+                    .url("$supabaseUrl/rest/v1/inventory")
+                    .get()
+                    .header("apikey", supabaseKey)
+                    .header("Authorization", "Bearer $supabaseKey")
+                    .build()
+                client.newCall(getInvRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        if (!body.isNullOrEmpty()) {
+                            val arr = JSONArray(body)
+                            val downloadedList = mutableListOf<com.example.cattasticpos.data.local.entity.InventoryEntity>()
+                            val downloadedIds = mutableSetOf<String>()
+                            for (i in 0 until arr.length()) {
+                                val obj = arr.getJSONObject(i)
+                                val id = obj.getString("id")
+                                val itemName = obj.getString("item_name")
+                                val unit = obj.getString("unit")
+                                val currentStock = obj.getDouble("current_stock")
+                                val reorderThreshold = obj.getDouble("reorder_threshold")
+                                downloadedList.add(com.example.cattasticpos.data.local.entity.InventoryEntity(id, itemName, unit, currentStock, reorderThreshold))
+                                downloadedIds.add(id)
+                            }
+                            if (downloadedList.isNotEmpty()) {
+                                database.inventoryDao().insertInventoryItems(downloadedList)
+                                val localInv = database.inventoryDao().getAllInventory().first()
+                                val toDelete = localInv.filter { it.id !in downloadedIds }.map { it.id }
+                                if (toDelete.isNotEmpty()) {
+                                    database.inventoryDao().deleteInventoryItemsByIds(toDelete)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // D. Download & Sync Recipe Mappings
+                val getRecRequest = Request.Builder()
+                    .url("$supabaseUrl/rest/v1/recipe_mappings")
+                    .get()
+                    .header("apikey", supabaseKey)
+                    .header("Authorization", "Bearer $supabaseKey")
+                    .build()
+                client.newCall(getRecRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        if (!body.isNullOrEmpty()) {
+                            val arr = JSONArray(body)
+                            val downloadedList = mutableListOf<com.example.cattasticpos.data.local.entity.RecipeMappingEntity>()
+                            val downloadedIds = mutableSetOf<String>()
+                            for (i in 0 until arr.length()) {
+                                val obj = arr.getJSONObject(i)
+                                val id = obj.getString("id")
+                                val menuItemId = obj.getString("menu_item_id")
+                                val sizeVariantName = if (obj.isNull("size_variant_name")) null else obj.getString("size_variant_name")
+                                val inventoryItemId = obj.getString("inventory_item_id")
+                                val deductionQuantity = obj.getDouble("deduction_quantity")
+                                downloadedList.add(com.example.cattasticpos.data.local.entity.RecipeMappingEntity(id, menuItemId, sizeVariantName, inventoryItemId, deductionQuantity))
+                                downloadedIds.add(id)
+                            }
+                            if (downloadedList.isNotEmpty()) {
+                                database.recipeDao().insertMappings(downloadedList)
+                                val localRecipes = database.recipeDao().getAllMappingsOnce()
+                                val toDelete = localRecipes.filter { it.id !in downloadedIds }.map { it.id }
+                                if (toDelete.isNotEmpty()) {
+                                    database.recipeDao().deleteMappingsByIds(toDelete)
+                                }
+                            }
+                        }
+                    }
+                }
             } catch (ce: Exception) {
                 Log.e(TAG, "Catalog sync error", ce)
             }
+
 
             // Find unsynced orders
             val unsyncedOrders = database.orderDao().getOrdersPage(0L, Long.MAX_VALUE, Long.MAX_VALUE, 100)

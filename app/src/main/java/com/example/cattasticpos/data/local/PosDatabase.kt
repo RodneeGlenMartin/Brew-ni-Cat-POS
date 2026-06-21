@@ -89,7 +89,7 @@ abstract class PosDatabase : RoomDatabase() {
                     MIGRATION_13_14,
                     MIGRATION_14_15
                 )
-                .addCallback(PosDatabaseCallback(scope))
+                .addCallback(PosDatabaseCallback(appContext, scope))
                 .addCallback(MigrationSuccessCallback(appContext))
                 .build()
         }
@@ -194,6 +194,7 @@ abstract class PosDatabase : RoomDatabase() {
     }
 
     private class PosDatabaseCallback(
+        private val appContext: Context,
         private val scope: CoroutineScope
     ) : RoomDatabase.Callback() {
         override fun onCreate(db: SupportSQLiteDatabase) {
@@ -220,6 +221,7 @@ abstract class PosDatabase : RoomDatabase() {
                         database.inventoryDao(),
                         database.recipeDao()
                     )
+                    com.example.cattasticpos.worker.SyncWorker.triggerImmediateSync(appContext)
                 }
             }
         }

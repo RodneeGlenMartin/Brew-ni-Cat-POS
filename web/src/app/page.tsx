@@ -181,14 +181,19 @@ export default function Dashboard() {
   const fetchData = async () => {
     if (!supabase) return;
     setLoading(true);
-    await Promise.all([
-      fetchOrdersOnly(),
-      fetchCategories(),
-      fetchMenuItems(),
-      fetchInventory(),
-      fetchRecipes()
-    ]);
-    setLoading(false);
+    try {
+      await Promise.all([
+        fetchOrdersOnly(),
+        fetchCategories(),
+        fetchMenuItems(),
+        fetchInventory(),
+        fetchRecipes()
+      ]);
+    } catch (e) {
+      console.error('Error fetching dashboard data:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchOrdersOnly = async () => {
@@ -208,26 +213,50 @@ export default function Dashboard() {
 
   const fetchCategories = async () => {
     if (!supabase) return;
-    const { data } = await supabase.from('categories').select('*').order('name');
-    setCategories(data || []);
+    try {
+      const { data, error } = await supabase.from('categories').select('*').order('name');
+      if (error) throw error;
+      setCategories(data || []);
+    } catch (e) {
+      console.error('Error fetching categories:', e);
+      setCategories([]);
+    }
   };
 
   const fetchMenuItems = async () => {
     if (!supabase) return;
-    const { data } = await supabase.from('items').select('*').order('name');
-    setMenuItems(data || []);
+    try {
+      const { data, error } = await supabase.from('items').select('*').order('name');
+      if (error) throw error;
+      setMenuItems(data || []);
+    } catch (e) {
+      console.error('Error fetching menu items:', e);
+      setMenuItems([]);
+    }
   };
 
   const fetchInventory = async () => {
     if (!supabase) return;
-    const { data } = await supabase.from('inventory').select('*').order('item_name');
-    setInventory(data || []);
+    try {
+      const { data, error } = await supabase.from('inventory').select('*').order('item_name');
+      if (error) throw error;
+      setInventory(data || []);
+    } catch (e) {
+      console.error('Error fetching inventory:', e);
+      setInventory([]);
+    }
   };
 
   const fetchRecipes = async () => {
     if (!supabase) return;
-    const { data } = await supabase.from('recipe_mappings').select('*');
-    setRecipes(data || []);
+    try {
+      const { data, error } = await supabase.from('recipe_mappings').select('*');
+      if (error) throw error;
+      setRecipes(data || []);
+    } catch (e) {
+      console.error('Error fetching recipe mappings:', e);
+      setRecipes([]);
+    }
   };
 
   const handleRefresh = async () => {
