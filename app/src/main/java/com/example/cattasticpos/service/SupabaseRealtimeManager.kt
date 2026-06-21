@@ -169,10 +169,11 @@ class SupabaseRealtimeManager(private val context: Context) {
                 val config = database.appConfigDao().getAppConfigOnce() ?: return@launch
                 val localDeviceId = config.deviceId.trim()
 
-                // Skip local echos
-                if (remoteDeviceId == localDeviceId) return@launch
-
-                Log.d(TAG, "Received remote change event $type for order $remoteOrderId.")
+                // Note: we intentionally do NOT skip events whose device_id matches this device.
+                // Another terminal can void/serve an order that originated here, and we must react
+                // to that in real time. Merging our own echo is a harmless no-op (the merger
+                // reconciles to cloud state and does nothing when it already matches).
+                Log.d(TAG, "Received remote change event $type for order $remoteOrderId (origin $remoteDeviceId).")
                 pullAndMergeOrder(remoteOrderId, remoteDeviceId, localDeviceId)
             } catch (e: Exception) {
                 Log.e(TAG, "Error handling message", e)
@@ -210,96 +211,18 @@ class SupabaseRealtimeManager(private val context: Context) {
                 val jsonArray = JSONArray(body)
                 if (jsonArray.length() == 0) return@launch
 
-                val orderJson = jsonArray.getJSONObject(0)
-                val targetLocalId = if (remoteDeviceId == localDeviceId) {
-                    remoteOrderId % 1_000_000_000L
-                } else {
-                    remoteOrderId
-                }
-
-                val isVoided = orderJson.optBoolean("is_voided", false)
-                if (isVoided) {
-                    val localOrder = database.orderDao().getOrderWithItems(targetLocalId)
-                    if (localOrder != null) {
-                        try {
-                            val recipeRepository = app.container.recipeRepository
-                            val inventoryRepository = app.container.inventoryRepository
-                            val domainItems = localOrder.items.map { item ->
-                                com.example.cattasticpos.domain.model.OrderItem(
-                                    id = item.id,
-                                    orderId = item.orderId,
-                                    itemId = item.itemId,
-                                    itemName = item.itemName,
-                                    variantId = item.variantId,
-                                    variantName = item.variantName,
-                                    flavor = item.flavor,
-                                    quantity = item.quantity,
-                                    unitPrice = item.unitPrice,
-                                    totalPrice = item.totalPrice
-                                )
-                            }
-                            com.example.cattasticpos.domain.usecase.InventoryRestorationHelper.restoreForOrderItems(
-                                domainItems,
-                                recipeRepository,
-                                inventoryRepository
-                            )
-                        } catch (e: Exception) {
-                            Log.e(TAG, "Failed to restore inventory on remote void", e)
-                        }
-                    }
-                    database.orderDao().deleteOrderWithItems(targetLocalId)
-                    Log.i(TAG, "Successfully processed remote order void/delete for $targetLocalId.")
-                    return@launch
-                }
-
-                val orderEntity = OrderEntity(
-                    id = targetLocalId,
-                    timestamp = orderJson.getLong("timestamp"),
-                    subtotal = orderJson.getDouble("subtotal"),
-                    discountDeduction = orderJson.getDouble("discount_deduction"),
-                    discountLabel = orderJson.getString("discount_label"),
-                    total = orderJson.getDouble("total"),
-                    paymentMethod = orderJson.getString("payment_method"),
-                    paymentReference = if (orderJson.isNull("payment_reference")) null else orderJson.getString("payment_reference"),
-                    cashierId = if (orderJson.isNull("cashier_id")) null else orderJson.getString("cashier_id"),
-                    cashierName = if (orderJson.isNull("cashier_name")) null else orderJson.getString("cashier_name"),
-                    tableLabel = if (orderJson.isNull("table_label")) null else orderJson.getString("table_label"),
-                    isServed = orderJson.optBoolean("is_served", false),
-                    deviceId = remoteDeviceId,
-                    syncStatus = "SYNCED"
+                // Live event: route through the shared merger so the local-id mapping matches the
+                // historical-pull and periodic catch-up paths exactly. This is a live void/insert,
+                // so inventory IS restocked the first time we see a void here.
+                com.example.cattasticpos.data.sync.OrderSyncMerger.mergeRemoteOrder(
+                    database = database,
+                    recipeRepository = app.container.recipeRepository,
+                    inventoryRepository = app.container.inventoryRepository,
+                    orderJson = jsonArray.getJSONObject(0),
+                    localDeviceId = localDeviceId,
+                    restoreInventoryOnVoid = true
                 )
-
-                val itemsArray = orderJson.getJSONArray("order_items")
-                val itemEntities = mutableListOf<OrderItemEntity>()
-                for (j in 0 until itemsArray.length()) {
-                    val itemJson = itemsArray.getJSONObject(j)
-                    itemEntities.add(
-                        OrderItemEntity(
-                            orderId = targetLocalId,
-                            itemId = itemJson.getString("item_id"),
-                            itemName = itemJson.getString("item_name"),
-                            variantId = itemJson.getString("variant_id"),
-                            variantName = itemJson.getString("variant_name"),
-                            flavor = if (itemJson.isNull("flavor")) null else itemJson.getString("flavor"),
-                            quantity = itemJson.getInt("quantity"),
-                            unitPrice = itemJson.getDouble("unit_price"),
-                            totalPrice = itemJson.getDouble("total_price")
-                        )
-                    )
-                }
-
-                database.withTransaction {
-                    // Temporarily disable FK checks to allow inserting orders with manually-assigned IDs
-                    database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=OFF")
-                    try {
-                        database.orderDao().deleteOrderItemsForOrder(targetLocalId)
-                        database.orderDao().deleteOrderEntity(targetLocalId)
-                        database.orderDao().insertOrderWithItems(orderEntity, itemEntities)
-                    } finally {
-                        database.openHelper.writableDatabase.execSQL("PRAGMA foreign_keys=ON")
-                    }
-                }
-                Log.i(TAG, "Successfully synced remote order change for $targetLocalId.")
+                Log.i(TAG, "Successfully merged remote order change for remoteId=$remoteOrderId.")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to pull and merge remote order", e)
             }

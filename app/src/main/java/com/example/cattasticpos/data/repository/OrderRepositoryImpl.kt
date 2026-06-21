@@ -64,7 +64,8 @@ class OrderRepositoryImpl(
             deviceId = targetDeviceId,
             syncStatus = "PENDING",
             isVoided = order.isVoided,
-            lastSyncedAt = lastSyncedAt
+            lastSyncedAt = lastSyncedAt,
+            remoteId = existing?.order?.remoteId
         )
         val itemEntities = order.items.map { item ->
             OrderItemEntity(
@@ -162,52 +163,46 @@ class OrderRepositoryImpl(
     }
 
     override suspend fun deleteOrder(orderId: Long) {
-        // Soft delete: Mark order as voided instead of removing it
-        val existingOrder = database.orderDao().getOrderWithItems(orderId)
-        if (existingOrder != null) {
-            database.orderDao().updateOrderEntity(
-                existingOrder.order.copy(
-                    isVoided = true,
-                    syncStatus = "PENDING",
-                    lastSyncedAt = System.currentTimeMillis()
-                )
+        // Soft delete: mark voided (kept for audit, hidden from lists) and queue for sync.
+        val existingOrder = database.orderDao().getOrderWithItems(orderId) ?: return
+        database.orderDao().updateOrderEntity(
+            existingOrder.order.copy(
+                isVoided = true,
+                syncStatus = "PENDING",
+                lastSyncedAt = System.currentTimeMillis()
             )
-        }
+        )
 
-        // Asynchronously mark as voided in Supabase if configured
+        // Propagate the void immediately using the order's GLOBAL id. This is correct even when
+        // voiding an order that originated on another device. Orders not yet uploaded
+        // (remoteId == null) carry is_voided=true on their first POST via SyncWorker instead.
+        val remoteId = existingOrder.order.remoteId ?: return
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             try {
-                val config = database.appConfigDao().getAppConfigOnce()
-                if (config != null) {
-                    val supabaseUrl = config.supabaseUrl.trim()
-                    val supabaseKey = config.supabaseAnonKey.trim()
-                    val deviceId = config.deviceId.trim()
+                val config = database.appConfigDao().getAppConfigOnce() ?: return@launch
+                val supabaseUrl = config.supabaseUrl.trim()
+                val supabaseKey = config.supabaseAnonKey.trim()
+                if (supabaseUrl.isNotEmpty() && supabaseKey.isNotEmpty()) {
+                    val client = okhttp3.OkHttpClient.Builder()
+                        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                        .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                        .build()
 
-                    if (supabaseUrl.isNotEmpty() && supabaseKey.isNotEmpty() && deviceId.isNotEmpty()) {
-                        val deviceHash = kotlin.math.abs(deviceId.hashCode()) % 1_000_000L
-                        val globalOrderId = (deviceHash * 1_000_000_000L) + orderId
+                    val mediaType = "application/json; charset=utf-8".toMediaType()
+                    val body = "{\"is_voided\": true}".toRequestBody(mediaType)
+                    val patchOrderReq = okhttp3.Request.Builder()
+                        .url("$supabaseUrl/rest/v1/orders?id=eq.$remoteId")
+                        .patch(body)
+                        .header("apikey", supabaseKey)
+                        .header("Authorization", "Bearer $supabaseKey")
+                        .header("Content-Type", "application/json")
+                        .build()
+                    client.newCall(patchOrderReq).execute().close()
 
-                        val client = okhttp3.OkHttpClient.Builder()
-                            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                            .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                            .build()
-
-                        val mediaType = "application/json; charset=utf-8".toMediaType()
-                        val body = "{\"is_voided\": true}".toRequestBody(mediaType)
-                        val patchOrderReq = okhttp3.Request.Builder()
-                            .url("$supabaseUrl/rest/v1/orders?id=eq.$globalOrderId")
-                            .patch(body)
-                            .header("apikey", supabaseKey)
-                            .header("Authorization", "Bearer $supabaseKey")
-                            .header("Content-Type", "application/json")
-                            .build()
-                        client.newCall(patchOrderReq).execute().close()
-
-                        android.util.Log.i("OrderRepositoryImpl", "Successfully marked order $globalOrderId as voided on Supabase.")
-                    }
+                    android.util.Log.i("OrderRepositoryImpl", "Marked order (remote $remoteId) as voided on Supabase.")
                 }
             } catch (e: Exception) {
-                android.util.Log.e("OrderRepositoryImpl", "Failed to mark order $orderId as voided on Supabase", e)
+                android.util.Log.e("OrderRepositoryImpl", "Failed to mark order $orderId voided on Supabase", e)
             }
         }
     }
