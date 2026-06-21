@@ -134,6 +134,10 @@ export default function Dashboard() {
   const [stockAdjustment, setStockAdjustment] = useState('');
 
   useEffect(() => {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
     fetchData();
 
     // Subscribe to realtime updates on orders
@@ -153,6 +157,7 @@ export default function Dashboard() {
   }, []);
 
   const fetchData = async () => {
+    if (!supabase) return;
     setLoading(true);
     await Promise.all([
       fetchOrdersOnly(),
@@ -165,6 +170,7 @@ export default function Dashboard() {
   };
 
   const fetchOrdersOnly = async () => {
+    if (!supabase) return;
     try {
       const { data, error } = await supabase
         .from('orders')
@@ -179,21 +185,25 @@ export default function Dashboard() {
   };
 
   const fetchCategories = async () => {
+    if (!supabase) return;
     const { data } = await supabase.from('categories').select('*').order('name');
     setCategories(data || []);
   };
 
   const fetchMenuItems = async () => {
+    if (!supabase) return;
     const { data } = await supabase.from('items').select('*').order('name');
     setMenuItems(data || []);
   };
 
   const fetchInventory = async () => {
+    if (!supabase) return;
     const { data } = await supabase.from('inventory').select('*').order('item_name');
     setInventory(data || []);
   };
 
   const fetchRecipes = async () => {
+    if (!supabase) return;
     const { data } = await supabase.from('recipe_mappings').select('*');
     setRecipes(data || []);
   };
@@ -375,6 +385,54 @@ export default function Dashboard() {
   const formatPrice = (val: number) => {
     return '₱' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
+
+  if (!supabase) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 p-6 text-slate-100 font-sans">
+        <div className="relative w-full max-w-xl bg-slate-900/40 border border-slate-800 rounded-3xl p-8 backdrop-blur-xl shadow-2xl flex flex-col gap-6 overflow-hidden">
+          <div className="absolute -right-16 -top-16 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute -left-16 -bottom-16 w-48 h-48 bg-purple-500/10 rounded-full blur-3xl"></div>
+
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-400">
+              <Sparkles className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold tracking-tight">Supabase Configuration Required</h1>
+              <p className="text-sm text-slate-400">POS Web Manager Dashboard</p>
+            </div>
+          </div>
+
+          <div className="bg-slate-950/60 border border-slate-800/80 rounded-2xl p-5 flex flex-col gap-4">
+            <p className="text-sm text-slate-300 leading-relaxed">
+              To connect this dashboard to your POS live database, please add the following environment variables to your deployment environment (e.g., Vercel Project Settings):
+            </p>
+
+            <div className="flex flex-col gap-3 font-mono text-xs">
+              <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl flex flex-col gap-1 select-all">
+                <span className="text-slate-500"># Supabase Project URL</span>
+                <span className="text-emerald-400">NEXT_PUBLIC_SUPABASE_URL</span>
+              </div>
+              <div className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl flex flex-col gap-1 select-all">
+                <span className="text-slate-500"># Supabase Anon/Public Key</span>
+                <span className="text-emerald-400">NEXT_PUBLIC_SUPABASE_ANON_KEY</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2.5 text-xs text-slate-400">
+            <p className="font-semibold text-slate-300">How to configure on Vercel:</p>
+            <ol className="list-decimal pl-4 flex flex-col gap-1.5 leading-relaxed">
+              <li>Go to your Vercel Project Dashboard.</li>
+              <li>Navigate to <strong>Settings</strong> &gt; <strong>Environment Variables</strong>.</li>
+              <li>Add the two variables above using the credentials from your Supabase Project Settings.</li>
+              <li>Redeploy or trigger a new build on Vercel.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 font-sans overflow-hidden">
