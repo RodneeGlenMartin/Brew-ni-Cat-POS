@@ -97,7 +97,6 @@ fun HistoryScreen(
     val showDateRangeDialog by viewModel.showDateRangeDialog.collectAsState()
     val canLoadMore by viewModel.canLoadMore.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    var pendingVoidOrderId by remember { mutableStateOf<Long?>(null) }
     var receiptPreviewOrder by remember { mutableStateOf<Order?>(null) }
     val menuItems by viewModel.menuItemsState.collectAsState()
     LaunchedEffect(exportMessage) {
@@ -562,7 +561,6 @@ fun HistoryScreen(
                             order = order,
                             onShare = { shareOrderReceipt(context, order) },
                             onEdit = { receiptPreviewOrder = order },
-                            onDelete = { pendingVoidOrderId = order.id },
                             onToggleServed = { viewModel.toggleOrderServed(order.id) }
                         )
                     }
@@ -681,18 +679,6 @@ fun HistoryScreen(
                 )
             }
 
-            pendingVoidOrderId?.let { orderId ->
-                VoidOrderDialog(
-                    onDismiss = { pendingVoidOrderId = null },
-                    onVerifyPin = { pin ->
-                        viewModel.verifyAdminPin(pin)
-                    },
-                    onConfirm = { reason ->
-                        viewModel.voidOrder(orderId, reason)
-                        pendingVoidOrderId = null
-                    }
-                )
-            }
 
             receiptPreviewOrder?.let { order ->
                 ReceiptEditorDialog(
@@ -748,13 +734,12 @@ fun OrderHistoryCard(
     order: Order,
     onShare: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit,
     onToggleServed: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    val actionWidth = 156.dp
+    val actionWidth = 104.dp
     val actionWidthPx = with(density) { actionWidth.toPx() }
     val cardShape = RoundedCornerShape(22.dp)
     val swipeSnapSpec = remember { spring<Float>(dampingRatio = 0.92f, stiffness = 720f) }
@@ -763,11 +748,11 @@ fun OrderHistoryCard(
     var isDragging by remember(order.id) { mutableStateOf(false) }
     val displayOffset = if (isDragging) dragOffset else offsetAnim.value
     val revealProgress = (displayOffset / actionWidthPx).coerceIn(0f, 1f)
-
+ 
     fun closeReveal() {
         scope.launch { offsetAnim.animateTo(0f, swipeSnapSpec) }
     }
-
+ 
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -798,15 +783,6 @@ fun OrderHistoryCard(
                 onClick = {
                     closeReveal()
                     onEdit()
-                }
-            )
-            OrderSwipeActionIcon(
-                icon = FluentIcons.Delete,
-                contentDescription = "Delete order",
-                tint = MaterialTheme.colorScheme.error,
-                onClick = {
-                    closeReveal()
-                    onDelete()
                 }
             )
         }
@@ -1114,86 +1090,7 @@ fun shareOrderReceipt(context: android.content.Context, order: com.example.catta
     context.startActivity(android.content.Intent.createChooser(intent, "Share Receipt"))
 }
 
-@Composable
-fun VoidOrderDialog(
-    onDismiss: () -> Unit,
-    onVerifyPin: suspend (String) -> Boolean,
-    onConfirm: (String) -> Unit
-) {
-    val reasons = listOf("Wrong order", "Customer cancelled", "Duplicate entry", "Other")
-    var selectedReason by remember { mutableStateOf(reasons.first()) }
-    var pin by remember { mutableStateOf("") }
-    var isPinError by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
 
-    AdaptiveGlassDialog(
-        onDismissRequest = onDismiss,
-        surfaceAlpha = 0.92f,
-        title = { Text("Void Order", fontWeight = FontWeight.Bold) },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        confirmButton = {
-            Button(onClick = {
-                scope.launch {
-                    if (onVerifyPin(pin)) {
-                        onConfirm(selectedReason)
-                    } else {
-                        isPinError = true
-                    }
-                }
-            }) {
-                Text("Void & Restock")
-            }
-        },
-        content = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Select a reason. Inventory will be restored.", fontSize = 13.sp)
-                reasons.forEach { reason ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { selectedReason = reason }
-                            .padding(vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(
-                            selected = selectedReason == reason,
-                            onClick = { selectedReason = reason }
-                        )
-                        Text(reason)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text("Enter Manager PIN to authorize:", fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                OutlinedTextField(
-                    value = pin,
-                    onValueChange = {
-                        if (it.length <= 4) {
-                            pin = it.filter { char -> char.isDigit() }
-                            isPinError = false
-                        }
-                    },
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.NumberPassword
-                    ),
-                    isError = isPinError,
-                    placeholder = { Text("Manager PIN") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                if (isPinError) {
-                    Text("Incorrect PIN", color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
-                }
-            }
-        }
-    )
-}
 
 @Composable
 fun EditConfigDialog(
