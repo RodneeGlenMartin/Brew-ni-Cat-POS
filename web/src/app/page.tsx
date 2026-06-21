@@ -251,7 +251,7 @@ export default function Dashboard() {
     csvContent += 'Order ID,Receipt Number,Device ID,Timestamp,Date,Subtotal,Discount Deduction,Discount Label,Total,Payment Method,Payment Reference,Cashier,Table Label,Served\n';
 
     filtered.forEach(o => {
-      const displayId = o.id >= 1000000000L ? o.id % 1000000000L : o.id;
+      const displayId = o.id >= 1000000000 ? o.id % 1000000000 : o.id;
       const receiptNo = String(displayId).padStart(4, '0');
       const dateStr = new Date(o.timestamp).toLocaleString();
       const row = [
@@ -485,7 +485,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col gap-1.5 relative overflow-hidden">
                     <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl"></div>
-                    <span className="text-xs font-medium text-slate-400">Today's Net Profit</span>
+                    <span className="text-xs font-medium text-slate-400">Today&apos;s Net Profit</span>
                     <span className="text-2xl font-black text-slate-100">{formatPrice(zReading.netSales - 50)}</span>
                     <span className="text-xs text-emerald-400 flex items-center gap-1 font-medium mt-1">
                       <Sparkles className="w-3.5 h-3.5" /> Aggregated from all phones
@@ -515,7 +515,7 @@ export default function Dashboard() {
                     <h3 className="text-sm font-bold text-slate-300">Live Kitchen Queue</h3>
                     <div className="flex flex-col gap-3.5 max-h-[500px] overflow-y-auto pr-2">
                       {orders.slice(0, 10).map(order => {
-                        const displayId = order.id >= 1000000000L ? order.id % 1000000000L : order.id;
+                        const displayId = order.id >= 1000000000 ? order.id % 1000000000 : order.id;
                         return (
                           <div key={order.id} className="bg-slate-800/40 border border-slate-800 rounded-xl p-4 flex items-center justify-between transition-colors hover:bg-slate-800/60">
                             <div className="flex flex-col gap-1">
@@ -664,7 +664,7 @@ export default function Dashboard() {
                     </thead>
                     <tbody>
                       {getFilteredOrders().map(o => {
-                        const displayId = o.id >= 1000000000L ? o.id % 1000000000L : o.id;
+                        const displayId = o.id >= 1000000000 ? o.id % 1000000000 : o.id;
                         const isExpanded = expandedOrders[o.id] || false;
                         return (
                           <React.Fragment key={o.id}>
