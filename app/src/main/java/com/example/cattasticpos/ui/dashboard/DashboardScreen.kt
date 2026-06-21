@@ -122,22 +122,19 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val cartItemCount = uiState.activeCart.sumOf { it.quantity }
-    // On a wide screen (Redmi Pad 2 tablet) keep the running order visible by default, the
-    // way the old side panel did — the cart is still a bottom-sheet, just expanded. Phones
-    // keep the collapsed-by-default behaviour so the sheet doesn't cover the catalog.
+    // On a wide screen (Redmi Pad 2 tablet) the order panel stays open as the bottom half —
+    // menu on top, order on the bottom — even when empty, so there's no dead space and the
+    // running order is always visible. Phones collapse to the bar when empty so the catalog
+    // gets the whole small screen.
     val isWideScreen = LocalConfiguration.current.screenWidthDp >= 540
     var isCartExpanded by remember { mutableStateOf(isWideScreen) }
-    var wasCartEmpty by remember { mutableStateOf(cartItemCount == 0) }
 
-    LaunchedEffect(cartItemCount) {
-        if (cartItemCount == 0) {
-            isCartExpanded = false
-        } else if (wasCartEmpty && isWideScreen) {
-            // First item of a new sale rung up on a tablet — surface the order automatically
-            // so the cashier can verify it, but don't re-expand on every later quantity tap.
+    LaunchedEffect(cartItemCount, isWideScreen) {
+        if (isWideScreen) {
             isCartExpanded = true
+        } else if (cartItemCount == 0) {
+            isCartExpanded = false
         }
-        wasCartEmpty = cartItemCount == 0
     }
 
     val performFeedback = rememberPosFeedback()
@@ -240,45 +237,49 @@ fun DashboardScreen(
                 BorderStroke(1.dp, AlabasterPalette.RingBorder)
             }
 
-            // Cart stays at the bottom as a bottom-sheet on every form factor — phone and
-            // tablet alike. On the Redmi Pad 2 this keeps the primary action (cart +
-            // checkout) anchored in the bottom thumb-reach zone instead of off in a side
-            // panel, while the catalog still spans the full width with its multi-column grid.
-            val cartBottomPadding by animateDpAsState(
-                targetValue = if (isCartExpanded) 380.dp else 120.dp,
-                animationSpec = iOSSpringDp,
-                label = "cartPadding"
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                StorefrontCatalogPane(
-                    modifier = Modifier.weight(1f),
-                    uiState = uiState,
-                    hazeState = hazeState,
-                    headerState = headerState,
-                    searchQuery = searchQuery,
-                    isSearchExpanded = isSearchExpanded,
-                    onSearchQueryChange = { searchQuery = it },
-                    onSearchExpandedChange = { isSearchExpanded = it },
-                    onCategorySelected = { viewModel.selectCategory(it) },
-                    onItemClick = { viewModel.showConfigurationSheet(it) },
-                    compactGlows = true,
-                    bottomContentPadding = cartBottomPadding
-                )
-                DashboardCheckoutPanel(
-                    modifier = Modifier.fillMaxWidth(),
-                    uiState = uiState,
-                    cartItemCount = cartItemCount,
-                    isCartExpanded = isCartExpanded,
-                    onCartExpandedChange = { isCartExpanded = it },
-                    checkoutBorder = checkoutBorder,
-                    darkTheme = darkTheme,
-                    onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
-                    onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
-                    onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
-                    onSelectDiscount = { viewModel.selectDiscount(it) },
-                    forceExpanded = false,
-                    useBottomSheetStyle = true
-                )
+            // Cart is a bottom sheet on every form factor — phone and tablet alike. The
+            // catalog fills the top and the order panel is pinned directly beneath it (no
+            // overlay, so no reserved dead band under the catalog). When expanded the panel
+            // is capped to ~half the available height and scrolls internally, so the menu
+            // stays visible above it instead of being covered.
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                val sheetMaxHeight = maxHeight * 0.5f
+                Column(modifier = Modifier.fillMaxSize()) {
+                    StorefrontCatalogPane(
+                        modifier = Modifier.weight(1f),
+                        uiState = uiState,
+                        hazeState = hazeState,
+                        headerState = headerState,
+                        searchQuery = searchQuery,
+                        isSearchExpanded = isSearchExpanded,
+                        onSearchQueryChange = { searchQuery = it },
+                        onSearchExpandedChange = { isSearchExpanded = it },
+                        onCategorySelected = { viewModel.selectCategory(it) },
+                        onItemClick = { viewModel.showConfigurationSheet(it) },
+                        compactGlows = true,
+                        bottomContentPadding = 12.dp
+                    )
+                    DashboardCheckoutPanel(
+                        modifier = Modifier.fillMaxWidth(),
+                        uiState = uiState,
+                        cartItemCount = cartItemCount,
+                        isCartExpanded = isCartExpanded,
+                        onCartExpandedChange = { isCartExpanded = it },
+                        checkoutBorder = checkoutBorder,
+                        darkTheme = darkTheme,
+                        onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
+                        onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
+                        onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
+                        onSelectDiscount = { viewModel.selectDiscount(it) },
+                        forceExpanded = false,
+                        useBottomSheetStyle = true,
+                        maxSheetHeight = sheetMaxHeight
+                    )
+                }
             }
         }
 
@@ -616,7 +617,8 @@ private fun DashboardCheckoutPanel(
     modifier: Modifier = Modifier,
     forceExpanded: Boolean = false,
     useBottomSheetStyle: Boolean = true,
-    onCollapseCart: (() -> Unit)? = null
+    onCollapseCart: (() -> Unit)? = null,
+    maxSheetHeight: Dp = Dp.Unspecified
 ) {
     if (useBottomSheetStyle) {
         val cartBarShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
@@ -716,13 +718,27 @@ private fun DashboardCheckoutPanel(
                     enter = expandVertically(animationSpec = iOSSpringSize) + fadeIn(animationSpec = iOSSpringSpec),
                     exit = shrinkVertically(animationSpec = iOSSpringSize) + fadeOut(animationSpec = iOSSpringSpec)
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    // Cap the expanded order to ~half the screen and scroll within it, so the
+                    // menu stays visible above and Place Order is always reachable. A single
+                    // scroll here (list itself unbounded) avoids nested-scroll conflicts.
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (maxSheetHeight != Dp.Unspecified) {
+                                    Modifier.heightIn(max = maxSheetHeight)
+                                } else {
+                                    Modifier
+                                }
+                            )
+                            .verticalScroll(rememberScrollState())
+                    ) {
                         DashboardCheckoutBody(
                             uiState = uiState,
                             onQuantityChange = onQuantityChange,
                             onSelectDiscount = onSelectDiscount,
                             onPlaceOrder = onPlaceOrder,
-                            listMaxHeight = 220.dp
+                            listMaxHeight = null
                         )
                     }
                 }
