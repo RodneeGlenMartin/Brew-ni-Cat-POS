@@ -122,17 +122,14 @@ fun DashboardScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val cartItemCount = uiState.activeCart.sumOf { it.quantity }
-    // On a wide screen (Redmi Pad 2 tablet) the order panel stays open as the bottom half —
-    // menu on top, order on the bottom — even when empty, so there's no dead space and the
-    // running order is always visible. Phones collapse to the bar when empty so the catalog
-    // gets the whole small screen.
+    // Wide screens (Redmi Pad 2 tablet) use a fixed split: catalog on top, an order panel
+    // that fills the bottom slot (TabletOrderPanel) — always visible, no dead space. Phones
+    // use the collapsing bottom-sheet, so this flag only drives the phone layout.
     val isWideScreen = LocalConfiguration.current.screenWidthDp >= 540
-    var isCartExpanded by remember { mutableStateOf(isWideScreen) }
+    var isCartExpanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(cartItemCount, isWideScreen) {
-        if (isWideScreen) {
-            isCartExpanded = true
-        } else if (cartItemCount == 0) {
+    LaunchedEffect(cartItemCount) {
+        if (cartItemCount == 0) {
             isCartExpanded = false
         }
     }
@@ -237,48 +234,89 @@ fun DashboardScreen(
                 BorderStroke(1.dp, AlabasterPalette.RingBorder)
             }
 
-            // Cart is a bottom sheet on every form factor — phone and tablet alike. The
-            // catalog fills the top and the order panel is pinned directly beneath it (no
-            // overlay, so no reserved dead band under the catalog). When expanded the panel
-            // is capped to ~half the available height and scrolls internally, so the menu
-            // stays visible above it instead of being covered.
             BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                val sheetMaxHeight = maxHeight * 0.5f
-                Column(modifier = Modifier.fillMaxSize()) {
-                    StorefrontCatalogPane(
-                        modifier = Modifier.weight(1f),
-                        uiState = uiState,
-                        hazeState = hazeState,
-                        headerState = headerState,
-                        searchQuery = searchQuery,
-                        isSearchExpanded = isSearchExpanded,
-                        onSearchQueryChange = { searchQuery = it },
-                        onSearchExpandedChange = { isSearchExpanded = it },
-                        onCategorySelected = { viewModel.selectCategory(it) },
-                        onItemClick = { viewModel.showConfigurationSheet(it) },
-                        compactGlows = true,
-                        bottomContentPadding = 12.dp
-                    )
-                    DashboardCheckoutPanel(
-                        modifier = Modifier.fillMaxWidth(),
-                        uiState = uiState,
-                        cartItemCount = cartItemCount,
-                        isCartExpanded = isCartExpanded,
-                        onCartExpandedChange = { isCartExpanded = it },
-                        checkoutBorder = checkoutBorder,
-                        darkTheme = darkTheme,
-                        onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
-                        onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
-                        onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
-                        onSelectDiscount = { viewModel.selectDiscount(it) },
-                        forceExpanded = false,
-                        useBottomSheetStyle = true,
-                        maxSheetHeight = sheetMaxHeight
-                    )
+                if (isWideScreen) {
+                    // Tablet: catalog on top, order panel fills a fixed bottom slot. Because
+                    // the panel fills its slot, its background always reaches the screen edge
+                    // — no dead space is possible. The slot is ~half the height but never
+                    // smaller than what the footer (totals + discounts + Place Order) needs,
+                    // and never so large the catalog disappears.
+                    val box = maxHeight
+                    val catalogMin = 150.dp
+                    val panelMin = 300.dp
+                    val panelHeight = if (box - panelMin >= catalogMin) {
+                        (box * 0.5f).coerceIn(panelMin, box - catalogMin)
+                    } else {
+                        box - catalogMin
+                    }
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        StorefrontCatalogPane(
+                            modifier = Modifier.weight(1f),
+                            uiState = uiState,
+                            hazeState = hazeState,
+                            headerState = headerState,
+                            searchQuery = searchQuery,
+                            isSearchExpanded = isSearchExpanded,
+                            onSearchQueryChange = { searchQuery = it },
+                            onSearchExpandedChange = { isSearchExpanded = it },
+                            onCategorySelected = { viewModel.selectCategory(it) },
+                            onItemClick = { viewModel.showConfigurationSheet(it) },
+                            compactGlows = true,
+                            bottomContentPadding = 12.dp
+                        )
+                        TabletOrderPanel(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(panelHeight),
+                            uiState = uiState,
+                            cartItemCount = cartItemCount,
+                            checkoutBorder = checkoutBorder,
+                            darkTheme = darkTheme,
+                            onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
+                            onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
+                            onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
+                            onSelectDiscount = { viewModel.selectDiscount(it) }
+                        )
+                    }
+                } else {
+                    // Phone: collapsing bottom-sheet cart.
+                    val sheetMaxHeight = maxHeight * 0.6f
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        StorefrontCatalogPane(
+                            modifier = Modifier.weight(1f),
+                            uiState = uiState,
+                            hazeState = hazeState,
+                            headerState = headerState,
+                            searchQuery = searchQuery,
+                            isSearchExpanded = isSearchExpanded,
+                            onSearchQueryChange = { searchQuery = it },
+                            onSearchExpandedChange = { isSearchExpanded = it },
+                            onCategorySelected = { viewModel.selectCategory(it) },
+                            onItemClick = { viewModel.showConfigurationSheet(it) },
+                            compactGlows = true,
+                            bottomContentPadding = 12.dp
+                        )
+                        DashboardCheckoutPanel(
+                            modifier = Modifier.fillMaxWidth(),
+                            uiState = uiState,
+                            cartItemCount = cartItemCount,
+                            isCartExpanded = isCartExpanded,
+                            onCartExpandedChange = { isCartExpanded = it },
+                            checkoutBorder = checkoutBorder,
+                            darkTheme = darkTheme,
+                            onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
+                            onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
+                            onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
+                            onSelectDiscount = { viewModel.selectDiscount(it) },
+                            forceExpanded = false,
+                            useBottomSheetStyle = true,
+                            maxSheetHeight = sheetMaxHeight
+                        )
+                    }
                 }
             }
         }
@@ -916,6 +954,171 @@ private fun DashboardCheckoutBody(
             color = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.padding(vertical = 4.dp)
         )
+    }
+}
+
+/**
+ * Wide-screen (tablet) order panel. Fills the fixed bottom slot it is given, so its
+ * background always reaches the screen edge — no dead space below it. Header is fixed, the
+ * item list scrolls in the middle, and the footer (totals + discounts + Place Order) is
+ * pinned to the bottom edge.
+ */
+@Composable
+private fun TabletOrderPanel(
+    uiState: DashboardUiState,
+    cartItemCount: Int,
+    checkoutBorder: BorderStroke,
+    darkTheme: Boolean,
+    onHoldOrder: () -> Unit,
+    onPlaceOrder: () -> Unit,
+    onQuantityChange: (String, Int) -> Unit,
+    onSelectDiscount: (DiscountStrategy) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val panelShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+    val labelColor = adaptiveGlassContentColor(darkTheme)
+    val bodyColor = adaptiveGlassContentColor()
+    val mutedColor = adaptiveBodyMuted()
+    Column(
+        modifier = modifier
+            .clip(panelShape)
+            .background(adaptiveGlassBrush(darkTheme), panelShape)
+            .border(checkoutBorder.width, checkoutBorder.brush, panelShape)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        // Header (fixed)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Current Order ($cartItemCount)",
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = labelColor
+                )
+                if (cartItemCount > 0) {
+                    Text(
+                        "Total: ₱${String.format("%.0f", uiState.total)}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            TextButton(
+                onClick = onHoldOrder,
+                enabled = uiState.activeCart.isNotEmpty(),
+                modifier = Modifier.height(40.dp)
+            ) {
+                FluentIcon(
+                    imageVector = FluentIcons.Pause,
+                    contentDescription = null,
+                    size = 14.dp,
+                    useGlassGradient = false
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Hold", fontSize = 12.sp)
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        // Item list (fills the middle, scrolls)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            if (uiState.activeCart.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("No items yet", color = mutedColor)
+                }
+            } else {
+                uiState.activeCart.forEach { cartItem ->
+                    CartItemRow(cartItem = cartItem, onQuantityChange = onQuantityChange)
+                }
+            }
+        }
+        // Footer (pinned)
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    "Subtotal: ₱${String.format("%.0f", uiState.subtotal)}",
+                    fontSize = 12.sp,
+                    color = mutedColor
+                )
+                if (uiState.discountDeduction > 0) {
+                    Text(
+                        "Disc (${uiState.discountLabel}): -₱${String.format("%.0f", uiState.discountDeduction)}",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Total: ", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = bodyColor)
+                Text(
+                    "₱${String.format("%.0f", uiState.total)}",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            DiscountButton("None", uiState.selectedDiscountStrategy is NoDiscountStrategy, { onSelectDiscount(NoDiscountStrategy()) }, Modifier.weight(1f))
+            DiscountButton("5%", uiState.selectedDiscountStrategy is FivePercentDiscountStrategy, { onSelectDiscount(FivePercentDiscountStrategy()) }, Modifier.weight(1f))
+            DiscountButton("10%", uiState.selectedDiscountStrategy is PercentageDiscountStrategy && (uiState.selectedDiscountStrategy as PercentageDiscountStrategy).pct == 10.0, { onSelectDiscount(PercentageDiscountStrategy(10.0)) }, Modifier.weight(1f))
+            DiscountButton("20%", uiState.selectedDiscountStrategy is PercentageDiscountStrategy && (uiState.selectedDiscountStrategy as PercentageDiscountStrategy).pct == 20.0, { onSelectDiscount(PercentageDiscountStrategy(20.0)) }, Modifier.weight(1f))
+            DiscountButton("Free", uiState.selectedDiscountStrategy is FreeOrderDiscountStrategy, { onSelectDiscount(FreeOrderDiscountStrategy()) }, Modifier.weight(1.2f))
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        val btnInteractionSource = remember { MutableInteractionSource() }
+        val btnIsPressed by btnInteractionSource.collectIsPressedAsState()
+        val btnScale by animateFloatAsState(
+            targetValue = if (btnIsPressed) 0.96f else 1f,
+            animationSpec = iOSSpringSpec,
+            label = "tabletBtnScale"
+        )
+        Button(
+            onClick = onPlaceOrder,
+            interactionSource = btnInteractionSource,
+            enabled = uiState.activeCart.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth().scale(btnScale),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = "Place Order",
+                fontWeight = FontWeight.Bold,
+                fontSize = 16.sp,
+                color = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.padding(vertical = 4.dp)
+            )
+        }
     }
 }
 
