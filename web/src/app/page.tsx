@@ -141,6 +141,9 @@ export default function Dashboard() {
   const [itemVariants, setItemVariants] = useState<Variant[]>([
     { id: 'regular', name: 'Regular', basePrice: 0, priceByFlavor: {} }
   ]);
+  // When true, each size is priced per flavor (priceByFlavor) instead of one flat basePrice —
+  // e.g. Takoyaki, where 4pcs costs ₱40 for Veggie but ₱60 for Shrimp.
+  const [perFlavorPricing, setPerFlavorPricing] = useState(false);
 
   // Category Modal States
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -459,13 +462,26 @@ export default function Dashboard() {
   const handleSaveItem = async () => {
     if (!itemName.trim() || !itemCategory) return;
     const itemId = editingItem?.id || 'item_' + itemName.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString().slice(-4);
-    
+
+    const flavorsList = itemFlavors.split(',').map(f => f.trim()).filter(Boolean);
+    // Normalise variants to the chosen pricing mode so the two price fields never disagree:
+    // per-flavor keeps priceByFlavor (pruned to current flavors) with basePrice 0; flat keeps
+    // basePrice with an empty priceByFlavor.
+    const normalizedVariants = itemVariants.map(v => {
+      if (perFlavorPricing && flavorsList.length > 0) {
+        const priceByFlavor: Record<string, number> = {};
+        flavorsList.forEach(f => { priceByFlavor[f] = v.priceByFlavor?.[f] || 0; });
+        return { ...v, basePrice: 0, priceByFlavor };
+      }
+      return { ...v, priceByFlavor: {} };
+    });
+
     const payload = {
       id: itemId,
       category_id: itemCategory,
       name: itemName.trim(),
-      flavors: itemFlavors.split(',').map(f => f.trim()).filter(Boolean).join('|'),
-      variants_json: JSON.stringify(itemVariants),
+      flavors: flavorsList.join('|'),
+      variants_json: JSON.stringify(normalizedVariants),
       is_available: editingItem ? editingItem.is_available : true
     };
 
@@ -486,9 +502,13 @@ export default function Dashboard() {
     setItemCategory(item.category_id);
     setItemFlavors(item.flavors.split('|').join(', '));
     try {
-      setItemVariants(JSON.parse(item.variants_json));
+      const parsed = JSON.parse(item.variants_json) as Variant[];
+      setItemVariants(parsed);
+      // Auto-detect per-flavor pricing: any size that prices itself by flavor.
+      setPerFlavorPricing(parsed.some(v => Object.keys(v.priceByFlavor || {}).length > 0));
     } catch (_) {
       setItemVariants([{ id: 'regular', name: 'Regular', basePrice: 0, priceByFlavor: {} }]);
+      setPerFlavorPricing(false);
     }
     setShowItemModal(true);
   };
@@ -530,13 +550,19 @@ export default function Dashboard() {
     }
   };
 
-  // Calculate Starting Price for Menu Item Card
+  // Effective prices for a size variant: per-flavor prices when present, else the flat base.
+  const variantPrices = (v: Variant): number[] => {
+    const flavorPrices = Object.values(v.priceByFlavor || {}).filter(p => p > 0);
+    if (flavorPrices.length > 0) return flavorPrices;
+    return v.basePrice > 0 ? [v.basePrice] : [];
+  };
+
+  // Calculate Starting Price for Menu Item Card (lowest of any size/flavor combination).
   const getStartingPrice = (variantsJson: string) => {
     try {
       const vars = JSON.parse(variantsJson) as Variant[];
-      if (vars.length > 0) {
-        return Math.min(...vars.map(v => v.basePrice));
-      }
+      const prices = vars.flatMap(variantPrices);
+      if (prices.length > 0) return Math.min(...prices);
     } catch (_) {}
     return 0;
   };
@@ -1224,6 +1250,7 @@ export default function Dashboard() {
                           setItemCategory(categories[0]?.id || '');
                           setItemFlavors('');
                           setItemVariants([{ id: 'regular', name: 'Regular', basePrice: 0, priceByFlavor: {} }]);
+                          setPerFlavorPricing(false);
                           setShowItemModal(true);
                         }}
                         className="flex items-center gap-1.5 px-4.5 py-2.5 bg-emerald-500 text-slate-950 rounded-2xl text-xs font-black hover:bg-emerald-400 transition-all active:scale-[0.98]"
@@ -1559,58 +1586,107 @@ export default function Dashboard() {
                 />
               </div>
 
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center mb-1">
-                  <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sizes & Variant Prices</label>
-                  <button
-                    onClick={() => {
-                      setItemVariants(prev => [
-                        ...prev,
-                        { id: 'size_' + Date.now().toString().slice(-4), name: '', basePrice: 0, priceByFlavor: {} }
-                      ]);
-                    }}
-                    className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-black uppercase tracking-wider"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Size
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
-                  {itemVariants.map((v, index) => (
-                    <div key={index} className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        placeholder="Size (e.g. Large / 16oz)"
-                        value={v.name}
-                        onChange={e => {
-                          const updated = [...itemVariants];
-                          updated[index].name = e.target.value;
-                          updated[index].id = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '_');
-                          setItemVariants(updated);
-                        }}
-                        className="flex-1 bg-white/[0.03] border border-white/10 px-3 py-2 rounded-xl text-xs outline-none focus:border-emerald-500/50 transition-all font-semibold"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Price"
-                        value={v.basePrice || ''}
-                        onChange={e => {
-                          const updated = [...itemVariants];
-                          updated[index].basePrice = parseFloat(e.target.value) || 0;
-                          setItemVariants(updated);
-                        }}
-                        className="w-24 bg-white/[0.03] border border-white/10 px-3 py-2 rounded-xl text-xs outline-none focus:border-emerald-500/50 transition-all font-semibold"
-                      />
-                      <button
-                        onClick={() => setItemVariants(itemVariants.filter((_, idx) => idx !== index))}
-                        className="p-2 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 rounded-xl text-red-400 hover:text-red-300 transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+              {(() => {
+                const flavorsList = itemFlavors.split(',').map(f => f.trim()).filter(Boolean);
+                const showPerFlavor = perFlavorPricing && flavorsList.length > 0;
+                return (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Sizes & Variant Prices</label>
+                      <div className="flex items-center gap-3">
+                        {flavorsList.length > 0 && (
+                          <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              checked={perFlavorPricing}
+                              onChange={e => setPerFlavorPricing(e.target.checked)}
+                              className="accent-emerald-500"
+                            />
+                            Price per flavor
+                          </label>
+                        )}
+                        <button
+                          onClick={() => {
+                            setItemVariants(prev => [
+                              ...prev,
+                              { id: 'size_' + Date.now().toString().slice(-4), name: '', basePrice: 0, priceByFlavor: {} }
+                            ]);
+                          }}
+                          className="flex items-center gap-1 text-[10px] text-emerald-400 hover:text-emerald-300 font-black uppercase tracking-wider"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add Size
+                        </button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+
+                    <div className="flex flex-col gap-2 max-h-72 overflow-y-auto pr-1">
+                      {itemVariants.map((v, index) => (
+                        <div key={index} className="flex flex-col gap-2 bg-white/[0.02] border border-white/5 rounded-xl p-2">
+                          <div className="flex gap-2 items-center">
+                            <input
+                              type="text"
+                              placeholder="Size (e.g. Large / 16oz)"
+                              value={v.name}
+                              onChange={e => {
+                                const updated = [...itemVariants];
+                                updated[index].name = e.target.value;
+                                updated[index].id = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                                setItemVariants(updated);
+                              }}
+                              className="flex-1 bg-white/[0.03] border border-white/10 px-3 py-2 rounded-xl text-xs outline-none focus:border-emerald-500/50 transition-all font-semibold"
+                            />
+                            {!showPerFlavor && (
+                              <input
+                                type="number"
+                                placeholder="Price"
+                                value={v.basePrice || ''}
+                                onChange={e => {
+                                  const updated = [...itemVariants];
+                                  updated[index].basePrice = parseFloat(e.target.value) || 0;
+                                  setItemVariants(updated);
+                                }}
+                                className="w-24 bg-white/[0.03] border border-white/10 px-3 py-2 rounded-xl text-xs outline-none focus:border-emerald-500/50 transition-all font-semibold"
+                              />
+                            )}
+                            <button
+                              onClick={() => setItemVariants(itemVariants.filter((_, idx) => idx !== index))}
+                              className="p-2 bg-red-500/5 hover:bg-red-500/10 border border-red-500/10 rounded-xl text-red-400 hover:text-red-300 transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          {showPerFlavor && (
+                            <div className="flex flex-col gap-1.5 pl-1">
+                              {flavorsList.map(flavor => (
+                                <div key={flavor} className="flex gap-2 items-center">
+                                  <span className="flex-1 text-[11px] text-slate-400 font-semibold truncate">{flavor}</span>
+                                  <input
+                                    type="number"
+                                    placeholder="Price"
+                                    value={v.priceByFlavor?.[flavor] || ''}
+                                    onChange={e => {
+                                      const updated = [...itemVariants];
+                                      updated[index] = {
+                                        ...updated[index],
+                                        priceByFlavor: {
+                                          ...updated[index].priceByFlavor,
+                                          [flavor]: parseFloat(e.target.value) || 0
+                                        }
+                                      };
+                                      setItemVariants(updated);
+                                    }}
+                                    className="w-24 bg-white/[0.03] border border-white/10 px-3 py-2 rounded-xl text-xs outline-none focus:border-emerald-500/50 transition-all font-semibold"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             <div className="flex gap-3 justify-end mt-4">
