@@ -1,5 +1,6 @@
 package com.example.cattasticpos.ui.adaptive
 
+import android.content.res.Configuration
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -100,13 +101,19 @@ fun AdaptiveTheme(
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) darkColorSchemeFor(accent) else lightColorSchemeFor(accent)
-    // On large tablets (e.g. Redmi Pad 2 in landscape) the UI otherwise renders small on the
-    // high-density panel, so scale text and spacing up a notch for comfortable reading/tapping.
+    // Modest density bump so the UI isn't tiny on the high-density tablet panel — but keyed to
+    // orientation, not the live width. The old logic used screenWidthDp (the LONG edge), so in
+    // landscape it jumped to 1.20x and rendered oversized/cramped vertically. Landscape is
+    // height-constrained, so leave it at the panel's natural density; only enlarge in portrait,
+    // sized off the orientation-independent smallest width.
     val configuration = LocalConfiguration.current
     val baseDensity = LocalDensity.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val smallestWidthDp = configuration.smallestScreenWidthDp
     val uiScale = when {
-        configuration.screenWidthDp >= 1000 -> 1.20f
-        configuration.screenWidthDp >= 720 -> 1.12f
+        isLandscape -> 1.0f
+        smallestWidthDp >= 720 -> 1.12f
+        smallestWidthDp >= 600 -> 1.08f
         else -> 1f
     }
     val scaledDensity = Density(
