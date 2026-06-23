@@ -109,6 +109,16 @@ interface RecipeMapping {
   created_at?: string;
 }
 
+interface Expense {
+  id: string;
+  timestamp: number;
+  description: string;
+  amount: number;
+  recorded_by: string | null;
+  device_id?: string | null;
+  created_at?: string;
+}
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'menu' | 'inventory'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
@@ -116,6 +126,7 @@ export default function Dashboard() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [recipes, setRecipes] = useState<RecipeMapping[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -184,6 +195,9 @@ export default function Dashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => {
         fetchCategories();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => {
+        fetchExpenses();
+      })
       .subscribe();
 
     return () => {
@@ -200,7 +214,8 @@ export default function Dashboard() {
         fetchCategories(),
         fetchMenuItems(),
         fetchInventory(),
-        fetchRecipes()
+        fetchRecipes(),
+        fetchExpenses()
       ]);
     } catch (e) {
       console.error('Error fetching dashboard data:', e);
@@ -269,6 +284,18 @@ export default function Dashboard() {
     } catch (e) {
       console.error('Error fetching recipe mappings:', e);
       setRecipes([]);
+    }
+  };
+
+  const fetchExpenses = async () => {
+    if (!supabase) return;
+    try {
+      const { data, error } = await supabase.from('expenses').select('*').order('timestamp', { ascending: false });
+      if (error) throw error;
+      setExpenses(data || []);
+    } catch (e) {
+      console.error('Error fetching expenses:', e);
+      setExpenses([]);
     }
   };
 
@@ -343,6 +370,12 @@ export default function Dashboard() {
   const todayStats = computeStats(orders.filter(o => localDateKey(o.timestamp) === todayKey));
   const allTimeStats = computeStats(orders);
   const STARTING_FLOAT = 1500.0;
+
+  // Operating expenses recorded on the cashier terminals, scoped to today (local date).
+  // Treated as cash drawer outflows: they reduce the estimated drawer balance and net profit.
+  const todayExpenses = expenses
+    .filter(e => localDateKey(e.timestamp) === todayKey)
+    .reduce((sum, e) => sum + e.amount, 0);
 
   // Export CSV of Orders
   const exportCSV = () => {
@@ -587,9 +620,9 @@ export default function Dashboard() {
       cashSales: todayStats.cashSales,
       gcashSales: todayStats.gcashSales,
       startingFloat: STARTING_FLOAT,
-      expenses: 0.0,
-      drawerBalance: todayStats.cashSales + STARTING_FLOAT,
-      profits: todayStats.netSales,
+      expenses: todayExpenses,
+      drawerBalance: todayStats.cashSales + STARTING_FLOAT - todayExpenses,
+      profits: todayStats.netSales - todayExpenses,
       orderCount: todayStats.count,
       timestamp: Date.now()
     });
@@ -920,17 +953,17 @@ export default function Dashboard() {
 
                         <div className="flex justify-between border-b border-white/5 pb-3.5 text-sm">
                           <span className="text-slate-400 font-semibold">Operating Expenses</span>
-                          <span className="font-bold text-red-400">₱0.00</span>
+                          <span className="font-bold text-red-400">-{formatPrice(todayExpenses)}</span>
                         </div>
 
                         {/* Cash Drawer Status clone */}
                         <div className="flex flex-col gap-1 border-b border-white/5 pb-3.5">
                           <div className="flex justify-between text-sm">
                             <span className="text-slate-300 font-bold">Estimated Drawer Balance</span>
-                            <span className="font-black text-emerald-400 text-base">{formatPrice(todayStats.cashSales + STARTING_FLOAT)}</span>
+                            <span className="font-black text-emerald-400 text-base">{formatPrice(todayStats.cashSales + STARTING_FLOAT - todayExpenses)}</span>
                           </div>
                           <div className="flex justify-between text-[10px] text-slate-500 font-semibold">
-                            <span>(Float: {formatPrice(STARTING_FLOAT)} + Today&apos;s Cash: {formatPrice(todayStats.cashSales)})</span>
+                            <span>(Float: {formatPrice(STARTING_FLOAT)} + Today&apos;s Cash: {formatPrice(todayStats.cashSales)} &minus; Expenses: {formatPrice(todayExpenses)})</span>
                           </div>
                         </div>
 

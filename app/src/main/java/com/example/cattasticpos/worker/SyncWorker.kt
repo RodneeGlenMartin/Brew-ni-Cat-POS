@@ -166,6 +166,32 @@ class SyncWorker(
                     client.newCall(recRequest).execute().close()
                 }
 
+                // 5. Upload Local Expenses (recorded on cashier terminals)
+                val expenses = database.expenseDao().getAllExpensesOnce()
+                if (expenses.isNotEmpty()) {
+                    val expArray = JSONArray()
+                    expenses.forEach { exp ->
+                        val expJson = JSONObject().apply {
+                            put("id", exp.id)
+                            put("timestamp", exp.timestamp)
+                            put("description", exp.description)
+                            put("amount", exp.amount)
+                            put("recorded_by", exp.recordedBy)
+                            put("device_id", deviceId)
+                        }
+                        expArray.put(expJson)
+                    }
+                    val expRequest = Request.Builder()
+                        .url("$supabaseUrl/rest/v1/expenses")
+                        .post(expArray.toString().toRequestBody(JSON_MEDIA_TYPE))
+                        .header("apikey", supabaseKey)
+                        .header("Authorization", "Bearer $supabaseKey")
+                        .header("Prefer", "resolution=merge-duplicates")
+                        .header("Content-Type", "application/json")
+                        .build()
+                    client.newCall(expRequest).execute().close()
+                }
+
                 // ==========================================
                 // DOWNLOAD & SYNC CLOUD CHANGES TO DEVICE
                 // ==========================================
@@ -319,6 +345,44 @@ class SyncWorker(
                                 val toDelete = localById.keys.filter { it !in downloadedIds }
                                 if (toDelete.isNotEmpty()) {
                                     database.recipeDao().deleteMappingsByIds(toDelete)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // E. Download & Sync Expenses. Expenses are permanent records that
+                // accumulate from every device, so we only insert new/changed rows
+                // and never delete-mirror (cloud is a superset of any one device).
+                val getExpRequest = Request.Builder()
+                    .url("$supabaseUrl/rest/v1/expenses")
+                    .get()
+                    .header("apikey", supabaseKey)
+                    .header("Authorization", "Bearer $supabaseKey")
+                    .build()
+                client.newCall(getExpRequest).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val body = response.body?.string()
+                        if (!body.isNullOrEmpty()) {
+                            val arr = JSONArray(body)
+                            val downloadedList = mutableListOf<com.example.cattasticpos.data.local.entity.ExpenseEntity>()
+                            for (i in 0 until arr.length()) {
+                                val obj = arr.getJSONObject(i)
+                                downloadedList.add(
+                                    com.example.cattasticpos.data.local.entity.ExpenseEntity(
+                                        id = obj.getString("id"),
+                                        timestamp = obj.getLong("timestamp"),
+                                        description = obj.getString("description"),
+                                        amount = obj.getDouble("amount"),
+                                        recordedBy = obj.optString("recorded_by", "")
+                                    )
+                                )
+                            }
+                            if (downloadedList.isNotEmpty()) {
+                                val localById = database.expenseDao().getAllExpensesOnce().associateBy { it.id }
+                                val changed = downloadedList.filter { localById[it.id] != it }
+                                if (changed.isNotEmpty()) {
+                                    database.expenseDao().insertExpenses(changed)
                                 }
                             }
                         }
