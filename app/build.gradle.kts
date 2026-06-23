@@ -13,7 +13,7 @@ android {
         applicationId = "com.example.cattasticpos"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10113
+        versionCode = 10114
         versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

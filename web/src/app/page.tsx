@@ -376,9 +376,10 @@ export default function Dashboard() {
 
   // Operating expenses recorded on the cashier terminals, scoped to today (local date).
   // Treated as cash drawer outflows: they reduce the estimated drawer balance and net profit.
-  const todayExpenses = expenses
+  const todayExpenseList = expenses
     .filter(e => localDateKey(e.timestamp) === todayKey)
-    .reduce((sum, e) => sum + e.amount, 0);
+    .sort((a, b) => b.timestamp - a.timestamp);
+  const todayExpenses = todayExpenseList.reduce((sum, e) => sum + e.amount, 0);
 
   // Export CSV of Orders
   const exportCSV = () => {
@@ -467,6 +468,13 @@ export default function Dashboard() {
       ...items,
       { id: 0, order_id: orderId, item_id: 'custom', item_name: '', variant_id: 'custom', variant_name: '', flavor: null, quantity: 1, unit_price: 0, total_price: 0 },
     ]);
+
+  // Enter / leave item-edit mode for an order. Items are read-only until "Edit Items".
+  const startEditItems = (o: Order) =>
+    setEditItems(prev => ({ ...prev, [o.id]: (o.order_items || []).map(i => ({ ...i })) }));
+
+  const cancelEditItems = (orderId: number) =>
+    setEditItems(prev => { const n = { ...prev }; delete n[orderId]; return n; });
 
   // Subtotal of an order's working items (used for the live preview and on save).
   const workingSubtotal = (o: Order) =>
@@ -1034,9 +1042,28 @@ export default function Dashboard() {
                           </div>
                         </div>
 
-                        <div className="flex justify-between border-b border-white/5 pb-3.5 text-sm">
-                          <span className="text-slate-400 font-semibold">Operating Expenses</span>
-                          <span className="font-bold text-red-400">-{formatPrice(todayExpenses)}</span>
+                        <div className="flex flex-col gap-2 border-b border-white/5 pb-3.5">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-400 font-semibold">Operating Expenses</span>
+                            <span className="font-bold text-red-400">-{formatPrice(todayExpenses)}</span>
+                          </div>
+                          {todayExpenseList.length > 0 ? (
+                            <div className="flex flex-col gap-1 pl-1">
+                              {todayExpenseList.map((e) => (
+                                <div key={e.id} className="flex justify-between items-center text-[11px]">
+                                  <span className="text-slate-400 truncate">
+                                    <span className="text-slate-300 font-medium">{e.description || 'Expense'}</span>
+                                    <span className="text-slate-600 ml-1.5">
+                                      · {e.recorded_by || '—'} · {new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </span>
+                                  <span className="text-red-400/80 font-semibold whitespace-nowrap ml-2">-{formatPrice(e.amount)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-600 pl-1">No expenses recorded today.</span>
+                          )}
                         </div>
 
                         {/* Cash Drawer Status clone */}
@@ -1270,62 +1297,118 @@ export default function Dashboard() {
                                 </div>
                               </div>
 
-                              <div className="flex justify-between border-b border-white/5 pb-2 text-[10px] uppercase font-bold text-slate-500 tracking-wider mt-2">
-                                <span>Itemized Line Items (editable)</span>
-                                <span>Reference: {o.payment_reference || 'None'}</span>
+                              <div className="flex justify-between items-center border-b border-white/5 pb-2 mt-2">
+                                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Itemized Line Items</span>
+                                {editItems[o.id] === undefined ? (
+                                  <button
+                                    onClick={() => startEditItems(o)}
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold text-sky-400 bg-sky-500/10 border border-sky-500/20 hover:bg-sky-500/20 transition-all"
+                                  >
+                                    <Edit2 className="w-3 h-3" /> Edit Items
+                                  </button>
+                                ) : (
+                                  <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider">● Editing</span>
+                                )}
                               </div>
-                              <div className="flex flex-col gap-2">
-                                {getOrderItems(o).map((item, idx) => (
-                                  <div key={idx} className="flex items-center gap-2 text-xs">
-                                    <input
-                                      type="text"
-                                      value={item.item_name}
-                                      onChange={(e) => updateItemField(o.id, idx, 'item_name', e.target.value)}
-                                      placeholder="Item name"
-                                      className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 px-2.5 py-1.5 rounded-lg text-slate-200 outline-none focus:border-emerald-500/50"
-                                    />
-                                    <input
-                                      type="text"
-                                      value={item.variant_name}
-                                      onChange={(e) => updateItemField(o.id, idx, 'variant_name', e.target.value)}
-                                      placeholder="Size"
-                                      className="w-20 bg-white/[0.03] border border-white/10 px-2.5 py-1.5 rounded-lg text-slate-300 outline-none focus:border-emerald-500/50"
-                                    />
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      value={item.quantity}
-                                      onChange={(e) => updateItemField(o.id, idx, 'quantity', e.target.value)}
-                                      title="Quantity"
-                                      className="w-14 bg-white/[0.03] border border-white/10 px-2 py-1.5 rounded-lg text-slate-200 text-center outline-none focus:border-emerald-500/50"
-                                    />
-                                    <span className="text-slate-500">×</span>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      step="0.01"
-                                      value={item.unit_price}
-                                      onChange={(e) => updateItemField(o.id, idx, 'unit_price', e.target.value)}
-                                      title="Unit price"
-                                      className="w-20 bg-white/[0.03] border border-white/10 px-2 py-1.5 rounded-lg text-slate-200 text-right outline-none focus:border-emerald-500/50"
-                                    />
-                                    <span className="w-20 text-right text-slate-400 font-semibold">{formatPrice(item.quantity * item.unit_price)}</span>
+
+                              {editItems[o.id] === undefined ? (
+                                /* Read-only — mirrors the readable kitchen-queue format, flavor included */
+                                <div className="flex flex-col gap-2.5">
+                                  {(o.order_items || []).map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-xs font-semibold gap-3">
+                                      <span className="text-slate-300">
+                                        {item.quantity}x {item.item_name} &bull; {item.variant_name}
+                                        {item.flavor && (
+                                          <span className="text-[10px] text-emerald-400 ml-2 font-bold uppercase tracking-wider">
+                                            ({item.flavor})
+                                          </span>
+                                        )}
+                                      </span>
+                                      <span className="text-slate-400 whitespace-nowrap">{formatPrice(item.total_price)}</span>
+                                    </div>
+                                  ))}
+                                  {(o.order_items?.length ?? 0) === 0 && (
+                                    <span className="text-xs text-slate-600">No items.</span>
+                                  )}
+                                </div>
+                              ) : (
+                                /* Edit mode — name, size, flavor, qty × price, remove */
+                                <div className="flex flex-col gap-2">
+                                  {getOrderItems(o).map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-1.5 text-xs">
+                                      <input
+                                        type="text"
+                                        value={item.item_name}
+                                        onChange={(e) => updateItemField(o.id, idx, 'item_name', e.target.value)}
+                                        placeholder="Item name"
+                                        className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 px-2.5 py-1.5 rounded-lg text-slate-200 outline-none focus:border-emerald-500/50"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={item.variant_name}
+                                        onChange={(e) => updateItemField(o.id, idx, 'variant_name', e.target.value)}
+                                        placeholder="Size"
+                                        className="w-16 bg-white/[0.03] border border-white/10 px-2 py-1.5 rounded-lg text-slate-300 outline-none focus:border-emerald-500/50"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={item.flavor || ''}
+                                        onChange={(e) => updateItemField(o.id, idx, 'flavor', e.target.value)}
+                                        placeholder="Flavor"
+                                        className="w-40 bg-white/[0.03] border border-white/10 px-2 py-1.5 rounded-lg text-emerald-300 outline-none focus:border-emerald-500/50"
+                                      />
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        value={item.quantity}
+                                        onChange={(e) => updateItemField(o.id, idx, 'quantity', e.target.value)}
+                                        title="Quantity"
+                                        className="w-12 bg-white/[0.03] border border-white/10 px-2 py-1.5 rounded-lg text-slate-200 text-center outline-none focus:border-emerald-500/50"
+                                      />
+                                      <span className="text-slate-500">×</span>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        step="0.01"
+                                        value={item.unit_price}
+                                        onChange={(e) => updateItemField(o.id, idx, 'unit_price', e.target.value)}
+                                        title="Unit price"
+                                        className="w-16 bg-white/[0.03] border border-white/10 px-2 py-1.5 rounded-lg text-slate-200 text-right outline-none focus:border-emerald-500/50"
+                                      />
+                                      <span className="w-16 text-right text-slate-400 font-semibold whitespace-nowrap">{formatPrice(item.quantity * item.unit_price)}</span>
+                                      <button
+                                        onClick={() => removeItemRow(o.id, idx)}
+                                        title="Remove item"
+                                        className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  ))}
+                                  <div className="flex items-center justify-between mt-1">
                                     <button
-                                      onClick={() => removeItemRow(o.id, idx)}
-                                      title="Remove item"
-                                      className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
+                                      onClick={() => addItemRow(o.id)}
+                                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
                                     >
-                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <Plus className="w-3.5 h-3.5" /> Add item
                                     </button>
+                                    <div className="flex gap-2">
+                                      <button
+                                        onClick={() => cancelEditItems(o.id)}
+                                        className="px-4 py-1.5 rounded-lg text-xs font-bold text-slate-400 bg-white/[0.03] border border-white/10 hover:bg-white/[0.06] transition-all"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => handleUpdateOrderDetails(o.id)}
+                                        className="px-4 py-1.5 rounded-lg text-xs font-black text-slate-950 bg-emerald-500 hover:bg-emerald-400 transition-all active:scale-[0.98]"
+                                      >
+                                        💾 Save Items
+                                      </button>
+                                    </div>
                                   </div>
-                                ))}
-                                <button
-                                  onClick={() => addItemRow(o.id)}
-                                  className="self-start flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
-                                >
-                                  <Plus className="w-3.5 h-3.5" /> Add item
-                                </button>
-                              </div>
+                                </div>
+                              )}
 
                               {(() => {
                                 const edited = editItems[o.id] !== undefined;
@@ -1348,7 +1431,7 @@ export default function Dashboard() {
                                       <span className="text-emerald-400">{formatPrice(tot)}</span>
                                     </div>
                                     {edited && (
-                                      <span className="text-[10px] text-slate-500 font-normal mt-1">Press “Save &amp; Sync to Devices” above to apply item changes.</span>
+                                      <span className="text-[10px] text-amber-400/80 font-normal mt-1">Unsaved changes — press “Save Items” to apply.</span>
                                     )}
                                   </div>
                                 );

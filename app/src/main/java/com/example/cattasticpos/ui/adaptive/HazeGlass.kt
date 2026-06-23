@@ -31,19 +31,21 @@ fun liquidGlassHazeStyle(
 ): HazeStyle {
     val effective = intensity.coerceIn(0f, 1f)
     val backgroundColor = resolveHazeBackgroundColor(darkTheme)
+    // Blur radius dominates real-time glass cost on the tablet GPU; 16dp keeps the frosted look
+    // but is meaningfully cheaper to recompute while content scrolls behind the header/cart.
     return if (darkTheme) {
         HazeStyle(
             backgroundColor = backgroundColor,
-            tint = HazeTint(Color.Black.copy(alpha = 0.2f * effective)),
-            blurRadius = (24f * effective).dp,
-            noiseFactor = 0.12f * effective
+            tint = HazeTint(Color.Black.copy(alpha = 0.22f * effective)),
+            blurRadius = (16f * effective).dp,
+            noiseFactor = 0.08f * effective
         )
     } else {
         HazeStyle(
             backgroundColor = backgroundColor,
-            tint = HazeTint(Color.White.copy(alpha = 0.45f * effective)),
-            blurRadius = (24f * effective).dp,
-            noiseFactor = 0.05f * effective
+            tint = HazeTint(Color.White.copy(alpha = 0.5f * effective)),
+            blurRadius = (16f * effective).dp,
+            noiseFactor = 0.03f * effective
         )
     }
 }
