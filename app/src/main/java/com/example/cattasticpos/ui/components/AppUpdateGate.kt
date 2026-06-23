@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -65,7 +66,9 @@ fun AppUpdateGate() {
     if (u == null || dismissed || phase == UpdatePhase.Launched) return
 
     AlertDialog(
-        onDismissRequest = { /* don't let an outside tap cancel an in-flight update */ },
+        // Tapping outside hides the dialog — the download keeps running in the background so the
+        // cashier can keep working; the installer appears once it's ready.
+        onDismissRequest = { dismissed = true },
         title = {
             Text(
                 when (phase) {
@@ -93,6 +96,12 @@ fun AppUpdateGate() {
                                 modifier = Modifier.padding(start = 12.dp)
                             )
                         }
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            "On slow data this can take a few minutes. Tap Hide to keep taking orders — we'll install it once it's ready.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                     UpdatePhase.NeedsPermission -> Text(
                         "Please allow “Install unknown apps” for Brew ni Cat in the screen that just " +
@@ -111,8 +120,11 @@ fun AppUpdateGate() {
             }
         },
         dismissButton = {
-            if (phase == UpdatePhase.NeedsPermission || phase == UpdatePhase.Failed) {
-                TextButton(onClick = { dismissed = true }) { Text("Later") }
+            when (phase) {
+                UpdatePhase.Downloading -> TextButton(onClick = { dismissed = true }) { Text("Hide") }
+                UpdatePhase.NeedsPermission, UpdatePhase.Failed ->
+                    TextButton(onClick = { dismissed = true }) { Text("Later") }
+                else -> {}
             }
         }
     )

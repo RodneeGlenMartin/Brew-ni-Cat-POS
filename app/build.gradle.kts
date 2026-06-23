@@ -13,7 +13,7 @@ android {
         applicationId = "com.example.cattasticpos"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10114
+        versionCode = 10115
         versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -56,7 +56,9 @@ dependencies {
     implementation(libs.compose.ui.graphics)
     implementation(libs.compose.ui.tooling.preview)
     implementation(libs.compose.material3)
-    implementation(libs.compose.material.icons.extended)
+    // material-icons-extended (~thousands of icons) was pulled in for just Delete + Share in
+    // HistoryScreen — both live in the core set bundled with material3 — so it's dropped to keep
+    // the APK small and updates fast on weak mobile data.
     debugImplementation(libs.compose.ui.tooling)
 
     // Lifecycle
