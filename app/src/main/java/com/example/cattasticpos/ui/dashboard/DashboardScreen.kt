@@ -67,6 +67,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.content.res.Configuration
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
@@ -125,7 +126,12 @@ fun DashboardScreen(
     // Wide screens (Redmi Pad 2 tablet) use a fixed split: catalog on top, an order panel
     // that fills the bottom slot (TabletOrderPanel) — always visible, no dead space. Phones
     // use the collapsing bottom-sheet, so this flag only drives the phone layout.
-    val isWideScreen = LocalConfiguration.current.screenWidthDp >= 540
+    val configuration = LocalConfiguration.current
+    val isWideScreen = configuration.screenWidthDp >= 540
+    // Landscape is height-constrained on the tablet, so a fixed order panel eats the screen and
+    // is hard to use. There we fall back to the collapsing bottom-sheet cart (same as the phone)
+    // so the menu stays visible and the cashier pulls the cart up only when needed.
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     var isCartExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(cartItemCount) {
@@ -239,8 +245,8 @@ fun DashboardScreen(
                     .weight(1f)
                     .fillMaxWidth()
             ) {
-                if (isWideScreen) {
-                    // Tablet: catalog on top, order panel fills a fixed bottom slot. Because
+                if (isWideScreen && !isLandscape) {
+                    // Tablet portrait: catalog on top, order panel fills a fixed bottom slot. Because
                     // the panel fills its slot, its background always reaches the screen edge
                     // — no dead space is possible. The slot is ~half the height but never
                     // smaller than what the footer (totals + discounts + Place Order) needs,
@@ -283,8 +289,9 @@ fun DashboardScreen(
                         )
                     }
                 } else {
-                    // Phone: collapsing bottom-sheet cart.
-                    val sheetMaxHeight = maxHeight * 0.6f
+                    // Phone, or tablet in landscape: collapsing bottom-sheet cart so the menu
+                    // stays usable when vertical space is tight.
+                    val sheetMaxHeight = maxHeight * (if (isWideScreen) 0.78f else 0.6f)
                     Column(modifier = Modifier.fillMaxSize()) {
                         StorefrontCatalogPane(
                             modifier = Modifier.weight(1f),

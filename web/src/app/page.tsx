@@ -139,6 +139,9 @@ export default function Dashboard() {
   const [editCashierNames, setEditCashierNames] = useState<Record<number, string>>({});
   const [editPaymentMethods, setEditPaymentMethods] = useState<Record<number, string>>({});
   const [editReferenceIds, setEditReferenceIds] = useState<Record<number, string>>({});
+  // Working copy of an order's line items while the owner edits them in the Audit Log.
+  // Keyed by order id; absent until first edited (falls back to the order's own items).
+  const [editItems, setEditItems] = useState<Record<number, OrderItem[]>>({});
 
   // Menu Category Filter State (matches app category filtering)
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
@@ -429,7 +432,47 @@ export default function Dashboard() {
     }
   };
 
-  // Update order details from Audit Log
+  // The order's line items as currently being edited (working copy), or its saved items.
+  const getOrderItems = (o: Order): OrderItem[] =>
+    editItems[o.id] !== undefined ? editItems[o.id] : (o.order_items || []);
+
+  // Apply a mutation to an order's working item list, seeding from saved items on first touch.
+  const mutateItems = (orderId: number, fn: (items: OrderItem[]) => OrderItem[]) => {
+    setEditItems(prev => {
+      const base = prev[orderId] !== undefined
+        ? prev[orderId]
+        : (orders.find(o => o.id === orderId)?.order_items || []);
+      return { ...prev, [orderId]: fn(base.map(i => ({ ...i }))) };
+    });
+  };
+
+  const updateItemField = (orderId: number, idx: number, field: 'item_name' | 'variant_name' | 'flavor' | 'quantity' | 'unit_price', value: string) => {
+    mutateItems(orderId, items => {
+      const copy = items.map(i => ({ ...i }));
+      const it = copy[idx];
+      if (field === 'quantity') it.quantity = Math.max(0, parseInt(value || '0', 10) || 0);
+      else if (field === 'unit_price') it.unit_price = Math.max(0, parseFloat(value || '0') || 0);
+      else if (field === 'flavor') it.flavor = value || null;
+      else (it as any)[field] = value;
+      it.total_price = it.quantity * it.unit_price;
+      return copy;
+    });
+  };
+
+  const removeItemRow = (orderId: number, idx: number) =>
+    mutateItems(orderId, items => items.filter((_, i) => i !== idx));
+
+  const addItemRow = (orderId: number) =>
+    mutateItems(orderId, items => [
+      ...items,
+      { id: 0, order_id: orderId, item_id: 'custom', item_name: '', variant_id: 'custom', variant_name: '', flavor: null, quantity: 1, unit_price: 0, total_price: 0 },
+    ]);
+
+  // Subtotal of an order's working items (used for the live preview and on save).
+  const workingSubtotal = (o: Order) =>
+    getOrderItems(o).reduce((s, i) => s + i.quantity * i.unit_price, 0);
+
+  // Update order details (and line items, if edited) from the Audit Log.
   const handleUpdateOrderDetails = async (orderId: number) => {
     if (!supabase) return;
     try {
@@ -444,17 +487,57 @@ export default function Dashboard() {
       if (payment !== undefined) updates.payment_method = payment;
       if (ref !== undefined) updates.payment_reference = ref || null;
 
+      // Persist line-item edits (qty / price / add / remove) and recalc totals.
+      const working = editItems[orderId];
+      if (working !== undefined) {
+        const order = orders.find(o => o.id === orderId);
+        const original = order?.order_items || [];
+        const keep = working.filter(i => i.quantity > 0 && i.item_name.trim() !== '');
+
+        const keepIds = new Set(keep.filter(i => i.id > 0).map(i => i.id));
+        const deletedIds = original.filter(i => !keepIds.has(i.id)).map(i => i.id);
+        if (deletedIds.length) {
+          const { error } = await supabase.from('order_items').delete().in('id', deletedIds);
+          if (error) throw error;
+        }
+
+        for (const i of keep.filter(i => i.id > 0)) {
+          const { error } = await supabase.from('order_items').update({
+            item_name: i.item_name, variant_name: i.variant_name, flavor: i.flavor,
+            quantity: i.quantity, unit_price: i.unit_price, total_price: i.quantity * i.unit_price,
+          }).eq('id', i.id);
+          if (error) throw error;
+        }
+
+        const newOnes = keep.filter(i => !(i.id > 0));
+        if (newOnes.length) {
+          const baseId = Math.max(orderId * 1000, ...original.map(i => i.id));
+          const rows = newOnes.map((i, idx) => ({
+            id: baseId + 1 + idx, order_id: orderId, item_id: i.item_id || 'custom',
+            item_name: i.item_name, variant_id: i.variant_id || 'custom', variant_name: i.variant_name || '',
+            flavor: i.flavor || null, quantity: i.quantity, unit_price: i.unit_price, total_price: i.quantity * i.unit_price,
+          }));
+          const { error } = await supabase.from('order_items').insert(rows);
+          if (error) throw error;
+        }
+
+        const newSubtotal = keep.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+        updates.subtotal = newSubtotal;
+        updates.total = Math.max(0, newSubtotal - (order?.discount_deduction || 0));
+      }
+
       const { error } = await supabase
         .from('orders')
         .update(updates)
         .eq('id', orderId);
 
       if (error) throw error;
+      setEditItems(prev => { const n = { ...prev }; delete n[orderId]; return n; });
       await fetchOrdersOnly();
-      alert('Order details updated successfully!');
+      alert('Order updated successfully!');
     } catch (e) {
       console.error('Error updating order details:', e);
-      alert('Failed to update order details.');
+      alert('Failed to update order. Please try again.');
     }
   };
 
@@ -1188,41 +1271,88 @@ export default function Dashboard() {
                               </div>
 
                               <div className="flex justify-between border-b border-white/5 pb-2 text-[10px] uppercase font-bold text-slate-500 tracking-wider mt-2">
-                                <span>Itemized Line Items</span>
+                                <span>Itemized Line Items (editable)</span>
                                 <span>Reference: {o.payment_reference || 'None'}</span>
                               </div>
-                              <div className="flex flex-col gap-2.5">
-                                {o.order_items?.map((item, idx) => (
-                                  <div key={idx} className="flex justify-between text-xs font-semibold">
-                                    <span className="text-slate-300">
-                                      {item.quantity}x {item.item_name} &bull; {item.variant_name}
-                                      {item.flavor && (
-                                        <span className="text-[10px] text-emerald-400 ml-2 font-bold uppercase tracking-wider">
-                                          ({item.flavor})
-                                        </span>
-                                      )}
-                                    </span>
-                                    <span className="text-slate-400">{formatPrice(item.total_price)}</span>
+                              <div className="flex flex-col gap-2">
+                                {getOrderItems(o).map((item, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 text-xs">
+                                    <input
+                                      type="text"
+                                      value={item.item_name}
+                                      onChange={(e) => updateItemField(o.id, idx, 'item_name', e.target.value)}
+                                      placeholder="Item name"
+                                      className="flex-1 min-w-0 bg-white/[0.03] border border-white/10 px-2.5 py-1.5 rounded-lg text-slate-200 outline-none focus:border-emerald-500/50"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={item.variant_name}
+                                      onChange={(e) => updateItemField(o.id, idx, 'variant_name', e.target.value)}
+                                      placeholder="Size"
+                                      className="w-20 bg-white/[0.03] border border-white/10 px-2.5 py-1.5 rounded-lg text-slate-300 outline-none focus:border-emerald-500/50"
+                                    />
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={item.quantity}
+                                      onChange={(e) => updateItemField(o.id, idx, 'quantity', e.target.value)}
+                                      title="Quantity"
+                                      className="w-14 bg-white/[0.03] border border-white/10 px-2 py-1.5 rounded-lg text-slate-200 text-center outline-none focus:border-emerald-500/50"
+                                    />
+                                    <span className="text-slate-500">×</span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      step="0.01"
+                                      value={item.unit_price}
+                                      onChange={(e) => updateItemField(o.id, idx, 'unit_price', e.target.value)}
+                                      title="Unit price"
+                                      className="w-20 bg-white/[0.03] border border-white/10 px-2 py-1.5 rounded-lg text-slate-200 text-right outline-none focus:border-emerald-500/50"
+                                    />
+                                    <span className="w-20 text-right text-slate-400 font-semibold">{formatPrice(item.quantity * item.unit_price)}</span>
+                                    <button
+                                      onClick={() => removeItemRow(o.id, idx)}
+                                      title="Remove item"
+                                      className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
                                   </div>
                                 ))}
+                                <button
+                                  onClick={() => addItemRow(o.id)}
+                                  className="self-start flex items-center gap-1.5 mt-1 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+                                >
+                                  <Plus className="w-3.5 h-3.5" /> Add item
+                                </button>
                               </div>
 
-                              <div className="border-t border-white/5 pt-3.5 flex flex-col gap-1.5 max-w-xs ml-auto w-full text-xs font-semibold">
-                                <div className="flex justify-between text-slate-500">
-                                  <span>Subtotal</span>
-                                  <span>{formatPrice(o.subtotal)}</span>
-                                </div>
-                                {o.discount_deduction > 0 && (
-                                  <div className="flex justify-between text-red-400">
-                                    <span>Discount ({o.discount_label})</span>
-                                    <span>-{formatPrice(o.discount_deduction)}</span>
+                              {(() => {
+                                const edited = editItems[o.id] !== undefined;
+                                const sub = edited ? workingSubtotal(o) : o.subtotal;
+                                const tot = edited ? Math.max(0, sub - o.discount_deduction) : o.total;
+                                return (
+                                  <div className="border-t border-white/5 pt-3.5 flex flex-col gap-1.5 max-w-xs ml-auto w-full text-xs font-semibold">
+                                    <div className="flex justify-between text-slate-500">
+                                      <span>Subtotal{edited && <span className="text-amber-400 ml-1">(edited)</span>}</span>
+                                      <span>{formatPrice(sub)}</span>
+                                    </div>
+                                    {o.discount_deduction > 0 && (
+                                      <div className="flex justify-between text-red-400">
+                                        <span>Discount ({o.discount_label})</span>
+                                        <span>-{formatPrice(o.discount_deduction)}</span>
+                                      </div>
+                                    )}
+                                    <div className="flex justify-between text-slate-200 font-black border-t border-white/5 pt-2 text-sm">
+                                      <span className="text-slate-300 font-bold">Total Bill</span>
+                                      <span className="text-emerald-400">{formatPrice(tot)}</span>
+                                    </div>
+                                    {edited && (
+                                      <span className="text-[10px] text-slate-500 font-normal mt-1">Press “Save &amp; Sync to Devices” above to apply item changes.</span>
+                                    )}
                                   </div>
-                                )}
-                                <div className="flex justify-between text-slate-200 font-black border-t border-white/5 pt-2 text-sm">
-                                  <span className="text-slate-300 font-bold">Total Bill</span>
-                                  <span className="text-emerald-400">{formatPrice(o.total)}</span>
-                                </div>
-                              </div>
+                                );
+                              })()}
                             </div>
                           )}
                         </div>

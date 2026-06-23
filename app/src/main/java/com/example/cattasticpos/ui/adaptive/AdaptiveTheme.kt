@@ -110,10 +110,11 @@ fun AdaptiveTheme(
     val baseDensity = LocalDensity.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val smallestWidthDp = configuration.smallestScreenWidthDp
+    // Owner asked for a tighter UI on the tablet (it read too large, especially landscape).
+    // Only tablets (smallestWidth >= 600dp) are touched; phones stay at natural density.
     val uiScale = when {
-        isLandscape -> 1.0f
-        smallestWidthDp >= 720 -> 1.12f
-        smallestWidthDp >= 600 -> 1.08f
+        smallestWidthDp >= 720 -> if (isLandscape) 0.88f else 1.0f
+        smallestWidthDp >= 600 -> if (isLandscape) 0.90f else 0.95f
         else -> 1f
     }
     val scaledDensity = Density(
