@@ -120,7 +120,7 @@ interface Expense {
 }
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'menu' | 'inventory'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'history' | 'expenses' | 'menu' | 'inventory'>('dashboard');
   const [orders, setOrders] = useState<Order[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -380,6 +380,9 @@ export default function Dashboard() {
     .filter(e => localDateKey(e.timestamp) === todayKey)
     .sort((a, b) => b.timestamp - a.timestamp);
   const todayExpenses = todayExpenseList.reduce((sum, e) => sum + e.amount, 0);
+  // All-time expense aggregates for the dedicated Expense Log tab.
+  const allExpensesTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const uniqueRecorders = new Set(expenses.map(e => e.recorded_by).filter(Boolean)).size;
 
   // Export CSV of Orders
   const exportCSV = () => {
@@ -826,6 +829,17 @@ export default function Dashboard() {
               Order Audit Log
             </button>
             <button
+              onClick={() => setActiveTab('expenses')}
+              className={`flex items-center gap-3.5 px-4.5 py-3 rounded-2xl text-sm font-medium transition-all ${
+                activeTab === 'expenses'
+                  ? 'bg-white/[0.04] text-emerald-400 border border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)]'
+                  : 'text-slate-400 hover:bg-white/[0.02] hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              <DollarSign className="w-4 h-4" />
+              Expense Log
+            </button>
+            <button
               onClick={() => setActiveTab('menu')}
               className={`flex items-center gap-3.5 px-4.5 py-3 rounded-2xl text-sm font-medium transition-all ${
                 activeTab === 'menu'
@@ -878,6 +892,7 @@ export default function Dashboard() {
             <h2 className="text-base md:text-lg font-black tracking-tight text-slate-100 flex items-center gap-2 truncate">
               {activeTab === 'dashboard' && '📊 Live Sales Overview'}
               {activeTab === 'history' && '🧾 Order Audit Log'}
+              {activeTab === 'expenses' && '💸 Expense Audit Log'}
               {activeTab === 'menu' && '🍔 Menu Catalog Editor'}
               {activeTab === 'inventory' && '📦 Aggregated Inventory & Stock'}
             </h2>
@@ -1447,6 +1462,59 @@ export default function Dashboard() {
             )}
 
             {/* TAB 3: MENU EDITOR WITH CATEGORY SELECTOR CHIPS */}
+            {/* TAB: EXPENSE AUDIT LOG */}
+            {activeTab === 'expenses' && (
+              <div className="flex flex-col gap-6">
+                {/* Summary cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 flex flex-col gap-1">
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">Today&apos;s Expenses</span>
+                    <span className="text-2xl font-black text-red-400">-{formatPrice(todayExpenses)}</span>
+                    <span className="text-[10px] text-slate-600">{todayExpenseList.length} entr{todayExpenseList.length === 1 ? 'y' : 'ies'} today</span>
+                  </div>
+                  <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 flex flex-col gap-1">
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">All-Time Expenses</span>
+                    <span className="text-2xl font-black text-slate-200">-{formatPrice(allExpensesTotal)}</span>
+                    <span className="text-[10px] text-slate-600">{expenses.length} total entries</span>
+                  </div>
+                  <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-5 flex flex-col gap-1">
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-slate-500">Recorded By</span>
+                    <span className="text-2xl font-black text-slate-200">{uniqueRecorders}</span>
+                    <span className="text-[10px] text-slate-600">cashier{uniqueRecorders === 1 ? '' : 's'} logging expenses</span>
+                  </div>
+                </div>
+
+                {/* Full log */}
+                <div className="bg-white/[0.01] border border-white/5 rounded-3xl overflow-hidden">
+                  <div className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-white/5 text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                    <span className="col-span-5">Description</span>
+                    <span className="col-span-3">Recorded By</span>
+                    <span className="col-span-2">Date</span>
+                    <span className="col-span-2 text-right">Amount</span>
+                  </div>
+                  {expenses.length === 0 ? (
+                    <div className="px-5 py-12 text-center text-sm text-slate-600">No expenses recorded yet.</div>
+                  ) : (
+                    expenses.map((e) => (
+                      <div key={e.id} className="grid grid-cols-12 gap-2 px-5 py-3 border-b border-white/5 last:border-0 text-xs items-center hover:bg-white/[0.02] transition-colors">
+                        <span className="col-span-5 text-slate-200 font-medium truncate">{e.description || 'Expense'}</span>
+                        <span className="col-span-3 text-slate-400 flex items-center gap-1.5 truncate">
+                          <User className="w-3 h-3 shrink-0" /> {e.recorded_by || '—'}
+                        </span>
+                        <span className="col-span-2 text-slate-500 whitespace-nowrap">
+                          {new Date(e.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })} {new Date(e.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="col-span-2 text-right text-red-400 font-bold whitespace-nowrap">-{formatPrice(e.amount)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-600 leading-relaxed font-semibold">
+                  Read-only audit log of all operating expenses recorded on the cashier terminals, newest first. Syncs live from every device.
+                </p>
+              </div>
+            )}
+
             {activeTab === 'menu' && (
               <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                 
@@ -1961,6 +2029,7 @@ export default function Dashboard() {
         {([
           { id: 'dashboard', label: 'Sales', Icon: TrendingUp },
           { id: 'history', label: 'Audit', Icon: Receipt },
+          { id: 'expenses', label: 'Expenses', Icon: DollarSign },
           { id: 'menu', label: 'Menu', Icon: Layers },
           { id: 'inventory', label: 'Stock', Icon: Package },
         ] as const).map(({ id, label, Icon }) => (
