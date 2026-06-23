@@ -28,6 +28,7 @@ import com.example.cattasticpos.ui.history.HistoryViewModel
 import com.example.cattasticpos.ui.inventory.InventoryScreen
 import com.example.cattasticpos.ui.inventory.InventoryViewModel
 import com.example.cattasticpos.ui.components.PinScreen
+import com.example.cattasticpos.ui.components.AppUpdateGate
 import androidx.compose.foundation.isSystemInDarkTheme
 import com.example.cattasticpos.ui.adaptive.AdaptiveTheme
 import com.example.cattasticpos.ui.adaptive.BionicHaptic
@@ -143,6 +144,9 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+
+                    // Self-update prompt — checks the cloud for a newer build on launch.
+                    AppUpdateGate()
                 }
                 }
             }

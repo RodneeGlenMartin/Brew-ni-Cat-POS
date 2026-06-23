@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Downloaded update APKs live in cacheDir/updates and are shared with the
+         system package installer through the FileProvider declared in the manifest. -->
+    <cache-path name="updates" path="updates/" />
+</paths>
