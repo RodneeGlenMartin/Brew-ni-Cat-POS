@@ -43,10 +43,10 @@ class AppUpdateManager(private val context: Context) {
         try {
             val app = context.applicationContext as CattasticPosApp
             val config = app.container.database.appConfigDao().getAppConfigOnce()
-                ?: return@withContext null
-            val supabaseUrl = config.supabaseUrl.trim()
-            val supabaseKey = config.supabaseAnonKey.trim()
-            if (supabaseUrl.isEmpty() || supabaseKey.isEmpty()) return@withContext null
+            val supabaseUrl = config?.supabaseUrl?.trim()?.ifEmpty { null }
+                ?: "https://hyeotyohpdpmmvquotnd.supabase.co"
+            val supabaseKey = config?.supabaseAnonKey?.trim()?.ifEmpty { null }
+                ?: "sb_publishable_orak9Nk7HGB_qFHgXMdIzA_11T8NfYQ"
 
             val request = Request.Builder()
                 .url("$supabaseUrl/rest/v1/app_release?select=*&order=version_code.desc&limit=1")
