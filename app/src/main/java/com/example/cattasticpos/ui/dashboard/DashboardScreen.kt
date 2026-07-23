@@ -128,13 +128,9 @@ fun DashboardScreen(
     // that fills the bottom slot (TabletOrderPanel) — always visible, no dead space. Phones
     // use the collapsing bottom-sheet, so this flag only drives the phone layout.
     val configuration = LocalConfiguration.current
-    val isWideScreen = configuration.screenWidthDp >= 540
+    val isWideScreen = configuration.smallestScreenWidthDp >= 480 || configuration.screenWidthDp >= 440
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    // Tablet landscape (the Redmi Pad 2's primary POS orientation) is height-constrained, so
-    // neither a fixed bottom panel nor a pull-up sheet works well there. Instead it gets the
-    // classic POS split: catalog on the left, an always-visible order panel on the right —
-    // width is abundant (~1300dp+), so the panel costs nothing the cashier needs.
-    val useSideBySidePanel = isLandscape && configuration.screenWidthDp >= 840
+    val useSideBySidePanel = isLandscape && (configuration.screenWidthDp >= 720 || configuration.smallestScreenWidthDp >= 540)
     var isCartExpanded by remember { mutableStateOf(false) }
 
     LaunchedEffect(cartItemCount) {
@@ -283,19 +279,7 @@ fun DashboardScreen(
                         )
                     }
                 } else if (isWideScreen && !isLandscape) {
-                    // Tablet portrait: catalog on top, order panel fills a fixed bottom slot. Because
-                    // the panel fills its slot, its background always reaches the screen edge
-                    // — no dead space is possible. The slot is ~half the height but never
-                    // smaller than what the footer (totals + discounts + Place Order) needs,
-                    // and never so large the catalog disappears.
-                    val box = maxHeight
-                    val catalogMin = 150.dp
-                    val panelMin = 300.dp
-                    val panelHeight = if (box - panelMin >= catalogMin) {
-                        (box * 0.5f).coerceIn(panelMin, box - catalogMin)
-                    } else {
-                        box - catalogMin
-                    }
+                    // Tablet portrait: catalog on top, order panel fills bottom slot completely down to screen edge.
                     Column(modifier = Modifier.fillMaxSize()) {
                         StorefrontCatalogPane(
                             modifier = Modifier.weight(1f),
@@ -314,7 +298,7 @@ fun DashboardScreen(
                         TabletOrderPanel(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(panelHeight),
+                                .weight(0.85f),
                             uiState = uiState,
                             cartItemCount = cartItemCount,
                             checkoutBorder = checkoutBorder,
@@ -322,7 +306,8 @@ fun DashboardScreen(
                             onHoldOrder = { viewModel.setShowHoldOrderDialog(true) },
                             onPlaceOrder = { viewModel.setShowPaymentDialog(true) },
                             onQuantityChange = { id, delta -> viewModel.changeQuantity(id, delta) },
-                            onSelectDiscount = { viewModel.selectDiscount(it) }
+                            onSelectDiscount = { viewModel.selectDiscount(it) },
+                            panelShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                         )
                     }
                 } else {
