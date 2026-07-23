@@ -33,12 +33,7 @@ private enum class UpdatePhase { Downloading, NeedsPermission, Failed, Launched 
 
 /**
  * Fully automatic self-update. On launch it checks the cloud for a newer build and, if one
- * exists, downloads it and hands it to the system installer — no "Update now" tap.
- *
- * The only step Android can't waive is a one-time "allow install from this app" toggle. We handle
- * that gracefully: after the user grants it and returns, the install resumes automatically using
- * the APK we already downloaded (no second download — important on weak mobile data). Downloading
- * is non-blocking: "Hide" lets the cashier keep taking orders while it finishes.
+ * exists, downloads it and hands it to the system installer — no "Update now" tap required.
  */
 @Composable
 fun AppUpdateGate() {
@@ -56,8 +51,7 @@ fun AppUpdateGate() {
     // Check once for an update.
     LaunchedEffect(Unit) { info = manager.checkForUpdate() }
 
-    // Download when an update is found (or on explicit retry). Never re-downloads a file we already
-    // have — so granting the install permission doesn't cost a second download on slow data.
+    // Download when an update is found (or on explicit retry). Never re-downloads a file we already have.
     LaunchedEffect(info, downloadKey) {
         val u = info ?: return@LaunchedEffect
         if (downloadedFile != null) return@LaunchedEffect
@@ -72,9 +66,6 @@ fun AppUpdateGate() {
         phase = if (manager.installApk(file)) UpdatePhase.Launched else UpdatePhase.NeedsPermission
     }
 
-    // After the user allows "install unknown apps" and returns to the app, resume the install
-    // automatically with the file we already have — this is what was missing before (returning
-    // from settings left no install prompt).
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             val file = downloadedFile
@@ -87,7 +78,6 @@ fun AppUpdateGate() {
     }
 
     val u = info
-    // Nothing to show until an update is found, after the OS installer takes over, or if hidden.
     if (u == null || dismissed || phase == UpdatePhase.Launched) return
 
     AlertDialog(

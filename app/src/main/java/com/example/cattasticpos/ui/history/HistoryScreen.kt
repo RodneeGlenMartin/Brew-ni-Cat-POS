@@ -1185,6 +1185,37 @@ fun EditConfigDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                CupertinoSection(header = "Software Updates") {
+                    var isCheckingUpdate by remember { mutableStateOf(false) }
+                    val updateManager = remember { com.example.cattasticpos.service.AppUpdateManager(context) }
+                    CupertinoFormRow(label = "Brew ni Cat POS v${com.example.cattasticpos.BuildConfig.VERSION_NAME}") {
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    isCheckingUpdate = true
+                                    val update = updateManager.checkForUpdate()
+                                    isCheckingUpdate = false
+                                    if (update == null) {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "Brew ni Cat POS is up to date (v${com.example.cattasticpos.BuildConfig.VERSION_NAME})",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                    } else {
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            "New update v${update.versionName} found!",
+                                            android.widget.Toast.LENGTH_LONG
+                                        ).show()
+                                    }
+                                }
+                            },
+                            enabled = !isCheckingUpdate
+                        ) {
+                            Text(if (isCheckingUpdate) "Checking..." else "Check Now")
+                        }
+                    }
+                }
                 CupertinoSection(header = "Feedback") {
                     CupertinoFormRow(label = "Haptic feedback") {
                         Switch(
