@@ -233,6 +233,7 @@ class OrderRepositoryImpl(
             syncStatus = order.syncStatus,
             isVoided = order.isVoided,
             lastSyncedAt = order.lastSyncedAt,
+            remoteId = order.remoteId,
             items = items.map { item ->
                 OrderItem(
                     id = item.id,

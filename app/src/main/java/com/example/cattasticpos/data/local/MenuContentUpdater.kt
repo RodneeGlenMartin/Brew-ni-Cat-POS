@@ -29,7 +29,7 @@ internal object MenuContentUpdater {
         inventoryDao: InventoryDao,
         recipeDao: RecipeDao
     ) {
-        val buldakCat = com.example.cattasticpos.data.local.entity.CategoryEntity("cat_buldak", "BULDAK & Sedaap")
+        val buldakCat = com.example.cattasticpos.data.local.entity.CategoryEntity("cat_buldak", "Buldak & Sedaap")
         menuDao.insertCategories(listOf(buldakCat))
 
         val buldakItems = MenuBoardCatalog.buldakMenuItems()

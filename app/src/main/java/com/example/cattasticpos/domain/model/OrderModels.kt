@@ -19,12 +19,14 @@ data class Order(
     val syncStatus: String = "PENDING",
     val isVoided: Boolean = false,
     val lastSyncedAt: Long = 0,
+    val remoteId: Long? = null,
     val items: List<OrderItem>
 ) {
     val receiptNumber: String
         get() {
-            if (id <= 0L) return "----"
-            val displayId = if (id >= 1_000_000_000L) id % 1_000_000_000L else id
+            val targetId = remoteId ?: id
+            if (targetId <= 0L) return "----"
+            val displayId = if (targetId >= 1_000_000_000L) targetId % 1_000_000_000L else targetId
             return String.format(Locale.US, "%04d", displayId)
         }
 }

@@ -71,7 +71,7 @@ internal object DatabaseSeeder {
                     CategoryEntity("cat_bites", "Cat-Tastic Bites"),
                     CategoryEntity("cat_drinks", "Cat-Tastic Drinks"),
                     CategoryEntity("combos", "Combos & Packages"),
-                    CategoryEntity("cat_buldak", "BULDAK & Sedaap")
+                    CategoryEntity("cat_buldak", "Buldak & Sedaap")
                 )
             )
             menuDao.insertItems(defaultMenuItems())

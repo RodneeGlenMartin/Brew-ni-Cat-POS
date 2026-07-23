@@ -15,7 +15,7 @@ object ProductAddOnCatalog {
     )
 
     private val takoyakiAddOns = listOf(
-        AddOnOption("spicy", "Spicy", ADD_ON_PRICE)
+        AddOnOption("takeout_box", "Take-out Box", ADD_ON_PRICE)
     )
 
     private val buldakAddOns = listOf(
