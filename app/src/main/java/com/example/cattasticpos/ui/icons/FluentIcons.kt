@@ -90,7 +90,7 @@ object FluentIcons {
         "cat_drinks" -> DrinkCoffee
         "combos" -> ComboPackage
         "cat_buldak" -> NoodleIcons.NoodleCategory
-        "cat_takeout" -> Lucide.PackageOpen
+        "cat_takeout" -> Lucide.Package
         else -> FoodBites
     }
 
@@ -105,7 +105,7 @@ object FluentIcons {
             id == "bite_takoyaki" -> Lucide.CircleDot
             id == "bite_fries" -> Lucide.Flame
             id == "bite_nachos" -> Lucide.Sandwich
-            id == "bite_takeout_box" -> Lucide.PackageOpen
+            id == "bite_takeout_box" -> Lucide.Package
             id == "combo_single_paw" || id == "combo_meals" -> Lucide.User
             id == "combo_couple_cats" -> Lucide.Users
             id == "combo_association" -> Lucide.UsersRound
