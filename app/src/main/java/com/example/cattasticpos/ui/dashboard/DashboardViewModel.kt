@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.cattasticpos.CattasticPosApp
+import com.example.cattasticpos.domain.catalog.ProductAddOnCatalog
 import com.example.cattasticpos.domain.model.CartItem
 import com.example.cattasticpos.domain.model.CartKey
+import com.example.cattasticpos.domain.model.CartLineSelection
 import com.example.cattasticpos.domain.model.Item
 import com.example.cattasticpos.domain.model.Variant
 import com.example.cattasticpos.domain.strategy.DiscountStrategy
@@ -177,6 +179,11 @@ class DashboardViewModel(
     }
 
     fun showConfigurationSheet(item: Item) {
+        if (ProductAddOnCatalog.isDirectAddTakeoutItem(item)) {
+            val variant = item.variants.firstOrNull() ?: return
+            applyCartMutation(item, variant, flavor = null)
+            return
+        }
         _uiState.update { state ->
             state.copy(selectedConfiguringItem = item)
         }
@@ -190,12 +197,17 @@ class DashboardViewModel(
 
     fun addToCart(variant: Variant, flavor: String?) {
         val currentItem = _uiState.value.selectedConfiguringItem ?: return
-        
+        // Never auto-inject optional add-ons (e.g. Take-out Box +₱10); only keep what the sheet encoded.
+        applyCartMutation(currentItem, variant, flavor)
+    }
+
+    private fun applyCartMutation(item: Item, variant: Variant, flavor: String?) {
         _uiState.update { state ->
-            val cartKey = CartKey.from(currentItem, variant, flavor)
+            val sanitizedFlavor = sanitizeFlavorAddOns(item, flavor)
+            val cartKey = CartKey.from(item, variant, sanitizedFlavor)
             val existingIndex = state.activeCart.indexOfFirst { it.key == cartKey }
-            
-            val updatedCart = if (existingIndex != -1) {
+
+            val tentativeCart = if (existingIndex != -1) {
                 state.activeCart.mapIndexed { index, cartItem ->
                     if (index == existingIndex) {
                         cartItem.copy(quantity = cartItem.quantity + 1)
@@ -206,13 +218,14 @@ class DashboardViewModel(
             } else {
                 state.activeCart + CartItem(
                     key = cartKey,
-                    item = currentItem,
+                    item = item,
                     variant = variant,
-                    flavor = flavor,
+                    flavor = sanitizedFlavor,
                     quantity = 1
                 )
             }
-            
+
+            val updatedCart = sanitizeCart(tentativeCart)
             val calculation = calculateCartUseCase(updatedCart, state.selectedDiscountStrategy)
             state.copy(
                 activeCart = updatedCart,
@@ -221,9 +234,50 @@ class DashboardViewModel(
                 discountLabel = calculation.discountLabel,
                 total = calculation.total,
                 selectedConfiguringItem = null,
-                snackbarMessage = "${currentItem.name} added to cart!"
+                snackbarMessage = "${item.name} added to cart!"
             )
         }
+    }
+
+    /**
+     * Drops unrequested Take-out Box add-on labels from non-standalone lines and
+     * recomputes cart keys so totals never include a phantom +₱10 packaging fee.
+     * Standalone Take-out Box menu items (cat_takeout / bite_takeout_box) are kept.
+     */
+    private fun sanitizeCart(cart: List<CartItem>): List<CartItem> {
+        return cart.mapNotNull { cartItem ->
+            if (ProductAddOnCatalog.isDirectAddTakeoutItem(cartItem.item) ||
+                cartItem.item.id.equals("bite_takeout_box", ignoreCase = true) ||
+                cartItem.item.categoryId.equals("cat_takeout", ignoreCase = true)
+            ) {
+                return@mapNotNull cartItem
+            }
+            val cleanedFlavor = sanitizeFlavorAddOns(cartItem.item, cartItem.flavor)
+            if (cleanedFlavor == cartItem.flavor) {
+                cartItem
+            } else {
+                cartItem.copy(
+                    key = CartKey.from(cartItem.item, cartItem.variant, cleanedFlavor),
+                    flavor = cleanedFlavor
+                )
+            }
+        }
+    }
+
+    /**
+     * Flavor strings only retain add-ons the cashier explicitly chose in the config sheet.
+     * This never injects Take-out Box; it only strips a stale " + Take-out Box" if present
+     * without a matching catalog selection path (defensive — sheet starts unselected).
+     */
+    private fun sanitizeFlavorAddOns(item: Item, flavor: String?): String? {
+        if (flavor.isNullOrBlank()) return flavor
+        val selection = CartLineSelection.parse(flavor, item.id)
+        if (selection.addOnLabels.isEmpty()) return flavor
+        val allowedLabels = ProductAddOnCatalog.addOnsForItem(item).map { it.label }.toSet()
+        // Keep only labels that exist as optional choices for this item (never invent new ones).
+        val kept = selection.addOnLabels.filter { it in allowedLabels }
+        if (kept == selection.addOnLabels) return flavor
+        return CartLineSelection(selection.baseFlavor, selection.coffeeOption, kept).encode()
     }
 
     fun clearSnackbarMessage() {
@@ -232,7 +286,7 @@ class DashboardViewModel(
 
     fun changeQuantity(cartItemId: String, delta: Int) {
         _uiState.update { state ->
-            val updatedCart = state.activeCart.mapNotNull { cartItem ->
+            val tentativeCart = state.activeCart.mapNotNull { cartItem ->
                 if (cartItem.id == cartItemId) {
                     val newQty = cartItem.quantity + delta
                     if (newQty <= 0) null else cartItem.copy(quantity = newQty)
@@ -240,7 +294,8 @@ class DashboardViewModel(
                     cartItem
                 }
             }
-            
+
+            val updatedCart = sanitizeCart(tentativeCart)
             val calculation = calculateCartUseCase(updatedCart, state.selectedDiscountStrategy)
             val cartCleared = updatedCart.isEmpty()
             state.copy(
@@ -257,8 +312,10 @@ class DashboardViewModel(
 
     fun selectDiscount(strategy: DiscountStrategy) {
         _uiState.update { state ->
-            val calculation = calculateCartUseCase(state.activeCart, strategy)
+            val sanitized = sanitizeCart(state.activeCart)
+            val calculation = calculateCartUseCase(sanitized, strategy)
             state.copy(
+                activeCart = sanitized,
                 selectedDiscountStrategy = strategy,
                 subtotal = calculation.subtotal,
                 discountDeduction = calculation.discountDeduction,
@@ -269,18 +326,28 @@ class DashboardViewModel(
     }
 
     fun confirmCheckout(paymentMethod: String, paymentReference: String?) {
-        val currentCart = _uiState.value.activeCart
+        val sanitizedCart = sanitizeCart(_uiState.value.activeCart)
         val currentStrategy = _uiState.value.selectedDiscountStrategy
-        if (currentCart.isEmpty() || _uiState.value.isCheckoutProcessing) return
+        if (sanitizedCart.isEmpty() || _uiState.value.isCheckoutProcessing) return
 
         viewModelScope.launch {
             val state = _uiState.value
             val cashierName = state.cashiers.find { it.id == state.selectedCashierId }?.name
-            _uiState.update { it.copy(isCheckoutProcessing = true) }
+            val calculation = calculateCartUseCase(sanitizedCart, currentStrategy)
+            _uiState.update {
+                it.copy(
+                    isCheckoutProcessing = true,
+                    activeCart = sanitizedCart,
+                    subtotal = calculation.subtotal,
+                    discountDeduction = calculation.discountDeduction,
+                    discountLabel = calculation.discountLabel,
+                    total = calculation.total
+                )
+            }
 
             val result = withContext(Dispatchers.IO) {
                 checkoutUseCase(
-                    currentCart,
+                    sanitizedCart,
                     currentStrategy,
                     paymentMethod,
                     paymentReference,

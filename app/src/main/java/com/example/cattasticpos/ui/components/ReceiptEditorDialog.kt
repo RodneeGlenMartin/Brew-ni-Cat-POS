@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cattasticpos.domain.catalog.ProductAddOnCatalog
 import com.example.cattasticpos.domain.model.CartItem
 import com.example.cattasticpos.domain.model.CartKey
 import com.example.cattasticpos.domain.model.Item
@@ -89,8 +90,7 @@ fun ReceiptEditorDialog(
         }
     }
 
-    fun addConfiguredItem(variant: Variant, flavor: String?) {
-        val item = configuringItem ?: return
+    fun addConfiguredItemFor(item: Item, variant: Variant, flavor: String?) {
         val cartKey = CartKey.from(item, variant, flavor)
         val existingIndex = editItems.indexOfFirst { it.key == cartKey }
         editItems = if (existingIndex >= 0) {
@@ -107,6 +107,11 @@ fun ReceiptEditorDialog(
             )
         }
         configuringItem = null
+    }
+
+    fun addConfiguredItem(variant: Variant, flavor: String?) {
+        val item = configuringItem ?: return
+        addConfiguredItemFor(item, variant, flavor)
     }
 
     AdaptiveGlassDialog(
@@ -255,7 +260,12 @@ fun ReceiptEditorDialog(
             onDismiss = { showMenuPicker = false },
             onSelectItem = { item ->
                 showMenuPicker = false
-                configuringItem = item
+                if (ProductAddOnCatalog.isDirectAddTakeoutItem(item)) {
+                    val variant = item.variants.firstOrNull() ?: return@ReceiptMenuPickerDialog
+                    addConfiguredItemFor(item, variant, flavor = null)
+                } else {
+                    configuringItem = item
+                }
             }
         )
     }

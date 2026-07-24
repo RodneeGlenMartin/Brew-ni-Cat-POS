@@ -95,4 +95,13 @@ object ProductAddOnCatalog {
 
     fun labelsForIds(item: Item, selectedAddOnIds: List<String>): List<String> =
         labelsForIds(item.id, selectedAddOnIds, item.categoryId, item.name)
+
+    /** Standalone Take-out Box: no configuration sheet — add straight to cart. */
+    fun isDirectAddTakeoutItem(item: Item): Boolean {
+        val isTakeoutSku = item.id.equals("bite_takeout_box", ignoreCase = true) ||
+            item.categoryId.equals("cat_takeout", ignoreCase = true)
+        return isTakeoutSku &&
+            item.variants.size == 1 &&
+            !supportsAddOns(item)
+    }
 }
