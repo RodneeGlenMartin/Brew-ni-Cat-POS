@@ -100,7 +100,7 @@ internal object MenuBoardCatalog {
 
     fun takeoutBoxItem(): ItemEntity = ItemEntity(
         id = "bite_takeout_box",
-        categoryId = "cat_bites",
+        categoryId = "cat_takeout",
         name = "Take-out Box",
         flavors = "",
         variantsJson = """

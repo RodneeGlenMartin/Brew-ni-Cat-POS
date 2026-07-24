@@ -22,6 +22,7 @@ internal object MenuContentUpdater {
         applyMenuBoard2026Patch(menuDao, recipeDao)
         applyMenuSectionSplitPatch(menuDao, recipeDao)
         ensureBuldakInfrastructure(menuDao, inventoryDao, recipeDao)
+        ensureTakeoutBoxInfrastructure(menuDao)
     }
 
     private suspend fun ensureBuldakInfrastructure(
@@ -130,5 +131,11 @@ internal object MenuContentUpdater {
         } catch (_: Exception) {
             false
         }
+    }
+
+    private suspend fun ensureTakeoutBoxInfrastructure(menuDao: MenuDao) {
+        val takeoutCat = com.example.cattasticpos.data.local.entity.CategoryEntity("cat_takeout", "Take-out Box")
+        menuDao.insertCategories(listOf(takeoutCat))
+        menuDao.insertItems(listOf(MenuBoardCatalog.takeoutBoxItem()))
     }
 }
