@@ -11,22 +11,38 @@ data class AddOnOption(
 object ProductAddOnCatalog {
     private const val ADD_ON_PRICE = 10.0
 
+    private val takeoutBoxOption = AddOnOption("takeout_box", "Take-out Box", 10.0)
+
     private val sodaAddOns = listOf(
+        takeoutBoxOption,
         AddOnOption("nata", "Nata de coco", ADD_ON_PRICE),
         AddOnOption("rainbow", "Rainbow Jelly", ADD_ON_PRICE)
     )
 
     private val takoyakiAddOns = listOf(
-        AddOnOption("takeout_box", "Take-out Box", ADD_ON_PRICE)
+        takeoutBoxOption
+    )
+
+    private val biteAddOns = listOf(
+        takeoutBoxOption
+    )
+
+    private val comboAddOns = listOf(
+        takeoutBoxOption
     )
 
     private val buldakAddOns = listOf(
+        takeoutBoxOption,
         AddOnOption("egg_sunny", "Egg (Sunny Side Up)", 15.0),
         AddOnOption("egg_omelette", "Egg (Omelette)", 15.0),
         AddOnOption("egg_boiled", "Egg (Boiled)", 15.0),
         AddOnOption("seaweed", "3pcs Seaweed", 25.0),
         AddOnOption("hotdog", "Hotdog", 20.0),
         AddOnOption("fries", "Fries", 30.0)
+    )
+
+    private val defaultFoodAddOns = listOf(
+        takeoutBoxOption
     )
 
     fun addOnsForItem(itemId: String, categoryId: String? = null, itemName: String? = null): List<AddOnOption> {
@@ -41,7 +57,9 @@ object ProductAddOnCatalog {
                 id.contains("buldak") || id.contains("sedaap") ||
                 cat == "cat_buldak" || cat.contains("buldak") || cat.contains("sedaap") ||
                 name.contains("buldak") || name.contains("sedaap") || name.contains("samyang") -> buldakAddOns
-            else -> emptyList()
+            cat == "cat_bites" || id.startsWith("bite_") || id.contains("fries") || id.contains("nachos") || name.contains("fries") || name.contains("nachos") -> biteAddOns
+            cat == "cat_combos" || id.startsWith("combo_") || id.contains("combo") || name.contains("combo") -> comboAddOns
+            else -> defaultFoodAddOns
         }
     }
 
@@ -55,14 +73,7 @@ object ProductAddOnCatalog {
         addOnsForItem(item).isNotEmpty()
 
     fun allowsMultiple(itemId: String, categoryId: String? = null, itemName: String? = null): Boolean {
-        val id = itemId.lowercase()
-        val cat = categoryId?.lowercase().orEmpty()
-        val name = itemName?.lowercase().orEmpty()
-        return id == "drink_soda" || id.contains("soda") || name.contains("soda") ||
-            id.startsWith("buldak") || id.startsWith("sedaap") ||
-            id.contains("buldak") || id.contains("sedaap") ||
-            cat == "cat_buldak" || cat.contains("buldak") || cat.contains("sedaap") ||
-            name.contains("buldak") || name.contains("sedaap") || name.contains("samyang")
+        return true
     }
 
     fun allowsMultiple(item: Item): Boolean =
@@ -84,4 +95,3 @@ object ProductAddOnCatalog {
     fun labelsForIds(item: Item, selectedAddOnIds: List<String>): List<String> =
         labelsForIds(item.id, selectedAddOnIds, item.categoryId, item.name)
 }
-
