@@ -89,31 +89,35 @@ object FluentIcons {
     fun categoryIcon(categoryId: String): ImageVector = when (categoryId) {
         "cat_drinks" -> DrinkCoffee
         "combos" -> ComboPackage
-        "cat_buldak" -> Lucide.Flame
+        "cat_buldak" -> NoodleIcons.NoodleCategory
         else -> FoodBites
     }
 
-    fun menuItemIcon(itemId: String): ImageVector = when (itemId) {
-        "drink_cat_feine" -> DrinkCoffee
-        "drink_oreo" -> Lucide.Cookie
-        "drink_matcha" -> Lucide.Leaf
-        "drink_soda" -> Lucide.CupSoda
-        "drink_coffee" -> DrinkCoffee
-        "bite_takoyaki" -> Lucide.CircleDot
-        "bite_fries" -> Lucide.Flame
-        "bite_nachos" -> Lucide.Sandwich
-        "combo_single_paw", "combo_meals" -> Lucide.User
-        "combo_couple_cats" -> Lucide.Users
-        "combo_association" -> Lucide.UsersRound
-        "buldak_carbo", "buldak_cheese", "sedaap_spicy_chicken", "sedaap_original" -> Lucide.Flame
-        else -> categoryIcon(
-            when {
-                itemId.startsWith("drink_") -> "cat_drinks"
-                itemId.startsWith("combo_") -> "combos"
-                itemId.startsWith("buldak_") || itemId.startsWith("sedaap_") -> "cat_buldak"
-                else -> "cat_bites"
-            }
-        )
+    fun menuItemIcon(itemId: String): ImageVector {
+        val id = itemId.lowercase()
+        return when {
+            id == "drink_cat_feine" -> DrinkCoffee
+            id == "drink_oreo" -> Lucide.Cookie
+            id == "drink_matcha" -> Lucide.Leaf
+            id == "drink_soda" -> Lucide.CupSoda
+            id == "drink_coffee" -> DrinkCoffee
+            id == "bite_takoyaki" -> Lucide.CircleDot
+            id == "bite_fries" -> Lucide.Flame
+            id == "bite_nachos" -> Lucide.Sandwich
+            id == "combo_single_paw" || id == "combo_meals" -> Lucide.User
+            id == "combo_couple_cats" -> Lucide.Users
+            id == "combo_association" -> Lucide.UsersRound
+            id.contains("buldak") -> NoodleIcons.BuldakSpicyNoodle
+            id.contains("sedaap") -> NoodleIcons.SedaapNoodle
+            else -> categoryIcon(
+                when {
+                    id.startsWith("drink_") -> "cat_drinks"
+                    id.startsWith("combo_") -> "combos"
+                    id.startsWith("buldak_") || id.startsWith("sedaap_") -> "cat_buldak"
+                    else -> "cat_bites"
+                }
+            )
+        }
     }
 }
 
