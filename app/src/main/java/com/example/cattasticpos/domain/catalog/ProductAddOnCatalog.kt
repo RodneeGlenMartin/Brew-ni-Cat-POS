@@ -1,5 +1,7 @@
 package com.example.cattasticpos.domain.catalog
 
+import com.example.cattasticpos.domain.model.Item
+
 data class AddOnOption(
     val id: String,
     val label: String,
@@ -27,25 +29,59 @@ object ProductAddOnCatalog {
         AddOnOption("fries", "Fries", 30.0)
     )
 
-    fun addOnsForItem(itemId: String): List<AddOnOption> = when {
-        itemId == "drink_soda" -> sodaAddOns
-        itemId == "bite_takoyaki" -> takoyakiAddOns
-        itemId.startsWith("buldak_") || itemId.startsWith("sedaap_") -> buldakAddOns
-        else -> emptyList()
+    fun addOnsForItem(itemId: String, categoryId: String? = null, itemName: String? = null): List<AddOnOption> {
+        val id = itemId.lowercase()
+        val cat = categoryId?.lowercase().orEmpty()
+        val name = itemName?.lowercase().orEmpty()
+
+        return when {
+            id == "drink_soda" || id.contains("soda") || name.contains("soda") -> sodaAddOns
+            id == "bite_takoyaki" || id.contains("takoyaki") || name.contains("takoyaki") -> takoyakiAddOns
+            id.startsWith("buldak") || id.startsWith("sedaap") ||
+                id.contains("buldak") || id.contains("sedaap") ||
+                cat == "cat_buldak" || cat.contains("buldak") || cat.contains("sedaap") ||
+                name.contains("buldak") || name.contains("sedaap") || name.contains("samyang") -> buldakAddOns
+            else -> emptyList()
+        }
     }
 
-    fun supportsAddOns(itemId: String): Boolean = addOnsForItem(itemId).isNotEmpty()
+    fun addOnsForItem(item: Item): List<AddOnOption> =
+        addOnsForItem(item.id, item.categoryId, item.name)
 
-    fun allowsMultiple(itemId: String): Boolean =
-        itemId == "drink_soda" || itemId.startsWith("buldak_") || itemId.startsWith("sedaap_")
+    fun supportsAddOns(itemId: String, categoryId: String? = null, itemName: String? = null): Boolean =
+        addOnsForItem(itemId, categoryId, itemName).isNotEmpty()
 
-    fun surcharge(itemId: String, selectedAddOnIds: List<String>): Double {
-        val options = addOnsForItem(itemId).associateBy { it.id }
+    fun supportsAddOns(item: Item): Boolean =
+        addOnsForItem(item).isNotEmpty()
+
+    fun allowsMultiple(itemId: String, categoryId: String? = null, itemName: String? = null): Boolean {
+        val id = itemId.lowercase()
+        val cat = categoryId?.lowercase().orEmpty()
+        val name = itemName?.lowercase().orEmpty()
+        return id == "drink_soda" || id.contains("soda") || name.contains("soda") ||
+            id.startsWith("buldak") || id.startsWith("sedaap") ||
+            id.contains("buldak") || id.contains("sedaap") ||
+            cat == "cat_buldak" || cat.contains("buldak") || cat.contains("sedaap") ||
+            name.contains("buldak") || name.contains("sedaap") || name.contains("samyang")
+    }
+
+    fun allowsMultiple(item: Item): Boolean =
+        allowsMultiple(item.id, item.categoryId, item.name)
+
+    fun surcharge(itemId: String, selectedAddOnIds: List<String>, categoryId: String? = null, itemName: String? = null): Double {
+        val options = addOnsForItem(itemId, categoryId, itemName).associateBy { it.id }
         return selectedAddOnIds.sumOf { options[it]?.price ?: 0.0 }
     }
 
-    fun labelsForIds(itemId: String, selectedAddOnIds: List<String>): List<String> {
-        val options = addOnsForItem(itemId).associateBy { it.id }
+    fun surcharge(item: Item, selectedAddOnIds: List<String>): Double =
+        surcharge(item.id, selectedAddOnIds, item.categoryId, item.name)
+
+    fun labelsForIds(itemId: String, selectedAddOnIds: List<String>, categoryId: String? = null, itemName: String? = null): List<String> {
+        val options = addOnsForItem(itemId, categoryId, itemName).associateBy { it.id }
         return selectedAddOnIds.mapNotNull { options[it]?.label }
     }
+
+    fun labelsForIds(item: Item, selectedAddOnIds: List<String>): List<String> =
+        labelsForIds(item.id, selectedAddOnIds, item.categoryId, item.name)
 }
+

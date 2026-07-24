@@ -1567,7 +1567,7 @@ private val COFFEE_DRINK_IDS = setOf(
 
 private fun isCoffeeItem(item: Item): Boolean = item.id in COFFEE_DRINK_IDS
 
-private fun hasAddOnStep(item: Item): Boolean = ProductAddOnCatalog.supportsAddOns(item.id)
+private fun hasAddOnStep(item: Item): Boolean = ProductAddOnCatalog.supportsAddOns(item)
 
 private fun buildCartFlavor(
     itemId: String,
@@ -1587,6 +1587,9 @@ private fun itemFlavorGroups(item: Item): Map<String, List<String>> =
 private fun initialProductConfigStep(item: Item): ProductConfigStep = when {
     itemHasGroupedFlavors(item) -> ProductConfigStep.FlavorGroup
     item.flavors.isNotEmpty() -> ProductConfigStep.Flavor
+    item.variants.size > 1 -> ProductConfigStep.Size
+    hasAddOnStep(item) -> ProductConfigStep.AddOns
+    isCoffeeItem(item) -> ProductConfigStep.CoffeeOption
     else -> ProductConfigStep.Size
 }
 
@@ -1597,7 +1600,9 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var currentStep by remember(item.id) { mutableStateOf(initialProductConfigStep(item)) }
     var selectedFlavorGroup by remember(item.id) { mutableStateOf<String?>(null) }
-    var selectedVariant by remember(item.id) { mutableStateOf<Variant?>(null) }
+    var selectedVariant by remember(item.id) {
+        mutableStateOf<Variant?>(if (item.variants.size == 1) item.variants.firstOrNull() else null)
+    }
     var selectedFlavor by remember(item.id) { mutableStateOf<String?>(null) }
     var selectedCoffeeOption by remember(item.id) { mutableStateOf<String?>(null) }
     var selectedAddOnIds by remember(item.id) { mutableStateOf<List<String>>(emptyList()) }
@@ -1620,7 +1625,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                 0.0
             }
         }
-        base + ProductAddOnCatalog.surcharge(item.id, selectedAddOnIds)
+        base + ProductAddOnCatalog.surcharge(item, selectedAddOnIds)
     }
     val scrollState = rememberScrollState()
     val configuration = LocalConfiguration.current
@@ -1719,8 +1724,13 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                             leadingIcon = FluentIcons.menuItemIcon(item.id),
                                             onSelect = {
                                                 selectedFlavor = flavor
-                                                selectedVariant = null
-                                                currentStep = ProductConfigStep.Size
+                                                selectedVariant = if (item.variants.size == 1) item.variants.firstOrNull() else null
+                                                currentStep = when {
+                                                    item.variants.size > 1 -> ProductConfigStep.Size
+                                                    isCoffee -> ProductConfigStep.CoffeeOption
+                                                    hasAddOns -> ProductConfigStep.AddOns
+                                                    else -> ProductConfigStep.Size
+                                                }
                                             }
                                         )
                                     }
@@ -1805,7 +1815,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                         }
 
                         ProductConfigStep.AddOns -> {
-                            val addOnOptions = ProductAddOnCatalog.addOnsForItem(item.id)
+                            val addOnOptions = ProductAddOnCatalog.addOnsForItem(item)
                             ProductConfigStepHeader(
                                 title = item.name,
                                 subtitle = listOfNotNull(
@@ -1814,7 +1824,11 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                 ).joinToString(" · ").ifBlank { "Add-ons (optional)" },
                                 onBack = {
                                     selectedAddOnIds = emptyList()
-                                    currentStep = ProductConfigStep.Size
+                                    currentStep = if (item.flavors.isNotEmpty() && item.variants.size <= 1) {
+                                        ProductConfigStep.Flavor
+                                    } else {
+                                        ProductConfigStep.Size
+                                    }
                                 }
                             )
                             Column(
@@ -1828,7 +1842,7 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
                                             label = "${addOn.label} (+₱${String.format("%.0f", addOn.price)})",
                                             isSelected = isSelected,
                                             onSelect = {
-                                                selectedAddOnIds = if (ProductAddOnCatalog.allowsMultiple(item.id)) {
+                                                selectedAddOnIds = if (ProductAddOnCatalog.allowsMultiple(item)) {
                                                     if (isSelected) {
                                                         selectedAddOnIds - addOn.id
                                                     } else {
