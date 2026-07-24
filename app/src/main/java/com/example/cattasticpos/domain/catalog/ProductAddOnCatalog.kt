@@ -51,6 +51,7 @@ object ProductAddOnCatalog {
         val name = itemName?.lowercase().orEmpty()
 
         return when {
+            id == "bite_takeout_box" || cat == "cat_takeout" -> emptyList()
             id == "drink_soda" || id.contains("soda") || name.contains("soda") -> sodaAddOns
             id == "bite_takoyaki" || id.contains("takoyaki") || name.contains("takoyaki") -> takoyakiAddOns
             id.startsWith("buldak") || id.startsWith("sedaap") ||
