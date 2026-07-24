@@ -70,11 +70,6 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
-        val controller = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
-        controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-        controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
             val permissions = arrayOf(
                 android.Manifest.permission.BLUETOOTH_CONNECT,
@@ -159,15 +154,6 @@ class MainActivity : ComponentActivity() {
                 }
                 }
             }
-        }
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus) {
-            val controller = androidx.core.view.WindowInsetsControllerCompat(window, window.decorView)
-            controller.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-            controller.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     }
 }
