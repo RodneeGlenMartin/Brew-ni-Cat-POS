@@ -1,7 +1,6 @@
 package com.example.cattasticpos.ui.icons
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -33,8 +32,8 @@ object NoodleIcons {
                 strokeLineJoin = StrokeJoin.Round
             ) {
                 moveTo(3f, 11f)
-                cubicTo(3f, 16.5f, 7f, 20f, 12f, 20f)
-                cubicTo(17f, 20f, 21f, 16.5f, 21f, 11f)
+                curveTo(3f, 16.5f, 7f, 20f, 12f, 20f)
+                curveTo(17f, 20f, 21f, 16.5f, 21f, 11f)
                 lineTo(3f, 11f)
                 close()
             }
@@ -54,11 +53,11 @@ object NoodleIcons {
                 strokeLineCap = StrokeCap.Round
             ) {
                 moveTo(7f, 8f)
-                cubicTo(7.5f, 6.5f, 6.5f, 5f, 7f, 4f)
+                curveTo(7.5f, 6.5f, 6.5f, 5f, 7f, 4f)
                 moveTo(12f, 8f)
-                cubicTo(12.5f, 6.5f, 11.5f, 5f, 12f, 4f)
+                curveTo(12.5f, 6.5f, 11.5f, 5f, 12f, 4f)
                 moveTo(17f, 8f)
-                cubicTo(17.5f, 6.5f, 16.5f, 5f, 17f, 4f)
+                curveTo(17.5f, 6.5f, 16.5f, 5f, 17f, 4f)
             }
             // Chopsticks
             path(
@@ -93,8 +92,8 @@ object NoodleIcons {
                 strokeLineJoin = StrokeJoin.Round
             ) {
                 moveTo(2f, 12f)
-                cubicTo(2f, 17f, 6f, 20f, 11f, 20f)
-                cubicTo(16f, 20f, 20f, 17f, 20f, 12f)
+                curveTo(2f, 17f, 6f, 20f, 11f, 20f)
+                curveTo(16f, 20f, 20f, 17f, 20f, 12f)
                 lineTo(2f, 12f)
                 close()
             }
@@ -106,10 +105,10 @@ object NoodleIcons {
                 strokeLineJoin = StrokeJoin.Round
             ) {
                 moveTo(11f, 3f)
-                cubicTo(11f, 3f, 14f, 5.5f, 14f, 7.5f)
-                cubicTo(14f, 9f, 12.8f, 10f, 11f, 10f)
-                cubicTo(9.2f, 10f, 8f, 9f, 8f, 7.5f)
-                cubicTo(8f, 6.2f, 9.5f, 4.5f, 11f, 3f)
+                curveTo(11f, 3f, 14f, 5.5f, 14f, 7.5f)
+                curveTo(14f, 9f, 12.8f, 10f, 11f, 10f)
+                curveTo(9.2f, 10f, 8f, 9f, 8f, 7.5f)
+                curveTo(8f, 6.2f, 9.5f, 4.5f, 11f, 3f)
                 close()
             }
             // Noodle strand
@@ -119,9 +118,9 @@ object NoodleIcons {
                 strokeLineCap = StrokeCap.Round
             ) {
                 moveTo(5f, 10f)
-                cubicTo(5.5f, 8.5f, 7f, 9f, 8f, 8f)
+                curveTo(5.5f, 8.5f, 7f, 9f, 8f, 8f)
                 moveTo(14f, 8f)
-                cubicTo(15f, 9f, 16.5f, 8.5f, 17f, 10f)
+                curveTo(15f, 9f, 16.5f, 8.5f, 17f, 10f)
             }
         }.build()
     }
@@ -170,8 +169,8 @@ object NoodleIcons {
                 strokeLineCap = StrokeCap.Round
             ) {
                 moveTo(8f, 12f)
-                cubicTo(9f, 14f, 11f, 11f, 12f, 13f)
-                cubicTo(13f, 15f, 15f, 12f, 16f, 14f)
+                curveTo(9f, 14f, 11f, 11f, 12f, 13f)
+                curveTo(13f, 15f, 15f, 12f, 16f, 14f)
             }
         }.build()
     }
