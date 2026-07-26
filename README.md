@@ -17,6 +17,15 @@
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
 
+<p align="center">
+  <a href="https://www.facebook.com/profile.php?id=100084186931413">
+    <img alt="Brew ni Cat on Facebook" src="https://img.shields.io/badge/Facebook-Brew%20ni%20Cat-1877F2?logo=facebook&logoColor=white">
+  </a>
+  <a href="https://vt.tiktok.com/ZSQfGqNWc/">
+    <img alt="Brew ni Cat on TikTok" src="https://img.shields.io/badge/TikTok-Brew%20ni%20Cat-000000?logo=tiktok&logoColor=white">
+  </a>
+</p>
+
 ---
 
 ## What it is
@@ -263,6 +272,21 @@ An honest list, so nobody rediscovers these the hard way:
 - Bluetooth printing cannot be covered by automated tests.
 - 95 lint warnings remain (mostly `DefaultLocale` on `%.0f`, harmless in en/PHP locales). 0 errors, which is enforced.
 - `IMPLEMENTATION_SUMMARY.md`, `MULTIDEVICE_SYNC_GUIDE.md`, `QUICK_REFERENCE.md` and `SYNC_IMPLEMENTATION_COMPLETE.md` document the June 2026 sync work and are **partly out of date** — they predate authentication, the `remoteId` scheme and the current release pipeline. `RELEASE_INSTRUCTIONS.md` is current. Treat this README as authoritative where they disagree.
+
+---
+
+## The shop
+
+This POS runs the counter at Brew ni Cat — a cat-themed coffee shop in Kabacan, Philippines.
+
+| | |
+|---|---|
+| **Address** | Abellera Street, Poblacion, Kabacan, Philippines 9407 |
+| **Mobile** | [0976 630 4785](tel:+639766304785) |
+| **WhatsApp** | [+63 976 630 4785](https://wa.me/639766304785) |
+| **Email** | [popotpulido06@gmail.com](mailto:popotpulido06@gmail.com) |
+| **Facebook** | [Brew ni Cat](https://www.facebook.com/profile.php?id=100084186931413) |
+| **TikTok** | [Brew ni Cat](https://vt.tiktok.com/ZSQfGqNWc/) |
 
 ---
 
