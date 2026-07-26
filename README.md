@@ -277,11 +277,12 @@ An honest list, so nobody rediscovers these the hard way:
 
 ## The shop
 
-This POS runs the counter at Brew ni Cat — a cat-themed coffee shop in Kabacan, Philippines.
+This POS runs the counter at Brew ni Cat — a cat-themed coffee shop in Kabacan, Cotabato.
 
 | | |
 |---|---|
-| **Address** | Abellera Street, Poblacion, Kabacan, Philippines 9407 |
+| **Address** | Segundo St, Poblacion, Kabacan, Cotabato 9407, Philippines — beside Pulido Eatery |
+| **Find us** | [4R7G+9FC Kabacan](https://www.google.com/maps/search/?api=1&query=4R7G%2B9FC%20Kabacan%2C%20Cotabato) |
 | **Mobile** | [0976 630 4785](tel:+639766304785) |
 | **WhatsApp** | [+63 976 630 4785](https://wa.me/639766304785) |
 | **Email** | [popotpulido06@gmail.com](mailto:popotpulido06@gmail.com) |
