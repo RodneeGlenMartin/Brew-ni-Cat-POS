@@ -58,7 +58,9 @@ object ProductAddOnCatalog {
                 cat == "cat_buldak" || cat.contains("buldak") || cat.contains("sedaap") ||
                 name.contains("buldak") || name.contains("sedaap") || name.contains("samyang") -> buldakAddOns
             cat == "cat_bites" || id.startsWith("bite_") || id.contains("fries") || id.contains("nachos") || name.contains("fries") || name.contains("nachos") -> biteAddOns
-            cat == "cat_combos" || id.startsWith("combo_") || id.contains("combo") || name.contains("combo") -> comboAddOns
+            // The combo category really is seeded as "combos" (no cat_ prefix, unlike every other
+            // category); "cat_combos" was never a real id and matched nothing.
+            cat == "combos" || id.startsWith("combo_") || id.contains("combo") || name.contains("combo") -> comboAddOns
             else -> defaultFoodAddOns
         }
     }

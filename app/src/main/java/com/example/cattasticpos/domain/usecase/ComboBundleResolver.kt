@@ -6,6 +6,14 @@ import com.example.cattasticpos.domain.model.CartItem
  * Expands combo variants into component menu items for inventory deduction.
  */
 object ComboBundleResolver {
+    /**
+     * @param sizeVariantName must be the variant's **name** as it appears in the menu catalog
+     *   (e.g. "Small", "Nachos+Veggies+Meat"), not its id — [RecipeDeductionResolver] matches it
+     *   against `RecipeMapping.variantName`. Several entries below used the id, which happens to
+     *   be harmless today only because fries, nachos, soda and coffee all deduct through a base
+     *   (null-target) mapping that matches regardless. The moment anyone adds a size-specific
+     *   recipe row, an id here would silently stop deducting. CatalogConsistencyTest pins this.
+     */
     data class Component(
         val menuItemId: String,
         val sizeVariantName: String?,
@@ -28,11 +36,11 @@ object ComboBundleResolver {
             Component(COFFEE_COMPONENT_ID, "16oz", null, 1)
         ),
         "combo_2" to listOf(
-            Component("bite_fries", "small", null, 1),
+            Component("bite_fries", "Small", null, 1),
             Component("drink_soda", "12oz", null, 1)
         ),
         "combo_3" to listOf(
-            Component("bite_nachos", "nachos_veggies_meat", null, 1),
+            Component("bite_nachos", "Nachos+Veggies+Meat", null, 1),
             Component(COFFEE_COMPONENT_ID, "16oz", null, 1)
         ),
         "combo_4" to listOf(
@@ -44,11 +52,11 @@ object ComboBundleResolver {
             Component("drink_soda", "16oz", null, 2)
         ),
         "combo_6" to listOf(
-            Component("bite_fries", "medium", null, 1),
+            Component("bite_fries", "Medium", null, 1),
             Component(COFFEE_COMPONENT_ID, "12oz", null, 2)
         ),
         "combo_7" to listOf(
-            Component("bite_nachos", "nachos_veggies_meat", null, 1),
+            Component("bite_nachos", "Nachos+Veggies+Meat", null, 1),
             Component("drink_soda", "12oz", null, 2)
         ),
         "combo_8" to listOf(
@@ -62,7 +70,7 @@ object ComboBundleResolver {
         ),
         "combo_10" to listOf(
             Component("bite_takoyaki", "16pcs", null, 1),
-            Component("bite_fries", "jumbo", null, 1),
+            Component("bite_fries", "Jumbo", null, 1),
             Component("drink_soda", "12oz", null, 4)
         ),
         "combo_11" to listOf(
@@ -71,17 +79,17 @@ object ComboBundleResolver {
             Component(COFFEE_COMPONENT_ID, "16oz", null, 2)
         ),
         "combo_12" to listOf(
-            Component("bite_fries", "jumbo", null, 1),
-            Component("bite_nachos", "nachos_fries_meat_veggies", null, 1),
+            Component("bite_fries", "Jumbo", null, 1),
+            Component("bite_nachos", "Nachos+Fries+Meat+Veggies", null, 1),
             Component(COFFEE_COMPONENT_ID, "16oz", null, 4)
         ),
         "combo_13" to listOf(
-            Component("bite_fries", "jumbo", null, 1),
+            Component("bite_fries", "Jumbo", null, 1),
             Component(COFFEE_COMPONENT_ID, "16oz", null, 3),
             Component("drink_soda", "16oz", null, 3)
         ),
         "combo_14" to listOf(
-            Component("bite_fries", "jumbo", null, 1),
+            Component("bite_fries", "Jumbo", null, 1),
             Component("bite_takoyaki", "16pcs", null, 1),
             Component("drink_soda", "22oz", null, 2),
             Component(COFFEE_COMPONENT_ID, "22oz", null, 2)

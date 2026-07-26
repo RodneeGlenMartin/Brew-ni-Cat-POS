@@ -16,9 +16,12 @@ lifecycle = "2.8.7"
 activityCompose = "1.9.3"
 okhttp = "4.12.0"
 junit = "4.13.2"
+jsonUnitTest = "20240303"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
+# Real org.json on the unit-test classpath; android.jar only ships stubs that throw.
+json-unit-test = { group = "org.json", name = "json", version.ref = "jsonUnitTest" }
 # AndroidX Core
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "coreSplashscreen" }

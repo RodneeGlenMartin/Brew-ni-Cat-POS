@@ -88,8 +88,13 @@ internal object DatabaseSeeder {
                     InventoryEntity("inv_cups", "Cups", "pcs", 100.0, 20.0),
                     InventoryEntity("inv_takoyaki", "Takoyaki Balls", "pcs", 100.0, 20.0),
                     InventoryEntity("inv_shrimp", "Shrimp Takoyaki", "pcs", 100.0, 20.0),
-                    InventoryEntity("inv_fries", "Potato Fries", "grams", 100.0, 10.0),
-                    InventoryEntity("inv_nachos", "Nacho Chips", "grams", 100.0, 10.0),
+                    // Gram-based stock, so the placeholder 100.0 used by the pcs/pack items makes
+                    // no sense here: one serving deducts 150 g, which drove a brand-new install
+                    // straight to negative stock and a permanent low-stock badge on the very
+                    // first fries or nachos sale. Seeded at 5 kg with a 1 kg reorder point;
+                    // the owner sets real figures on the Inventory screen.
+                    InventoryEntity("inv_fries", "Potato Fries", "grams", 5000.0, 1000.0),
+                    InventoryEntity("inv_nachos", "Nacho Chips", "grams", 5000.0, 1000.0),
                     InventoryEntity("inv_nata_coco", "Nata de coco", "pcs", 100.0, 20.0),
                     InventoryEntity("inv_rainbow_jelly", "Rainbow Jelly", "pcs", 100.0, 20.0),
                     InventoryEntity("inv_buldak_carbo", "Buldak Carbo Samyang", "pack", 100.0, 20.0),
