@@ -2,6 +2,7 @@ package com.example.cattasticpos.domain.usecase
 
 import com.example.cattasticpos.domain.model.CartItem
 import com.example.cattasticpos.domain.model.CartKey
+import com.example.cattasticpos.domain.model.CartLineSelection
 import com.example.cattasticpos.domain.model.Item
 import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.OrderItem
@@ -36,15 +37,24 @@ object OrderCartMapper {
         }
     }
 
+    private val PERCENT_LABEL = Regex("""^(\d+(?:\.\d+)?)\s*%""")
+
+    /**
+     * Rebuilds the strategy behind a stored [Order.discountLabel] so the receipt editor reopens
+     * an order with the discount it was rung up under.
+     *
+     * The free-order label is "100% Free Order Coupon Applied", which `startsWith("10")` matched
+     * before the free branch was ever reached — reopening a free order in the editor turned it
+     * into a 10% discount and saving it charged the customer 90% of the bill. Free is checked
+     * first now, and the percentage is parsed rather than prefix-matched.
+     */
     fun discountStrategyFromLabel(label: String): DiscountStrategy {
-        return when {
-            label.equals("None", ignoreCase = true) -> NoDiscountStrategy()
-            label.equals("5% OFF", ignoreCase = true) -> FivePercentDiscountStrategy()
-            label.startsWith("10") -> PercentageDiscountStrategy(10.0)
-            label.startsWith("20") -> PercentageDiscountStrategy(20.0)
-            label.contains("Free", ignoreCase = true) -> FreeOrderDiscountStrategy()
-            else -> NoDiscountStrategy()
-        }
+        val normalized = label.trim()
+        if (normalized.contains("Free", ignoreCase = true)) return FreeOrderDiscountStrategy()
+        if (normalized.isBlank() || normalized.equals("None", ignoreCase = true)) return NoDiscountStrategy()
+        val pct = PERCENT_LABEL.find(normalized)?.groupValues?.get(1)?.toDoubleOrNull()
+            ?: return NoDiscountStrategy()
+        return if (pct == 5.0) FivePercentDiscountStrategy() else PercentageDiscountStrategy(pct)
     }
 
     fun previewOrder(
@@ -63,11 +73,16 @@ object OrderCartMapper {
 
     private fun OrderItem.toCartItem(menu: List<Item>): CartItem? {
         val menuItem = menu.find { it.id == itemId }
+        // The stored unitPrice already includes any add-on surcharge, but CartItem.unitPrice adds
+        // the surcharge back on top of the variant's base price. Using unitPrice as the base for
+        // a variant the menu no longer has (renamed/removed by a catalog update) therefore
+        // charged every add-on twice as soon as the order was reopened in the editor.
+        val addOnSurcharge = CartLineSelection.parse(flavor, itemId).addOnSurcharge(itemId)
         val variant = menuItem?.variants?.find { it.id == variantId }
             ?: Variant(
                 id = variantId,
                 name = variantName,
-                basePrice = unitPrice,
+                basePrice = (unitPrice - addOnSurcharge).coerceAtLeast(0.0),
                 priceByFlavor = emptyMap()
             )
         val item = menuItem ?: Item(

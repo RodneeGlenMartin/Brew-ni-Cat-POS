@@ -588,9 +588,11 @@ fun EditRawMaterialDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
         confirmButton = {
             Button(onClick = {
-                val stock = stockStr.toDoubleOrNull() ?: 0.0
-                val thresh = threshStr.toDoubleOrNull() ?: 0.0
-                if (name.isNotBlank() && unit.isNotBlank()) {
+                // A blank or mistyped field used to fall back to 0.0, so saving an edit with
+                // the stock box cleared silently zeroed that raw material's stock.
+                val stock = stockStr.toDoubleOrNull()
+                val thresh = threshStr.toDoubleOrNull()
+                if (name.isNotBlank() && unit.isNotBlank() && stock != null && thresh != null) {
                     onSave(name, unit, stock, thresh)
                 }
             }) {
@@ -624,9 +626,11 @@ fun AddRawMaterialDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
         confirmButton = {
             Button(onClick = {
-                val stock = stockStr.toDoubleOrNull() ?: 0.0
-                val thresh = threshStr.toDoubleOrNull() ?: 0.0
-                if (name.isNotBlank() && unit.isNotBlank()) {
+                // A blank or mistyped field used to fall back to 0.0, so saving an edit with
+                // the stock box cleared silently zeroed that raw material's stock.
+                val stock = stockStr.toDoubleOrNull()
+                val thresh = threshStr.toDoubleOrNull()
+                if (name.isNotBlank() && unit.isNotBlank() && stock != null && thresh != null) {
                     onSave(name, unit, stock, thresh)
                 }
             }) {
