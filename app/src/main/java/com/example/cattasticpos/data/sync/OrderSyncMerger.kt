@@ -75,17 +75,28 @@ object OrderSyncMerger {
                     )
                 }.onFailure { Log.e(TAG, "Inventory restore on remote void failed for $remoteId", it) }
             }
-            if (local.isVoided != isVoided ||
-                local.isServed != isServed ||
-                local.syncStatus != "SYNCED" ||
+
+            // A PENDING row carries a local change that has not reached the cloud yet (the
+            // upload failed, or it happened after this sync run's upload phase). Reconciling it
+            // to cloud state here used to erase that change AND mark it SYNCED, so it was never
+            // retried. Keep it PENDING and let the upload phase publish local truth instead.
+            // Voids are the one exception: they are monotonic, so a remote void always sticks.
+            val hasUnsyncedLocalChange = local.syncStatus == "PENDING"
+            val mergedIsVoided = if (hasUnsyncedLocalChange) local.isVoided || isVoided else isVoided
+            val mergedIsServed = if (hasUnsyncedLocalChange) local.isServed else isServed
+            val mergedStatus = if (hasUnsyncedLocalChange) local.syncStatus else "SYNCED"
+
+            if (local.isVoided != mergedIsVoided ||
+                local.isServed != mergedIsServed ||
+                local.syncStatus != mergedStatus ||
                 local.remoteId != remoteId
             ) {
                 dao.updateOrderEntity(
                     local.copy(
-                        isVoided = isVoided,
-                        isServed = isServed,
-                        syncStatus = "SYNCED",
-                        lastSyncedAt = now,
+                        isVoided = mergedIsVoided,
+                        isServed = mergedIsServed,
+                        syncStatus = mergedStatus,
+                        lastSyncedAt = if (hasUnsyncedLocalChange) local.lastSyncedAt else now,
                         remoteId = remoteId
                     )
                 )

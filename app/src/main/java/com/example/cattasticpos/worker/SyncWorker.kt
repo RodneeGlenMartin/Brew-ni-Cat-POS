@@ -14,7 +14,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
-import kotlin.math.absoluteValue
 import kotlinx.coroutines.flow.first
 
 class SyncWorker(
@@ -27,9 +26,29 @@ class SyncWorker(
         private const val TAG = "SyncWorker"
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
 
+        /**
+         * Number of device buckets. Capped at 1e6 on purpose: [getSupabaseOrderItemId] multiplies
+         * the order id by another 1000, so `buckets * 1e9 * 1000` has to stay inside Long —
+         * widening this overflows every order-item id.
+         */
+        private const val DEVICE_BUCKETS = 1_000_000L
+
+        /**
+         * Globally-unique cloud id for a local order: `deviceBucket * 1e9 + localId`.
+         *
+         * Folds the device id with 64-bit FNV-1a instead of [String.hashCode]. The old version
+         * used `hashCode().absoluteValue`, which returns a *negative* number for
+         * [Int.MIN_VALUE] and would have minted a negative order id. [OrderSyncMerger] recovers
+         * the local id with `remoteId % 1e9`, so the multiplier must not change.
+         */
         fun getSupabaseOrderId(deviceId: String, localId: Long): Long {
-            val deviceHash = deviceId.hashCode().absoluteValue % 1_000_000L
-            return (deviceHash * 1_000_000_000L) + localId
+            var hash = -0x340d631b7bdddcdbL // FNV-1a 64-bit offset basis
+            for (char in deviceId) {
+                hash = hash xor char.code.toLong()
+                hash *= 0x100000001b3L // FNV-1a 64-bit prime
+            }
+            val deviceBucket = Math.floorMod(hash, DEVICE_BUCKETS)
+            return (deviceBucket * 1_000_000_000L) + localId
         }
 
         fun getSupabaseOrderItemId(supabaseOrderId: Long, itemIndex: Int): Long {
@@ -50,6 +69,104 @@ class SyncWorker(
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
+
+    /**
+     * Upserts [payload] into [table]. Returns false (and logs the body) on any non-2xx.
+     *
+     * The catalog download phase delete-mirrors the cloud onto Room, so a silently-swallowed
+     * upload failure used to delete freshly-added local menu rows on the very next pass. Every
+     * caller now gates its delete-mirror on this result.
+     */
+    private fun upsertCatalog(
+        supabaseUrl: String,
+        supabaseKey: String,
+        accessToken: String,
+        table: String,
+        payload: JSONArray
+    ): Boolean {
+        if (payload.length() == 0) return true
+        val request = Request.Builder()
+            .url("$supabaseUrl/rest/v1/$table")
+            .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("apikey", supabaseKey)
+            .header("Authorization", "Bearer $accessToken")
+            .header("Prefer", "resolution=merge-duplicates")
+            .header("Content-Type", "application/json")
+            .build()
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Log.e(TAG, "Upload to $table failed: ${response.code} - ${response.body?.string().orEmpty()}")
+                    false
+                } else {
+                    true
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Upload to $table errored", e)
+            false
+        }
+    }
+
+    /**
+     * Deletes the cloud line items for [supabaseOrderId] and re-uploads [items] in their place.
+     * Returns false when any leg fails so the caller can leave the order PENDING and retry.
+     */
+    private fun replaceRemoteOrderItems(
+        supabaseUrl: String,
+        supabaseKey: String,
+        accessToken: String,
+        supabaseOrderId: Long,
+        items: List<OrderItemEntity>
+    ): Boolean {
+        val deleteRequest = Request.Builder()
+            .url("$supabaseUrl/rest/v1/order_items?order_id=eq.$supabaseOrderId")
+            .delete()
+            .header("apikey", supabaseKey)
+            .header("Authorization", "Bearer $accessToken")
+            .build()
+        client.newCall(deleteRequest).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.e(TAG, "Failed to clear order_items for $supabaseOrderId: ${response.code}")
+                return false
+            }
+        }
+
+        if (items.isEmpty()) return true
+
+        val itemsArray = JSONArray()
+        items.forEachIndexed { index, item ->
+            itemsArray.put(
+                JSONObject().apply {
+                    put("id", getSupabaseOrderItemId(supabaseOrderId, index))
+                    put("order_id", supabaseOrderId)
+                    put("item_id", item.itemId)
+                    put("item_name", item.itemName)
+                    put("variant_id", item.variantId)
+                    put("variant_name", item.variantName)
+                    put("flavor", item.flavor ?: JSONObject.NULL)
+                    put("quantity", item.quantity)
+                    put("unit_price", item.unitPrice)
+                    put("total_price", item.totalPrice)
+                }
+            )
+        }
+        val insertRequest = Request.Builder()
+            .url("$supabaseUrl/rest/v1/order_items")
+            .post(itemsArray.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .header("apikey", supabaseKey)
+            .header("Authorization", "Bearer $accessToken")
+            .header("Prefer", "resolution=merge-duplicates")
+            .header("Content-Type", "application/json")
+            .build()
+        client.newCall(insertRequest).execute().use { response ->
+            if (!response.isSuccessful) {
+                Log.e(TAG, "Failed to re-upload order_items for $supabaseOrderId: ${response.code}")
+                return false
+            }
+        }
+        return true
+    }
 
     override suspend fun doWork(): Result {
         val app = applicationContext as CattasticPosApp
@@ -79,32 +196,23 @@ class SyncWorker(
             try {
                 // 1. Upload Local Categories
                 val categories = database.menuDao().getCategories().first()
-                if (categories.isNotEmpty()) {
-                    val catArray = JSONArray()
-                    categories.forEach { cat ->
-                        val catJson = JSONObject().apply {
+                val catArray = JSONArray()
+                categories.forEach { cat ->
+                    catArray.put(
+                        JSONObject().apply {
                             put("id", cat.id)
                             put("name", cat.name)
                         }
-                        catArray.put(catJson)
-                    }
-                    val catRequest = Request.Builder()
-                        .url("$supabaseUrl/rest/v1/categories")
-                        .post(catArray.toString().toRequestBody(JSON_MEDIA_TYPE))
-                        .header("apikey", supabaseKey)
-                        .header("Authorization", "Bearer $accessToken")
-                        .header("Prefer", "resolution=merge-duplicates")
-                        .header("Content-Type", "application/json")
-                        .build()
-                    client.newCall(catRequest).execute().close()
+                    )
                 }
+                val categoriesUploaded = upsertCatalog(supabaseUrl, supabaseKey, accessToken, "categories", catArray)
 
                 // 2. Upload Local Items
                 val items = database.menuDao().getItems().first()
-                if (items.isNotEmpty()) {
-                    val itemsArray = JSONArray()
-                    items.forEach { item ->
-                        val itemJson = JSONObject().apply {
+                val itemsArray = JSONArray()
+                items.forEach { item ->
+                    itemsArray.put(
+                        JSONObject().apply {
                             put("id", item.id)
                             put("category_id", item.categoryId)
                             put("name", item.name)
@@ -112,75 +220,48 @@ class SyncWorker(
                             put("variants_json", item.variantsJson)
                             put("is_available", true)
                         }
-                        itemsArray.put(itemJson)
-                    }
-                    val itemsRequest = Request.Builder()
-                        .url("$supabaseUrl/rest/v1/items")
-                        .post(itemsArray.toString().toRequestBody(JSON_MEDIA_TYPE))
-                        .header("apikey", supabaseKey)
-                        .header("Authorization", "Bearer $accessToken")
-                        .header("Prefer", "resolution=merge-duplicates")
-                        .header("Content-Type", "application/json")
-                        .build()
-                    client.newCall(itemsRequest).execute().close()
+                    )
                 }
+                val itemsUploaded = upsertCatalog(supabaseUrl, supabaseKey, accessToken, "items", itemsArray)
 
                 // 3. Upload Local Inventory
                 val inventory = database.inventoryDao().getAllInventory().first()
-                if (inventory.isNotEmpty()) {
-                    val invArray = JSONArray()
-                    inventory.forEach { inv ->
-                        val invJson = JSONObject().apply {
+                val invArray = JSONArray()
+                inventory.forEach { inv ->
+                    invArray.put(
+                        JSONObject().apply {
                             put("id", inv.id)
                             put("item_name", inv.itemName)
                             put("unit", inv.unit)
                             put("current_stock", inv.currentStock)
                             put("reorder_threshold", inv.reorderThreshold)
                         }
-                        invArray.put(invJson)
-                    }
-                    val invRequest = Request.Builder()
-                        .url("$supabaseUrl/rest/v1/inventory")
-                        .post(invArray.toString().toRequestBody(JSON_MEDIA_TYPE))
-                        .header("apikey", supabaseKey)
-                        .header("Authorization", "Bearer $accessToken")
-                        .header("Prefer", "resolution=merge-duplicates")
-                        .header("Content-Type", "application/json")
-                        .build()
-                    client.newCall(invRequest).execute().close()
+                    )
                 }
+                val inventoryUploaded = upsertCatalog(supabaseUrl, supabaseKey, accessToken, "inventory", invArray)
 
                 // 4. Upload Local Recipe Mappings
                 val recipes = database.recipeDao().getAllMappingsOnce()
-                if (recipes.isNotEmpty()) {
-                    val recArray = JSONArray()
-                    recipes.forEach { rec ->
-                        val recJson = JSONObject().apply {
+                val recArray = JSONArray()
+                recipes.forEach { rec ->
+                    recArray.put(
+                        JSONObject().apply {
                             put("id", rec.id)
                             put("menu_item_id", rec.menuItemId)
                             put("size_variant_name", rec.variantName ?: JSONObject.NULL)
                             put("inventory_item_id", rec.inventoryItemId)
                             put("deduction_quantity", rec.deductionQuantity)
                         }
-                        recArray.put(recJson)
-                    }
-                    val recRequest = Request.Builder()
-                        .url("$supabaseUrl/rest/v1/recipe_mappings")
-                        .post(recArray.toString().toRequestBody(JSON_MEDIA_TYPE))
-                        .header("apikey", supabaseKey)
-                        .header("Authorization", "Bearer $accessToken")
-                        .header("Prefer", "resolution=merge-duplicates")
-                        .header("Content-Type", "application/json")
-                        .build()
-                    client.newCall(recRequest).execute().close()
+                    )
                 }
+                val recipesUploaded = upsertCatalog(supabaseUrl, supabaseKey, accessToken, "recipe_mappings", recArray)
 
                 // 5. Upload Local Expenses (recorded on cashier terminals)
                 val expenses = database.expenseDao().getAllExpensesOnce()
-                if (expenses.isNotEmpty()) {
-                    val expArray = JSONArray()
-                    expenses.forEach { exp ->
-                        val expJson = JSONObject().apply {
+                val expArray = JSONArray()
+                expenses.forEach { exp ->
+                    expArray.put(
+                        JSONObject().apply {
                             put("id", exp.id)
                             put("timestamp", exp.timestamp)
                             put("description", exp.description)
@@ -188,18 +269,9 @@ class SyncWorker(
                             put("recorded_by", exp.recordedBy)
                             put("device_id", deviceId)
                         }
-                        expArray.put(expJson)
-                    }
-                    val expRequest = Request.Builder()
-                        .url("$supabaseUrl/rest/v1/expenses")
-                        .post(expArray.toString().toRequestBody(JSON_MEDIA_TYPE))
-                        .header("apikey", supabaseKey)
-                        .header("Authorization", "Bearer $accessToken")
-                        .header("Prefer", "resolution=merge-duplicates")
-                        .header("Content-Type", "application/json")
-                        .build()
-                    client.newCall(expRequest).execute().close()
+                    )
                 }
+                upsertCatalog(supabaseUrl, supabaseKey, accessToken, "expenses", expArray)
 
                 // ==========================================
                 // DOWNLOAD & SYNC CLOUD CHANGES TO DEVICE
@@ -234,7 +306,13 @@ class SyncWorker(
                                 if (changed.isNotEmpty()) {
                                     database.menuDao().insertCategories(changed)
                                 }
-                                val toDelete = localById.keys.filter { it !in downloadedIds }
+                                // Only mirror deletions when our own rows definitely reached the
+                                // cloud; otherwise "absent upstream" just means the upload failed.
+                                val toDelete = if (categoriesUploaded) {
+                                    localById.keys.filter { it !in downloadedIds }
+                                } else {
+                                    emptyList()
+                                }
                                 if (toDelete.isNotEmpty()) {
                                     database.menuDao().deleteCategoriesByIds(toDelete)
                                 }
@@ -273,7 +351,11 @@ class SyncWorker(
                                 if (changed.isNotEmpty()) {
                                     database.menuDao().insertItems(changed)
                                 }
-                                val toDelete = localById.keys.filter { it !in downloadedIds }
+                                val toDelete = if (itemsUploaded) {
+                                    localById.keys.filter { it !in downloadedIds }
+                                } else {
+                                    emptyList()
+                                }
                                 if (toDelete.isNotEmpty()) {
                                     database.menuDao().deleteItemsByIds(toDelete)
                                 }
@@ -312,7 +394,11 @@ class SyncWorker(
                                 if (changed.isNotEmpty()) {
                                     database.inventoryDao().insertInventoryItems(changed)
                                 }
-                                val toDelete = localById.keys.filter { it !in downloadedIds }
+                                val toDelete = if (inventoryUploaded) {
+                                    localById.keys.filter { it !in downloadedIds }
+                                } else {
+                                    emptyList()
+                                }
                                 if (toDelete.isNotEmpty()) {
                                     database.inventoryDao().deleteInventoryItemsByIds(toDelete)
                                 }
@@ -351,7 +437,11 @@ class SyncWorker(
                                 if (changed.isNotEmpty()) {
                                     database.recipeDao().insertMappings(changed)
                                 }
-                                val toDelete = localById.keys.filter { it !in downloadedIds }
+                                val toDelete = if (recipesUploaded) {
+                                    localById.keys.filter { it !in downloadedIds }
+                                } else {
+                                    emptyList()
+                                }
                                 if (toDelete.isNotEmpty()) {
                                     database.recipeDao().deleteMappingsByIds(toDelete)
                                 }
@@ -425,12 +515,24 @@ class SyncWorker(
                         val items = orderWithItems.items
 
                         if (order.remoteId != null) {
-                            // Already present in the cloud (an own order re-synced, or a foreign
-                            // order voided locally). Only push the mutable status fields so we
-                            // never clobber the original device_id / totals / item rows.
+                            // Already present in the cloud. For a FOREIGN order only the status
+                            // fields may be touched — the owning device stays authoritative for
+                            // its totals and line items. For one of OUR OWN orders the totals can
+                            // legitimately have changed (receipt editor), and pushing status only
+                            // meant those edits never left the tablet.
+                            val isOwnOrder = order.deviceId == deviceId
                             val patchJson = JSONObject().apply {
                                 put("is_voided", order.isVoided)
                                 put("is_served", order.isServed)
+                                if (isOwnOrder) {
+                                    put("subtotal", order.subtotal)
+                                    put("discount_deduction", order.discountDeduction)
+                                    put("discount_label", order.discountLabel)
+                                    put("total", order.total)
+                                    put("payment_method", order.paymentMethod)
+                                    put("payment_reference", order.paymentReference ?: JSONObject.NULL)
+                                    put("table_label", order.tableLabel ?: JSONObject.NULL)
+                                }
                             }
                             val patchRequest = Request.Builder()
                                 .url("$supabaseUrl/rest/v1/orders?id=eq.${order.remoteId}")
@@ -448,10 +550,24 @@ class SyncWorker(
                             }
                             patchResponse.close()
 
+                            // Line items are replaced wholesale: an edit can drop items, and the
+                            // index-derived ids would otherwise leave the removed rows orphaned.
+                            if (isOwnOrder && !replaceRemoteOrderItems(
+                                    supabaseUrl = supabaseUrl,
+                                    supabaseKey = supabaseKey,
+                                    accessToken = accessToken,
+                                    supabaseOrderId = order.remoteId,
+                                    items = items
+                                )
+                            ) {
+                                Log.e(TAG, "Failed to replace order items for ${order.id} (remote ${order.remoteId}).")
+                                continue
+                            }
+
                             database.orderDao().updateOrderEntity(
                                 order.copy(syncStatus = "SYNCED", lastSyncedAt = System.currentTimeMillis())
                             )
-                            Log.d(TAG, "Patched order ${order.id} status to cloud (remote ${order.remoteId}).")
+                            Log.d(TAG, "Patched order ${order.id} to cloud (remote ${order.remoteId}, own=$isOwnOrder).")
                             continue
                         }
 

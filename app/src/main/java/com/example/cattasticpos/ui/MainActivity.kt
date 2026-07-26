@@ -55,9 +55,15 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        val connectGranted = permissions[android.Manifest.permission.BLUETOOTH_CONNECT] ?: false
-        val scanGranted = permissions[android.Manifest.permission.BLUETOOTH_SCAN] ?: false
-        if (!connectGranted || !scanGranted) {
+        // Only warn about Bluetooth — POST_NOTIFICATIONS is requested in the same batch but is
+        // optional (it only gates the low-stock alert), so a refusal must not nag the cashier.
+        val bluetoothAsked = permissions.keys.any {
+            it == android.Manifest.permission.BLUETOOTH_CONNECT ||
+                it == android.Manifest.permission.BLUETOOTH_SCAN
+        }
+        val connectGranted = permissions[android.Manifest.permission.BLUETOOTH_CONNECT] ?: true
+        val scanGranted = permissions[android.Manifest.permission.BLUETOOTH_SCAN] ?: true
+        if (bluetoothAsked && (!connectGranted || !scanGranted)) {
             android.widget.Toast.makeText(
                 this,
                 "Bluetooth permissions are required for receipt printing.",
@@ -69,18 +75,23 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            val permissions = arrayOf(
-                android.Manifest.permission.BLUETOOTH_CONNECT,
-                android.Manifest.permission.BLUETOOTH_SCAN
-            )
-            val missingPermissions = permissions.filter {
-                androidx.core.content.ContextCompat.checkSelfPermission(this, it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+
+        val permissions = buildList {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                add(android.Manifest.permission.BLUETOOTH_CONNECT)
+                add(android.Manifest.permission.BLUETOOTH_SCAN)
             }
-            if (missingPermissions.isNotEmpty()) {
-                requestPermissionLauncher.launch(missingPermissions.toTypedArray())
+            // Declared in the manifest but never requested, so LowStockCheckWorker's alert was
+            // dropped by the system on every Android 13+ tablet.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                add(android.Manifest.permission.POST_NOTIFICATIONS)
             }
+        }
+        val missingPermissions = permissions.filter {
+            androidx.core.content.ContextCompat.checkSelfPermission(this, it) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+        if (missingPermissions.isNotEmpty()) {
+            requestPermissionLauncher.launch(missingPermissions.toTypedArray())
         }
 
         setContent {

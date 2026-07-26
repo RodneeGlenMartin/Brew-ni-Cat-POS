@@ -84,6 +84,7 @@ fun HistoryScreen(
     modifier: Modifier = Modifier
 ) {
     val orders by viewModel.ordersState.collectAsStateWithLifecycle()
+    val orderCount by viewModel.orderCountState.collectAsStateWithLifecycle()
     val grossSales by viewModel.grossSalesState.collectAsStateWithLifecycle()
     val discounts by viewModel.discountsState.collectAsStateWithLifecycle()
     val netRevenue by viewModel.netRevenueState.collectAsStateWithLifecycle()
@@ -179,9 +180,7 @@ fun HistoryScreen(
             val totalRevenueToday = remember(todayOrders) {
                 todayOrders.sumOf { it.total }
             }
-            val totalOrdersProcessed = remember(orders) {
-                orders.size
-            }
+            val totalOrdersProcessed = orderCount
 
             val startingFloat = appConfig?.startingCashFloat
                 ?: com.example.cattasticpos.data.local.entity.AppConfigEntity.DEFAULT_STARTING_CASH_FLOAT
@@ -191,7 +190,10 @@ fun HistoryScreen(
             val totalGcash = gcashSales ?: 0.0
             val totalSales = grossSales ?: 0.0
             val expenses = totalExpenses ?: 0.0
-            val profits = totalSales - expenses
+            // Net has to start from revenue actually collected (SUM of order totals), not gross
+            // subtotals — starting from gross silently added every discount back into profit.
+            val netSales = netRevenue ?: 0.0
+            val profits = netSales - expenses
             val cashDrawer = startingFloat + totalCash - expenses
 
             val zReadingInteractionSource = remember { MutableInteractionSource() }
@@ -258,7 +260,7 @@ fun HistoryScreen(
                                         cashDrawer = cashDrawer,
                                         profits = profits,
                                         topSellingItem = topSellingItem,
-                                        orderCount = orders.size
+                                        orderCount = orderCount
                                     )
                                 )
                             },

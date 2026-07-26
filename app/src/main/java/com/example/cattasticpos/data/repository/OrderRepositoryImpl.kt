@@ -17,7 +17,13 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 class OrderRepositoryImpl(
     private val database: PosDatabase,
-    private val authManager: com.example.cattasticpos.service.SupabaseAuthManager? = null
+    private val authManager: com.example.cattasticpos.service.SupabaseAuthManager? = null,
+    // Application-lifetime scope for the fire-and-forget void PATCH. Previously each void
+    // spun up a throwaway CoroutineScope, which is never cancelled and leaks its job.
+    private val externalScope: kotlinx.coroutines.CoroutineScope =
+        kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO
+        )
 ) : OrderRepository {
 
     private val orderDao: OrderDao = database.orderDao()
@@ -134,6 +140,10 @@ class OrderRepositoryImpl(
         }
     }
 
+    override fun getOrderCountForDay(startOfDay: Long, endOfDay: Long): Flow<Int> {
+        return orderDao.getOrderCountForDay(startOfDay, endOfDay)
+    }
+
     override fun getGrossSalesForDay(startOfDay: Long, endOfDay: Long): Flow<Double?> {
         return orderDao.getGrossSalesForDay(startOfDay, endOfDay)
     }
@@ -178,7 +188,7 @@ class OrderRepositoryImpl(
         // voiding an order that originated on another device. Orders not yet uploaded
         // (remoteId == null) carry is_voided=true on their first POST via SyncWorker instead.
         val remoteId = existingOrder.order.remoteId ?: return
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+        externalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val config = database.appConfigDao().getAppConfigOnce() ?: return@launch
                 val supabaseUrl = config.supabaseUrl.trim()

@@ -13,7 +13,7 @@ android {
         applicationId = "com.example.cattasticpos"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10121
+        versionCode = 10122
         versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -107,6 +107,9 @@ dependencies {
 
     // OkHttp
     implementation(libs.okhttp)
+
+    // Unit tests for the pure pricing / recipe / sync-id logic
+    testImplementation(libs.junit)
 
     // Compose Unstyled (requires Kotlin 2.3+ KSP — wrappers in ui/components/unstyled until toolchain catches up)
     // implementation(libs.compose.unstyled.theming)

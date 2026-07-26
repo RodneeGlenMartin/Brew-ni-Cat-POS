@@ -296,6 +296,9 @@ function Dashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
+    // Mount-only on purpose: the fetchers are stable for the lifetime of the page, and listing
+    // them here would tear down and re-open the realtime channel on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchData = async () => {

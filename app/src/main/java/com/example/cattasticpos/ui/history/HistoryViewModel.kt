@@ -262,6 +262,13 @@ class HistoryViewModel(
         return calendar.timeInMillis
     }
 
+    /** Real number of orders in the selected range — [ordersState] is only the loaded pages. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val orderCountState: StateFlow<Int> = combine(_startDate, _endDate) { start, end ->
+        start to end
+    }.flatMapLatest { (start, end) -> orderRepository.getOrderCountForDay(start, end) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val grossSalesState: StateFlow<Double?> = combine(_startDate, _endDate) { start, end ->
         start to end
@@ -433,6 +440,8 @@ class HistoryViewModel(
         viewModelScope.launch {
             val order = orderRepository.getOrderById(orderId) ?: return@launch
             orderRepository.setOrderServed(orderId, !order.isServed)
+            // The row is PENDING now; push it before the next catch-up download runs.
+            com.example.cattasticpos.worker.SyncWorker.triggerImmediateSync(application)
         }
     }
 
@@ -440,6 +449,7 @@ class HistoryViewModel(
         viewModelScope.launch {
             val result = updateOrderUseCase(orderId, cartItems, discountStrategy)
             _exportMessage.value = if (result.isSuccess) {
+                com.example.cattasticpos.worker.SyncWorker.triggerImmediateSync(application)
                 "Receipt #${String.format("%04d", orderId)} updated."
             } else {
                 "Update failed: ${result.exceptionOrNull()?.message}"

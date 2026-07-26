@@ -95,6 +95,13 @@ interface OrderDao {
     @Query("SELECT itemName, SUM(quantity) as totalQuantity FROM order_items JOIN orders ON order_items.orderId = orders.id WHERE orders.timestamp >= :startOfDay AND orders.timestamp <= :endOfDay AND orders.isVoided = 0 GROUP BY itemName ORDER BY totalQuantity DESC LIMIT 1")
     fun getTopSellingItemForDay(startOfDay: Long, endOfDay: Long): Flow<TopSellingItemResult?>
 
+    /**
+     * Counts every order in the range. The history list is paginated ([observeOrdersPage]), so
+     * its size only ever reflects the pages loaded so far — the Z-Reading needs the real total.
+     */
+    @Query("SELECT COUNT(*) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND isVoided = 0")
+    fun getOrderCountForDay(startOfDay: Long, endOfDay: Long): Flow<Int>
+
     @Query("SELECT SUM(subtotal) FROM orders WHERE timestamp >= :startOfDay AND timestamp <= :endOfDay AND isVoided = 0")
     fun getGrossSalesForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>
 
@@ -131,7 +138,12 @@ interface OrderDao {
         deleteOrderEntity(orderId)
     }
 
-    @Query("UPDATE orders SET isServed = :isServed WHERE id = :orderId")
+    /**
+     * Also re-queues the row for upload. Without the PENDING flip the served state stayed
+     * local forever, and the next catch-up download reconciled it straight back to the
+     * cloud's stale is_served value.
+     */
+    @Query("UPDATE orders SET isServed = :isServed, syncStatus = 'PENDING' WHERE id = :orderId")
     suspend fun setOrderServed(orderId: Long, isServed: Boolean)
 
     @Update

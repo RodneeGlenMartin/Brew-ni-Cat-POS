@@ -240,15 +240,20 @@ class SupabaseRealtimeManager(private val context: Context) {
                 if (jsonArray.length() == 0) return@launch
 
                 // Live event: route through the shared merger so the local-id mapping matches the
-                // historical-pull and periodic catch-up paths exactly. This is a live void/insert,
-                // so inventory IS restocked the first time we see a void here.
+                // historical-pull and periodic catch-up paths exactly.
+                //
+                // Inventory is NOT restored here. The device that performed the void already
+                // restocked locally and pushed the corrected levels up; restoring again on every
+                // other terminal double-counted the stock, and whichever tablet uploaded last
+                // wrote that inflated number back to the cloud. Correct levels arrive with the
+                // regular inventory sync instead — the same reasoning the bulk paths already use.
                 com.example.cattasticpos.data.sync.OrderSyncMerger.mergeRemoteOrder(
                     database = database,
                     recipeRepository = app.container.recipeRepository,
                     inventoryRepository = app.container.inventoryRepository,
                     orderJson = jsonArray.getJSONObject(0),
                     localDeviceId = localDeviceId,
-                    restoreInventoryOnVoid = true
+                    restoreInventoryOnVoid = false
                 )
                 Log.i(TAG, "Successfully merged remote order change for remoteId=$remoteOrderId.")
             } catch (e: Exception) {

@@ -10,6 +10,8 @@ interface OrderRepository {
     suspend fun saveOrder(order: Order): Order
     suspend fun updateOrder(order: Order): Order
     fun getTopSellingItemForDay(startOfDay: Long, endOfDay: Long): Flow<Pair<String, Int>?>
+    fun getOrderCountForDay(startOfDay: Long, endOfDay: Long): Flow<Int>
+
     fun getGrossSalesForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>
     fun getDiscountsGivenForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>
     fun getNetRevenueForDay(startOfDay: Long, endOfDay: Long): Flow<Double?>

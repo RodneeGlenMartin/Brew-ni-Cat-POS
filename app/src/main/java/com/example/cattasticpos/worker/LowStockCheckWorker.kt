@@ -1,11 +1,14 @@
 package com.example.cattasticpos.worker
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.example.cattasticpos.CattasticPosApp
@@ -22,6 +25,17 @@ class LowStockCheckWorker(
         val inventory = container.inventoryRepository.getAllInventory().first()
         val lowStockItems = inventory.filter { it.currentStock <= it.reorderThreshold }
         if (lowStockItems.isEmpty()) return Result.success()
+
+        // Android 13+ drops notifications from apps without POST_NOTIFICATIONS. MainActivity
+        // asks for it on launch; until it is granted there is nothing useful to post.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                applicationContext,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return Result.success()
+        }
 
         ensureChannel(applicationContext)
         val summary = lowStockItems.joinToString(", ") { "${it.itemName} (${it.currentStock} ${it.unit})" }
