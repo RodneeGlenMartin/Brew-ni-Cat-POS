@@ -11,28 +11,29 @@ data class AddOnOption(
 object ProductAddOnCatalog {
     private const val ADD_ON_PRICE = 10.0
 
-    private val takeoutBoxOption = AddOnOption("takeout_box", "Take-out Box", 10.0)
+    /**
+     * Retired. Take-out Box used to be offered as a +PHP 10 extra on every food item, but it is
+     * now a menu item of its own under the "Take-out Box" category, so the add-on duplicated a
+     * SKU the cashier can ring up directly. It stays defined — and stays visible to
+     * [knownAddOnsForItem] — purely so orders taken before the change still price and reprint
+     * correctly; it is deliberately absent from every offered list below.
+     */
+    private val retiredAddOns = listOf(
+        AddOnOption("takeout_box", "Take-out Box", 10.0)
+    )
 
     private val sodaAddOns = listOf(
-        takeoutBoxOption,
         AddOnOption("nata", "Nata de coco", ADD_ON_PRICE),
         AddOnOption("rainbow", "Rainbow Jelly", ADD_ON_PRICE)
     )
 
-    private val takoyakiAddOns = listOf(
-        takeoutBoxOption
-    )
+    private val takoyakiAddOns = emptyList<AddOnOption>()
 
-    private val biteAddOns = listOf(
-        takeoutBoxOption
-    )
+    private val biteAddOns = emptyList<AddOnOption>()
 
-    private val comboAddOns = listOf(
-        takeoutBoxOption
-    )
+    private val comboAddOns = emptyList<AddOnOption>()
 
     private val buldakAddOns = listOf(
-        takeoutBoxOption,
         AddOnOption("egg_sunny", "Egg (Sunny Side Up)", 15.0),
         AddOnOption("egg_omelette", "Egg (Omelette)", 15.0),
         AddOnOption("egg_boiled", "Egg (Boiled)", 15.0),
@@ -41,9 +42,7 @@ object ProductAddOnCatalog {
         AddOnOption("fries", "Fries", 30.0)
     )
 
-    private val defaultFoodAddOns = listOf(
-        takeoutBoxOption
-    )
+    private val defaultFoodAddOns = emptyList<AddOnOption>()
 
     fun addOnsForItem(itemId: String, categoryId: String? = null, itemName: String? = null): List<AddOnOption> {
         val id = itemId.lowercase()
@@ -67,6 +66,18 @@ object ProductAddOnCatalog {
     fun addOnsForItem(item: Item): List<AddOnOption> =
         addOnsForItem(item.id, item.categoryId, item.name)
 
+    /**
+     * Everything currently offered for this item, plus any retired option, so an order taken
+     * before an option was withdrawn still prices, re-prints and re-opens at the amount the
+     * customer actually paid. Use this for money and for parsing stored flavor strings; use
+     * [addOnsForItem] for anything the cashier picks from.
+     */
+    fun knownAddOnsForItem(itemId: String, categoryId: String? = null, itemName: String? = null): List<AddOnOption> =
+        addOnsForItem(itemId, categoryId, itemName) + retiredAddOns
+
+    fun knownAddOnsForItem(item: Item): List<AddOnOption> =
+        knownAddOnsForItem(item.id, item.categoryId, item.name)
+
     fun supportsAddOns(itemId: String, categoryId: String? = null, itemName: String? = null): Boolean =
         addOnsForItem(itemId, categoryId, itemName).isNotEmpty()
 
@@ -81,7 +92,7 @@ object ProductAddOnCatalog {
         allowsMultiple(item.id, item.categoryId, item.name)
 
     fun surcharge(itemId: String, selectedAddOnIds: List<String>, categoryId: String? = null, itemName: String? = null): Double {
-        val options = addOnsForItem(itemId, categoryId, itemName).associateBy { it.id }
+        val options = knownAddOnsForItem(itemId, categoryId, itemName).associateBy { it.id }
         return selectedAddOnIds.sumOf { options[it]?.price ?: 0.0 }
     }
 
@@ -89,7 +100,7 @@ object ProductAddOnCatalog {
         surcharge(item.id, selectedAddOnIds, item.categoryId, item.name)
 
     fun labelsForIds(itemId: String, selectedAddOnIds: List<String>, categoryId: String? = null, itemName: String? = null): List<String> {
-        val options = addOnsForItem(itemId, categoryId, itemName).associateBy { it.id }
+        val options = knownAddOnsForItem(itemId, categoryId, itemName).associateBy { it.id }
         return selectedAddOnIds.mapNotNull { options[it]?.label }
     }
 

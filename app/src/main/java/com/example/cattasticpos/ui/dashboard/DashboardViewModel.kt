@@ -273,7 +273,9 @@ class DashboardViewModel(
         if (flavor.isNullOrBlank()) return flavor
         val selection = CartLineSelection.parse(flavor, item.id)
         if (selection.addOnLabels.isEmpty()) return flavor
-        val allowedLabels = ProductAddOnCatalog.addOnsForItem(item).map { it.label }.toSet()
+        // Known, not offered — a held order or a reopened receipt carrying a retired add-on must
+        // keep it (and its price) instead of having the label quietly stripped out.
+        val allowedLabels = ProductAddOnCatalog.knownAddOnsForItem(item).map { it.label }.toSet()
         // Keep only labels that exist as optional choices for this item (never invent new ones).
         val kept = selection.addOnLabels.filter { it in allowedLabels }
         if (kept == selection.addOnLabels) return flavor

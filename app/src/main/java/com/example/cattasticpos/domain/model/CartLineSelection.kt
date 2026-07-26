@@ -23,7 +23,9 @@ data class CartLineSelection(
     }.takeIf { it.isNotBlank() }
 
     fun addOnSurcharge(itemId: String): Double {
-        val options = ProductAddOnCatalog.addOnsForItem(itemId).associateBy { it.label }
+        // Known, not offered: an order placed before an option was retired must still price at
+        // what the customer paid when it is reprinted or reopened in the receipt editor.
+        val options = ProductAddOnCatalog.knownAddOnsForItem(itemId).associateBy { it.label }
         return addOnLabels.sumOf { label -> options[label]?.price ?: 0.0 }
     }
 

@@ -1605,7 +1605,8 @@ fun ProductConfigBottomSheet(item: Item, onDismiss: () -> Unit, onAddToCart: (Va
     }
     var selectedFlavor by remember(item.id) { mutableStateOf<String?>(null) }
     var selectedCoffeeOption by remember(item.id) { mutableStateOf<String?>(null) }
-    // Optional extras (incl. Take-out Box +₱10) stay unselected until the cashier taps them.
+    // Optional extras stay unselected until the cashier taps them. Take-out Box is no longer
+    // among them — it is its own menu item under the Take-out Box category.
     var selectedAddOnIds by remember(item.id) { mutableStateOf<List<String>>(emptyList()) }
     val isCoffee = isCoffeeItem(item)
     val hasAddOns = hasAddOnStep(item)
