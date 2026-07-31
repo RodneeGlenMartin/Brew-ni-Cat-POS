@@ -1,5 +1,6 @@
 package com.example.cattasticpos.domain.usecase
 
+import com.example.cattasticpos.domain.model.CartLineSelection
 import com.example.cattasticpos.domain.model.RecipeMapping
 
 /**
@@ -27,19 +28,15 @@ object RecipeDeductionResolver {
         sizeVariantName: String?,
         flavor: String?
     ): List<RecipeMapping> {
-        val flavorKey = flavor
-            ?.substringBefore(" +")
-            ?.substringBefore(" —")
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
+        // Shared with CartLineSelection so pricing and stock always read a flavor string the same
+        // way; each used to split it by hand and an extra with no flavor in front of it stopped
+        // deducting here at the same time as it stopped being charged for.
+        val (beforeAddOns, addOnLabels) = CartLineSelection.splitAddOns(flavor)
 
-        val addOnLabels = flavor
-            ?.substringAfter(" + ", missingDelimiterValue = "")
-            ?.takeIf { it.isNotBlank() }
-            ?.split(",")
-            ?.map { it.trim() }
-            ?.filter { it.isNotEmpty() }
-            .orEmpty()
+        val flavorKey = beforeAddOns
+            .substringBefore(" —")
+            .trim()
+            .takeIf { it.isNotEmpty() }
 
         val compositeMatches = mappings.filter { mapping ->
             val target = mapping.variantName

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothSocket
+import com.example.cattasticpos.domain.model.CartLineSelection
 import com.example.cattasticpos.domain.model.Order
 import com.example.cattasticpos.domain.model.ZReadingSummary
 import kotlinx.coroutines.Dispatchers
@@ -123,8 +124,13 @@ class ReceiptPrinterService(private val context: Context) {
         order.items.forEach { item ->
             val line = "${item.quantity}x ${item.itemName} (${item.variantName})\n"
             outputStream.write(line.toByteArray())
-            if (!item.flavor.isNullOrBlank()) {
-                outputStream.write("   - ${item.flavor}\n".toByteArray())
+            // Flavor and extras print on their own lines. The stored string now marks extras with
+            // a "+", so printing it raw would read "- + Egg (Sunny Side Up)".
+            val selection = CartLineSelection.parse(item.flavor, item.itemId)
+            selection.baseFlavor?.let { outputStream.write("   - $it\n".toByteArray()) }
+            selection.coffeeOption?.let { outputStream.write("   - $it\n".toByteArray()) }
+            if (selection.addOnLabels.isNotEmpty()) {
+                outputStream.write("   + ${selection.addOnLabels.joinToString(", ")}\n".toByteArray())
             }
             outputStream.write("   PHP ${item.totalPrice}\n".toByteArray())
         }

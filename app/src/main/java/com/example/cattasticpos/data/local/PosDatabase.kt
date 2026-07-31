@@ -37,7 +37,7 @@ import kotlinx.coroutines.launch
         AppConfigEntity::class,
         VoidRecordEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = false
 )
 abstract class PosDatabase : RoomDatabase() {
@@ -90,7 +90,8 @@ abstract class PosDatabase : RoomDatabase() {
                     MIGRATION_14_15,
                     MIGRATION_15_16,
                     MIGRATION_16_17,
-                    MIGRATION_17_18
+                    MIGRATION_17_18,
+                    MIGRATION_18_19
                 )
                 .addCallback(PosDatabaseCallback(appContext, scope))
                 .addCallback(MigrationSuccessCallback(appContext))
@@ -205,6 +206,15 @@ abstract class PosDatabase : RoomDatabase() {
         val MIGRATION_17_18 = object : androidx.room.migration.Migration(17, 18) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("UPDATE app_config SET startingCashFloat = 1500.0")
+            }
+        }
+
+        // Recover add-on surcharges that were rung up but never charged. See
+        // [AddOnSurchargeRepair] for the encoding bug behind it. No schema change — the version
+        // bump exists purely so the data repair runs exactly once per device.
+        val MIGRATION_18_19 = object : androidx.room.migration.Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                AddOnSurchargeRepair.run(db)
             }
         }
     }

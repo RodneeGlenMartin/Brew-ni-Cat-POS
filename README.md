@@ -12,7 +12,7 @@
   <img alt="platform" src="https://img.shields.io/badge/platform-Android%208.0%2B-3DDC84">
   <img alt="kotlin" src="https://img.shields.io/badge/Kotlin-2.0.21-7F52FF">
   <img alt="compose" src="https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.12-4285F4">
-  <img alt="room" src="https://img.shields.io/badge/Room-schema%20v18-orange">
+  <img alt="room" src="https://img.shields.io/badge/Room-schema%20v19-orange">
   <img alt="version" src="https://img.shields.io/badge/release-1.1.0%20(10125)-blue">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-lightgrey">
 </p>
@@ -94,7 +94,7 @@ app/src/main/java/com/example/cattasticpos/
 
 ## Data model
 
-Room schema **v18** — nine entities, thirteen migrations. `exportSchema = false`, and there is no destructive-migration fallback, so every schema bump needs a real migration path.
+Room schema **v19** — nine entities, fourteen migrations. `exportSchema = false`, and there is no destructive-migration fallback, so every schema bump needs a real migration path. Migrations are not all schema changes: `18 → 19` alters no table at all and exists only so a one-time data repair runs exactly once per device.
 
 | Entity | Holds |
 |---|---|
